@@ -63,7 +63,7 @@ extern struct rq rq;
 
 void mmc(void* args)
 {
-    mmc_init();
+    mmc_init(MMC1);
     while (1);
 }
 

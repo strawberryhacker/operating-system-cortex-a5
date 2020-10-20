@@ -163,6 +163,17 @@ kernel_entry:
     orr r4, r4, r1
     str r4, [r2, r3, LSL #2]
 
+    @ Map in MMC IO regions
+    mov r3, #0xA00
+    mov r4, r3, LSL #20
+    orr r4, r4, r1
+    str r4, [r2, r3, LSL #2]
+
+    mov r3, #0xB00
+    mov r4, r3, LSL #20
+    orr r4, r4, r1
+    str r4, [r2, r3, LSL #2]
+
     @ We want to map in vectors in virtual DDR into the high vector fetch address
     @ at address 0xFFFF0000. We are using 2 levels of page tables because the 
     @ first level page table requires the page to be 1M aligned, thus increasing

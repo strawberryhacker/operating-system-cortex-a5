@@ -4,6 +4,13 @@
 #include <cinnamon/print.h>
 #include <regmap.h>
 
+void assert_handler(const char* file, u32 line, u32 statement)
+{
+    if (!statement) {
+        panic_handler(file, line, "Assertion failed");
+    }
+}
+
 void panic_handler(const char* file, u32 line, const char* reason)
 {
     print("Panic! at line %d in file ", line);

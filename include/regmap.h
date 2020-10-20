@@ -413,7 +413,6 @@ struct trng_reg {
 
 #define TRNG ((struct trng_reg *)0xFC01C000)
 
-// 0x40 in size 
 struct timer_channel_reg {
     __w u32 CCR;
     _rw u32 CMR;
