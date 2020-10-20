@@ -1,0 +1,11 @@
+# Copyright (C) strawberryhacker
+
+obj-y += /drivers/apic.o
+obj-y += /drivers/matrix.o
+obj-y += /drivers/random.o
+obj-y += /drivers/pit.o
+obj-y += /drivers/timer.o
+obj-y += /drivers/clock.o
+obj-y += /drivers/gpio.o
+obj-y += /drivers/cpu_timer.o
+obj-y += /drivers/mmc.o
