@@ -61,6 +61,10 @@ struct thread {
 
 };
 
+/// Functions for creating kernel and usre threads
+struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size, 
+    const char* name, void* args, u32 flags);
+
 struct thread* create_thread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags);
 

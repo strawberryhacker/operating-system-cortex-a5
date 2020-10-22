@@ -9,3 +9,4 @@ obj-y += /drivers/clock.o
 obj-y += /drivers/gpio.o
 obj-y += /drivers/cpu_timer.o
 obj-y += /drivers/mmc.o
+obj-y += /drivers/sd.o

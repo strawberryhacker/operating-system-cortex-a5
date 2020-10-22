@@ -25,10 +25,14 @@ struct mmc_cmd {
 
 struct sd {
 
-    // Private data for the SD card
+    // Private register interface for the sd card
     struct mmc_reg* mmc;
 
     u32 size_kb;
+
+    // Make a command and a data structure
+    struct mmc_data data;
+    struct mmc_cmd cmd;
 
     // Functions for accessing this SD card
     u32 (*init)(struct sd* sd);
@@ -46,7 +50,7 @@ struct sd {
 #define SD_RESP_R6   5
 #define SD_RESP_R7   6
 
-void mmc_init(struct mmc_reg* mmc);
+void mmc_init(void);
 
 void sd_card_init(void);
 

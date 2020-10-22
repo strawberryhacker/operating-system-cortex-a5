@@ -54,7 +54,13 @@ void kernel_init(void)
 {
     mm_init();
     sched_init();
-}   
+}
+
+/// This will handle driver initialization
+void driver_init(void)
+{
+    mmc_init();
+}
 
 extern volatile enum loader_state loader_state;
 
@@ -71,15 +77,6 @@ u32 task(void* args)
     }
 }
 
-u32 mmc(void* args)
-{
-    //return 5;
-    mmc_init(MMC1);
-    while (1) {
-        syscall_thread_sleep(10000);
-    }
-}
-
 void print_thread_header(void)
 {
     print("%3s %-16s %5s %8s\n", "PID", "NAME", "CPU%", "MEM");
@@ -92,7 +89,6 @@ void print_thread_stats(u32 pid, const char* name, u8 percent, u8 frac, u32 mem)
     
 u32 task_manager(void* args)
 {
-    return 1;
     while (1) {
         syscall_thread_sleep(1000000);
         print_thread_header();
@@ -113,7 +109,7 @@ u32 task_manager(void* args)
         }
         print("\n");
     }
-}
+}   
 
 void main(void)
 {
@@ -121,11 +117,11 @@ void main(void)
     
     early_init();
     kernel_init();
+    driver_init();
 
     print("Adding threads\n");
     create_process(task_manager, 500, "Task manager", "HELLO", SCHED_RT);
-    create_process(mmc, 500, "MMC driver", NULL, SCHED_RT);
-
+   
     print("Start the scheduler\n");
     sched_start();
 

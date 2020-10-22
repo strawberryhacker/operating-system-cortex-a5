@@ -4,9 +4,8 @@
 #define SD_H
 
 #include <cinnamon/types.h>
+#include <cinnamon/mmc.h>
 
-
-
-void sd_init_thread(void* sd_card);
+u32 sd_init_thread(void* sd_card);
 
 #endif

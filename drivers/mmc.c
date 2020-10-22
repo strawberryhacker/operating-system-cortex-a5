@@ -6,6 +6,7 @@
 #include <cinnamon/gpio.h>
 #include <cinnamon/clock.h>
 #include <cinnamon/apic.h>
+#include <cinnamon/thread.h>
 #include <stddef.h>
 
 /// This code is configuring the MMC driver to work in SD / SDIO mode
@@ -94,7 +95,7 @@ static void mmc_init_hardware(struct mmc_reg* mmc)
 }
 
 /// Enabled interrupt on card insert
-static void mmc_wait_for_card_detect(struct mmc_reg* mmc)
+static void mmc_card_detect_irq_enable(struct mmc_reg* mmc)
 {
     mmc->NISTER |= (1 << 6) | (1 << 7);
     mmc->NISIER |= (1 << 6) | (1 << 7);
@@ -103,10 +104,11 @@ static void mmc_wait_for_card_detect(struct mmc_reg* mmc)
     mmc->NISTR |= (1 << 6) | (1 << 7);
 }
 
-/// Global variable which tracks the card insert status
-static volatile u32 card_inserted = 0;
+/// SD protocol thread function that will enumerate and add a new card
+extern u32 sd_init_thread(void* sd);
 
-/// Handles the event of a SD insertion
+/// Handles the event of a SD insertion. This creates a new SD card object and 
+/// creates a new thread which will enumerate the newly attached SD card
 static void mmc_card_insert(struct mmc_reg* mmc)
 {
     // Check the card insertion in the present state
@@ -115,8 +117,6 @@ static void mmc_card_insert(struct mmc_reg* mmc)
     // Card has been inserted and everything is ok. The host controller can 
     // apply power on the signal lines and enable the clock
     mmc_set_bus_power(mmc);
-    mmc_set_frequency(mmc, 400000);
-    mmc_set_bus_width(mmc, 1);
 
     // Fix the standard interrupt flags
     mmc->NISIER = (1 << 6) | (1 << 7);
@@ -125,21 +125,18 @@ static void mmc_card_insert(struct mmc_reg* mmc)
     mmc->EISTER = 0xFFFF;
     mmc->NISTER = 0b111011 | (1 << 6) | (1 << 7) | (1 << 15);
 
-    card_inserted = 1;
+    // Create a new user (kernel) thread to enumerate the card
+    create_process(sd_init_thread, 500, "sdinit", NULL, SCHED_RT);
 }
 
-/// Main MMC interrupt for MMC 1
-void mmc_interrupt(void)
+/// Internal interrupt handler which will handle both requests from MMC0 and
+/// MMC1 and call the appropriate handlers
+static void _mmc_interrupt_handler(struct mmc_reg* mmc, u32 status)
 {
-    u32 status = MMC1->NISTR;
-    
-    // Clear all the status bits
-    MMC1->NISTR = status;
-
     if (status & (1 << 6)) {
         // Card insertion
         print("Card insertion\n");
-        mmc_card_insert(MMC1);
+        mmc_card_insert(mmc);
     }
 
     if (status & (1 << 7)) {
@@ -147,50 +144,74 @@ void mmc_interrupt(void)
     }
 }
 
-void mmc_init(struct mmc_reg* mmc)
+/// Main MMC interrupt for MMC0
+void mmc0_interrupt(void)
 {
-    print("MMC starting\n");
+    // Read and clear the status bits
+    u32 status = MMC0->NISTR;
+    MMC0->NISTR = status;
 
-    (void)mmc->CA0R;
+    // Call the common interrupt handler
+    _mmc_interrupt_handler(MMC0, status);
+}
 
+/// Main MMC interrupt for MMC1
+void mmc1_interrupt(void)
+{
+    // Read and clear the status bits
+    u32 status = MMC1->NISTR;
+    MMC1->NISTR = status;
+
+    // Call the common interrupt handler
+    _mmc_interrupt_handler(MMC1, status);
+}
+
+void mmc_init(void)
+{
+    clk_pck_enable(31);
     clk_pck_enable(32);
 
     // Enable the programmable clock for the SD host; 10,375 MHz
+    clk_gck_enable(31, GCK_SRC_MCK_CLK, 16);
     clk_gck_enable(32, GCK_SRC_MCK_CLK, 16);
 
-    apic_add_handler(32, mmc_interrupt);
+    // Add interrupt handlers for both MMC interfaces
+    apic_add_handler(31, mmc0_interrupt);
+    apic_enable(31);
+
+    apic_add_handler(32, mmc1_interrupt);
     apic_enable(32);
 
-    mmc_init_hardware(mmc);
+    // Initialize the hardware
+    mmc_init_hardware(MMC1);
+    mmc_init_hardware(MMC0);
 
     // This driver depends on the ADMA to be supported
-    assert(mmc->CA0R & (1 << 19));
+    assert(MMC0->CA0R & (1 << 19));
+    assert(MMC1->CA0R & (1 << 19));
 
 
-    // Initialize the GPIO
-    struct gpio cd   = { .hw = GPIOA, .pin = 30 };
-    struct gpio dat0 = { .hw = GPIOA, .pin = 18 };
-    struct gpio dat1 = { .hw = GPIOA, .pin = 19 };
-    struct gpio dat2 = { .hw = GPIOA, .pin = 20 };
-    struct gpio dat3 = { .hw = GPIOA, .pin = 21 };
-    struct gpio ck   = { .hw = GPIOA, .pin = 22 };
-    struct gpio cda  = { .hw = GPIOA, .pin = 28 };
-    
-    gpio_set_func(&dat0, GPIO_FUNC_E);
-    gpio_set_func(&dat1, GPIO_FUNC_E);
-    gpio_set_func(&dat2, GPIO_FUNC_E);
-    gpio_set_func(&dat3, GPIO_FUNC_E);
-    gpio_set_func(&ck, GPIO_FUNC_E);
-    gpio_set_func(&cd, GPIO_FUNC_E);
-    gpio_set_func(&cda, GPIO_FUNC_E);
+    // Initialize the GPIO    
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 30 }, GPIO_FUNC_E);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 18 }, GPIO_FUNC_E);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 19 }, GPIO_FUNC_E);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 20 }, GPIO_FUNC_E);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 21 }, GPIO_FUNC_E);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 22 }, GPIO_FUNC_E);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 28 }, GPIO_FUNC_E);
 
-    mmc_wait_for_card_detect(mmc);
-    
-    while (card_inserted == 0);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 2  }, GPIO_FUNC_A);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 3  }, GPIO_FUNC_A);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 4  }, GPIO_FUNC_A);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 5  }, GPIO_FUNC_A);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 1  }, GPIO_FUNC_A);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 0  }, GPIO_FUNC_A);
+    gpio_set_func(&(struct gpio){ .hw = GPIOA, .pin = 13 }, GPIO_FUNC_A);
 
-    print("Card ready\n");
-    
-    sd_protocol_init(mmc);
+
+    // Enable interrupt on card detect
+    mmc_card_detect_irq_enable(MMC0);
+    mmc_card_detect_irq_enable(MMC1);
 }
 
 /// Internal structure for speeding up command 17 and command 18 transfers by
@@ -365,24 +386,4 @@ void mmc_send_command(struct mmc_reg* mmc, struct mmc_cmd* cmd, struct mmc_data*
         // Clear the flag
         mmc->NISTR = (1 << 1);
     }
-}
-
-void sd_protocol_init(struct mmc_reg* mmc)
-{
-    print("Starting the sd protocol\n");
-
-    struct mmc_cmd cmd = { .cmd = 0, .arg = 0, .resp_type = SD_RESP_NONE };
-    mmc_send_command(mmc, &cmd, NULL);
-
-    // Send the command 8
-    cmd.cmd = 8;
-    cmd.arg = ((0b0001 & 0b1111) << 8) | 0b10101010;
-    cmd.resp_type = SD_RESP_R7;
-
-    mmc_send_command(mmc, &cmd, NULL);
-
-    print("Resp => %32b\n", cmd.resp[0]);
-
-
-    print("Done\n");
 }

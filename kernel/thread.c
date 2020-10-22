@@ -14,7 +14,8 @@
 #include <cinnamon/panic.h>
 #include <cinnamon/interrupt.h>
 
-#define THREAD_CPSR 0b10000
+#define USER_THREAD_CPSR  0b10000
+#define KERNEL_THREAD_CPSR 0b11111
 
 #define FLAG_CLASS_MSK 0b111
 #define FLAG_CLASS_POS 0
@@ -33,10 +34,10 @@ void thread_exit(u32 status_code)
     while (1);
 }
 
-u32* stack_setup(u32* sp, u32 (*func)(void *), void* args)
+u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
 {
     sp--;
-    *sp-- = THREAD_CPSR;       // cpsr  
+    *sp-- = cpsr;              // cpsr  
     *sp-- = (u32)func;         // pc    
     *sp-- = 0x12121212;        // r12   
     *sp-- = 0x03030303;        // r3    
@@ -76,6 +77,7 @@ static void init_thread_struct(struct thread* thread)
     thread->tick_to_wake = 0;
 }
 
+/// Copies in the thread name into the thread control block
 static void thread_set_name(struct thread* thread, const char* name)
 {
     u32 i;
@@ -86,6 +88,52 @@ static void thread_set_name(struct thread* thread, const char* name)
 
     }
     *dest = '\0';
+}
+
+/// Sets the scheduler class in a thread given the thread flags
+static void thread_set_class(struct thread* t, u32 flags)
+{
+    // Enqueue the process into the right scheduler
+    const struct sched_class* class = get_sched_class(flags & 0b111);
+    t->class = class;
+}
+
+/// Creates a lightweight kernel thread in the kernel memory space
+struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size, 
+    const char* name, void* args, u32 flags)
+{
+    print("Creating kernel thread\n");
+
+    // Allocate the thread control block
+    struct thread* new = kmalloc(sizeof(struct thread));
+    init_thread_struct(new);
+
+    // Set the name of the thread
+    thread_set_name(new, name);
+
+    dcache_clean_invalidate();
+
+    // Setup the stack for the thead
+    new->stack_base = kmalloc(stack_size * 4);
+    new->sp = new->stack_base + stack_size - 1;
+    new->sp = stack_setup(new->sp, func, args, KERNEL_THREAD_CPSR);
+
+    // Add the thread to the global thread list
+    sched_add_thread(new);
+    thread_set_class(new, flags);
+    sched_enqueue_thread(new);
+
+    icache_invalidate();
+    dcache_clean();
+
+
+    return new;
+}
+
+/// TODO implement the kill kernel thread function
+void kill_kernel_thread(struct thread* t)
+{
+
 }
 
 /// Core function for creating a user thread.
@@ -99,7 +147,8 @@ static inline void create_user_thread_core(struct thread* thread,
     // Set the name of the thread
     thread_set_name(thread, name);
 
-    // Map in the stack region
+    // Map in the stack region. This will allocate a number of pages and map
+    // them into the high user addresses
     u32 stack_order = 
         pages_to_order((u32)align_up((void *)stack_size, 4096) / 4096);
     struct page* stack_page_ptr = alloc_pages(stack_order);
@@ -113,6 +162,7 @@ static inline void create_user_thread_core(struct thread* thread,
     u32 stack_pages = (1 << stack_order);
     thread->mm->stack_e -= stack_pages * 1024;
 
+    // Map in the stack in the process virtual memory
     mm_process_map_memory(thread->mm, stack_page_ptr, stack_pages, 
         (u32)thread->mm->stack_e, pt_flags, domain);
 
@@ -125,17 +175,12 @@ static inline void create_user_thread_core(struct thread* thread,
     u32* sp_usr_virt = thread->mm->stack_e;
 
     u32* sp = sp_kern_virt + stack_pages * 1024 - 1;
-    sp = stack_setup(sp, func, args);
+    sp = stack_setup(sp, func, args, USER_THREAD_CPSR);
     thread->sp = sp_usr_virt + (sp - sp_kern_virt);    
 
     // Add the thread to the global thread list
     sched_add_thread(thread);
-
-    // Enqueue the process into the right scheduler
-    const struct sched_class* class = get_sched_class(flags & 0b111);
-    thread->class = class;
-    
-    // Queue the thread
+    thread_set_class(thread, flags);
     sched_enqueue_thread(thread);
 }
 
@@ -158,7 +203,6 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_size,
     new->mm = parent->mm;
     new->process = parent;
     list_add_first(&new->thread_group, &parent->thread_group);
-    print("ok\n");
     create_user_thread_core(new, func, stack_size, name, args, flags);
 
     dcache_clean();
