@@ -12,8 +12,8 @@ u8 slob_init(struct mm_zone* zone)
 
     // Find the absolute start and end address of the slob allocator space 
     u32 page_index = zone->start - mm_get_page_array();
-    slob->start_addr = KERNEL_START + page_index * 0x1000;
-    slob->end_addr = slob->start_addr + zone->page_cnt * 0x1000;
+    slob->start_addr = KERNEL_START + page_index * 4096;
+    slob->end_addr = slob->start_addr + zone->page_cnt * 4096;
 
     // Sanity check 
     if (slob->start_addr > slob->end_addr) {
@@ -109,7 +109,7 @@ void slob_extend(struct mm_zone* zone, u32 pages)
     // It is pointing to the node before the last node
     struct slob_node* tmp = slob->last_node;
 
-    slob->end_addr += pages * 0x1000;
+    slob->end_addr += pages * 4096;
 
     slob->last_node = (struct slob_node *)
         (slob->end_addr - sizeof(struct slob_node));
@@ -122,13 +122,13 @@ void slob_extend(struct mm_zone* zone, u32 pages)
     it->next = slob->last_node;
 
     tmp->next = NULL;
-    tmp->size = pages * 0x1000;
+    tmp->size = pages * 4096;
 
     // Merge any blocks if possible
     slob_insert_free(slob->first_node, slob->last_node, tmp);
 
     // Update the statistics
-    slob->stats.total += pages * 0x1000;
+    slob->stats.total += pages * 4096;
 }
 
 /// Allocates a physically and virtually continous memory region. This is based 

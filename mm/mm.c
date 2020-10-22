@@ -41,7 +41,7 @@ static void mm_setup_page_array(void)
     // We need to allocate one struct page for every physical page inthe system.
     // This should be aligned with a page
     page_array = (struct page *)
-        boot_alloc(sizeof(struct page) * DDR_PAGES, 0x1000);
+        boot_alloc(sizeof(struct page) * DDR_PAGES, 4096);
 
     // Initialize the page structures
     for (u32 i = 0; i < DDR_PAGES; i++) {
@@ -62,10 +62,10 @@ void mm_allocators_init(void)
 
     // Find the number of pages in the kernel used space
     if (kernel_used & 0xFFF) {
-        kernel_used += 0x1000;
+        kernel_used += 4096;
         kernel_used &= ~0xFFF;
     }
-    u32 kernel_pages = kernel_used / 0x1000;
+    u32 kernel_pages = kernel_used / 4096;
 
     // Find how much memory should be partitioned into the buddy allocator
     u32 buddy_pages = DDR_PAGES / 3;
@@ -154,7 +154,7 @@ void free_page(struct page* page)
 /// Getting the lowest possible order for a binary buddy allocation
 u32 bytes_to_order(u32 bytes)
 {
-    u32 pages = (u32)align_up((void *)bytes, 0x1000) / 0x1000;
+    u32 pages = (u32)align_up((void *)bytes, 4096) / 4096;
 
     return __builtin_ctz(round_up_power_two(pages));
 }
@@ -175,7 +175,7 @@ struct page* lv1_pt_alloc(void)
 struct page* lv2_pt_alloc(void)
 {
     struct page* page = buddy_alloc_pages(0, zones + 1);
-    mem_set(page_to_va(page), 0, 0x1000);
+    mem_set(page_to_va(page), 0, 4096);
     return page;
 }
 
@@ -193,14 +193,14 @@ void lv2_pt_free(struct page* page)
 void* page_to_va(struct page* page)
 {
     u32 index = page - page_array;
-    return (void *)(KERNEL_START + (index * 0x1000));
+    return (void *)(KERNEL_START + (index * 4096));
 }
 
 /// Gets the physical address from a page address
 void* page_to_pa(struct page* page)
 {
     u32 index = page - page_array;
-    u32 vaddr = KERNEL_START + (index * 0x1000);
+    u32 vaddr = KERNEL_START + (index * 4096);
 
     return _pa((void *)vaddr);
 }
@@ -212,7 +212,7 @@ struct page* va_to_page(void* page_addr)
         return NULL;
     }
 
-    u32 page_index = ((u32)page_addr - KERNEL_START) / 0x1000;
+    u32 page_index = ((u32)page_addr - KERNEL_START) / 4096;
     return page_array + page_index;
 }
 
@@ -224,7 +224,7 @@ struct page* pa_to_page(void* page_addr)
         return NULL;
     }
 
-    u32 page_index = (vaddr - KERNEL_START) / 0x1000;
+    u32 page_index = (vaddr - KERNEL_START) / 4096;
     return page_array + page_index;
 }
 
@@ -353,7 +353,7 @@ u32 mm_process_map_memory(struct mm_process* mm, struct page* page,
 
         lv2_pt_map_page(mm->ttbr_phys, page_to_va(page), vaddr, attr);
 
-        vaddr += 0x1000;
+        vaddr += 4096;
         page++;
     }
     return 1;
@@ -370,7 +370,7 @@ u32* set_break(u32 bytes)
         mm->heap_s = mm->data_e;
 
         // Align the addresses with a page
-        align_up(mm->heap_s, 0x1000);
+        align_up(mm->heap_s, 4096);
         mm->heap_e = mm->heap_s;
     }
 
@@ -378,7 +378,7 @@ u32* set_break(u32 bytes)
         return mm->heap_e;
     }
 
-    u32 pages = align_up_val(bytes, 0x1000) / 0x1000;
+    u32 pages = align_up_val(bytes, 4096) / 4096;
     u32 order = pages_to_order(pages);
 
     //print("Order => %d\n", order);
@@ -400,7 +400,7 @@ u32* set_break(u32 bytes)
     mm_process_map_memory(mm, page_ptr, 1 << order, (u32)mm->heap_e, flags, domain);
 
     // Extend the heap region
-    mm->heap_e += 0x1000 * (1 << order);
+    mm->heap_e += 4096 * (1 << order);
 
     return mm->heap_e;
 }

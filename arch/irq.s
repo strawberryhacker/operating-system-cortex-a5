@@ -157,8 +157,7 @@ context_switch:
     dsb
     isb
 
-    add r3, r1, #4
-    ldr r4, [r3]
+    ldr r4, [r1, #8]
     ldr r3, [r4]              @ Get the base address of the next memory map
 
     mcr p15, 0, r3, c2, c0, 0

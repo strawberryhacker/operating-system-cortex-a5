@@ -19,10 +19,12 @@
 #define FLAG_CLASS_MSK 0b111
 #define FLAG_CLASS_POS 0
 
-/// 
-void thread_exit(void)
+/// Thread and process exit routine which is called when either a thread or a 
+/// process exits
+void thread_exit(u32 status_code)
 {
     irq_disable();
+
     u32 flags = __atomic_enter();
     struct thread* t = get_curr_thread();
     __atomic_leave(flags);
@@ -31,7 +33,7 @@ void thread_exit(void)
     while (1);
 }
 
-u32* stack_setup(u32* sp, void (*func)(void *), void* args)
+u32* stack_setup(u32* sp, u32 (*func)(void *), void* args)
 {
     sp--;
     *sp-- = THREAD_CPSR;       // cpsr  
@@ -86,8 +88,9 @@ static void thread_set_name(struct thread* thread, const char* name)
     *dest = '\0';
 }
 
-static inline void create_thread_core(struct thread* thread, void (*func)(void *),
-    u32 stack_size,const char* name, void* args, u32 flags)
+/// Core function for creating a user thread.
+static inline void create_user_thread_core(struct thread* thread,
+    u32 (*func)(void *), u32 stack_size,const char* name, void* args, u32 flags)
 {
     if (thread->mm == NULL) {
         panic("Need to setup memory space first");
@@ -98,7 +101,7 @@ static inline void create_thread_core(struct thread* thread, void (*func)(void *
 
     // Map in the stack region
     u32 stack_order = 
-        pages_to_order((u32)align_up((void *)stack_size, 0x1000) / 0x1000);
+        pages_to_order((u32)align_up((void *)stack_size, 4096) / 4096);
     struct page* stack_page_ptr = alloc_pages(stack_order);
     mm_process_add_page(stack_page_ptr, thread->mm);
 
@@ -108,20 +111,20 @@ static inline void create_thread_core(struct thread* thread, void (*func)(void *
     u32 domain = 15;
 
     u32 stack_pages = (1 << stack_order);
-    thread->mm->stack_e -= stack_pages * 0x400;
+    thread->mm->stack_e -= stack_pages * 1024;
 
     mm_process_map_memory(thread->mm, stack_page_ptr, stack_pages, 
         (u32)thread->mm->stack_e, pt_flags, domain);
 
     // Invalidate the stack region in the D-cache
     u32 start = (u32)page_to_va(stack_page_ptr);
-    dcache_clean_invalidate_range(start, start + stack_pages * 0x1000);
+    dcache_clean_invalidate_range(start, start + stack_pages * 4096);
 
     // Set the stack using kernel logical addressing
     u32* sp_kern_virt = page_to_va(stack_page_ptr);
     u32* sp_usr_virt = thread->mm->stack_e;
 
-    u32* sp = sp_kern_virt + stack_pages * 0x400 - 1;
+    u32* sp = sp_kern_virt + stack_pages * 1024 - 1;
     sp = stack_setup(sp, func, args);
     thread->sp = sp_usr_virt + (sp - sp_kern_virt);    
 
@@ -137,13 +140,16 @@ static inline void create_thread_core(struct thread* thread, void (*func)(void *
 }
 
 /// Creating a thread
-struct thread* create_thread(void (*func)(void *), u32 stack_size, 
+struct thread* create_thread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags)
 {
     print("Creating thread\n");
 
-    struct thread* new = (struct thread *)kmalloc(sizeof(struct thread));
+    struct thread* new = kmalloc(sizeof(struct thread));
     init_thread_struct(new);
+
+    // The user thread should be non-privileged
+    new->privileged = 0;
 
     // Find the parent thread
     struct thread* parent = get_curr_thread();
@@ -153,7 +159,7 @@ struct thread* create_thread(void (*func)(void *), u32 stack_size,
     new->process = parent;
     list_add_first(&new->thread_group, &parent->thread_group);
     print("ok\n");
-    create_thread_core(new, func, stack_size, name, args, flags);
+    create_user_thread_core(new, func, stack_size, name, args, flags);
 
     dcache_clean();
 
@@ -161,17 +167,20 @@ struct thread* create_thread(void (*func)(void *), u32 stack_size,
 }
 
 /// Creating a process
-struct thread* create_process(void (*func)(void *), u32 stack_size,
+struct thread* create_process(u32 (*func)(void *), u32 stack_size,
     const char* name, void* args, u32 flags)
 {
     print("Creating process\n");
 
-    struct thread* new = (struct thread *)kmalloc(sizeof(struct thread));
+    struct thread* new = kmalloc(sizeof(struct thread));
     init_thread_struct(new);
+
+    // The user process should be non-privileged
+    new->privileged = 0;
 
     // Make a new memory space
     process_mm_init(new, stack_size);
-    create_thread_core(new, func, stack_size, name, args, flags);
+    create_user_thread_core(new, func, stack_size, name, args, flags);
 
     // Must be initialized after the create_thread_core beacuse it initializes
     // the thread group as a list node
@@ -185,7 +194,7 @@ struct thread* create_process(void (*func)(void *), u32 stack_size,
 
 void map_in_code(struct page* code_page, u32 pages, struct thread* t)
 {
-    t->mm->data_s += pages * 0x1000;
+    t->mm->data_s += pages * 4096;
 
     u32 flags = LV2_PT_SECTION |
                 LV2_PT_SECTION_FULL_ACC |

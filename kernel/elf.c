@@ -236,7 +236,7 @@ void elf_init(const u8* elf_data, u32 elf_size)
     //print_mem(ptr, prog_header->memsz, 16);
 
     // Allocate and copy the loadable data
-    u32 bin_pages = (u32)align_up((void *)prog_header->memsz, 0x1000) / 0x1000;
+    u32 bin_pages = (u32)align_up((void *)prog_header->memsz, 4096) / 4096;
     u32 bin_order = pages_to_order(bin_pages);
     struct page* bin_page_ptr = alloc_pages(bin_order);
 
@@ -264,7 +264,7 @@ void elf_init(const u8* elf_data, u32 elf_size)
 
     // Create a process
     u32 irq = __atomic_enter();
-    struct thread* t = create_process((void (*)(void *))elf_header->entry, 500,
+    struct thread* t = create_process((u32 (*)(void *))elf_header->entry, 500,
         "ELF application", NULL, SCHED_RT);
 
     mm_process_map_memory(t->mm, bin_page_ptr, (1 << bin_order), prog_header->vaddr,

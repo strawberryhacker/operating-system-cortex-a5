@@ -105,7 +105,7 @@ SECTIONS {
      * by the L2 page table to address 0xFFFF0000 (three low nibble is zero)
      */
     .vector_table : {
-        . = ALIGN(0x1000);
+        . = ALIGN(4096);
         _vectors_s = .;
         KEEP(*(.vector_table))
         . = ALIGN(4);
@@ -168,16 +168,16 @@ SECTIONS {
      * address 0xFFFF0000
      */
     .early_kernel_pt2 (NOLOAD) : {
-        . = ALIGN(0x400);
+        . = ALIGN(1024);
         _early_kernel_lv2_pt_s = .;
-        . += 0x400;
+        . += 1024;
     } > vddr
 
     /* Early page table for the kernel */
     .early_kernel_pt1 (NOLOAD) : {
-        . = ALIGN(0x4000);
+        . = ALIGN(16384);
         _early_kernel_lv1_pt_s = .;
-        . += 0x4000;
+        . += 16384;
     } > vddr
 
     /*
@@ -189,12 +189,14 @@ SECTIONS {
 
     /* 
      * This maps physical DDR @ 0x20000000 into virtual memory @ 0x20000000
-     * due to speculative pysical instrucions in the pipeline
+     * due to speculative pysical instrucions in the pipeline. This is the
+     * user page table so we use the TTBR0 which means it can be alligned with
+     * 8k
      */
     .early_usr_pt1 (NOLOAD) : {
-        . = ALIGN(0x2000);
+        . = ALIGN(8192);
         _early_usr_lv1_pt_s = .;
-        . += 0x2000;
+        . += 8192;
     } > vddr    
 }
 

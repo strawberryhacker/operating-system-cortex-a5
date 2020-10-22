@@ -4,6 +4,8 @@
 .cpu cortex-a5
 .arm
 
+SYS_MODE   = 0b11111
+USER_MODE  = 0b10000
 
 .data
 sched_panic_text:
@@ -51,7 +53,7 @@ sched_start:
 
     @ Updating the memory map
     ldr r1, [r0, #4]  @ r1 is pointing to rq->curr
-    ldr r2, [r1, #4]
+    ldr r2, [r1, #8]
     ldr r0, [r2]
     mcr p15, 0, r0, c2, c0, 0  @ Update the TTBR0 with the current memory map
     isb
@@ -62,6 +64,11 @@ sched_start:
     @ Cleans all the cache
     bl icache_invalidate
     bl dcache_clean
+    
+    @ Switch the mode to the first executing thread. This is for getting the 
+    @ LR right on the first thread to run. Otherwise we will be updating a
+    @ banked link register
+    cps #SYS_MODE
 
     ldr r0, =rq
     ldr r1, [r0, #4]

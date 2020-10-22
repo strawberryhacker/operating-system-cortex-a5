@@ -79,7 +79,7 @@ kernel_entry:
     @ Clear the kernel L1 page table
     ldr r1, =_early_kernel_lv1_pt_s
     paddr r1, r0               @ Phys addr of the kernel L1 page table
-    mov r2, #0x1000
+    mov r2, #4096
     mov r3, #0
 1:  
     str r3, [r1], #4
@@ -89,7 +89,7 @@ kernel_entry:
     @ Clear the kernel L2 page table
     ldr r1, =_early_kernel_lv2_pt_s
     paddr r1, r0               @ Phys addr of the kernel L2 page table
-    mov r2, #0x100
+    mov r2, #256
     mov r3, #0
 1:  
     str r3, [r1], #4
@@ -99,7 +99,7 @@ kernel_entry:
     @ Clear the user L1 page table
     ldr r1, =_early_usr_lv1_pt_s
     paddr r1, r0               @ Phys addr of the user page table
-    mov r2, #0x800
+    mov r2, #2048
     mov r3, #0
 1:  
     str r3, [r1], #4
@@ -117,16 +117,16 @@ kernel_entry:
     @ user L1 page table
     ldr r3, =_early_kernel_lv1_pt_s
     paddr r3, r0
-    mov r2, #0x800
+    mov r2, #2048
     add r2, r3, r2, LSL #2     @ Pointer to PT entry @ 0x80000000 in kernel LV1 PT
     
     ldr r8, =_early_usr_lv1_pt_s
     paddr r8, r0
-    mov r6, #0x200
+    mov r6, #512
     add r6, r8, r6, LSL #2     @ Pointer to PT entry @ 0x20000000 in user LV1 PT
     
-    mov r3, #0x200             @ The DDR offset whichin the physical memory
-    mov r4, #0x80              @ 128MB of DDR rsulting in 128 (0x80) PT entries
+    mov r3, #512               @ The DDR offset whichin the physical memory
+    mov r4, #128               @ 128MB of DDR rsulting in 128 (0x80) PT entries
 1:  
     mov r5, r3, LSL #20
     orr r5, r5, r1
@@ -180,8 +180,8 @@ kernel_entry:
     @ the binary size to > 1M
     ldr r1, =_early_kernel_lv2_pt_s
     paddr r1, r0
-    orr r1, #0b01             @ Attribute for L2 PT pointer
-    orr r1, #(15 << 5)        @ Setting domain 15 for vectors
+    orr r1, #0b01              @ Attribute for L2 PT pointer
+    orr r1, #(15 << 5)         @ Setting domain 15 for vectors
     ldr r2, =_early_kernel_lv1_pt_s
     paddr r2, r0
     mov r3, #0xFFF

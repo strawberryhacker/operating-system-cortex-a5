@@ -33,3 +33,12 @@ void clk_pck_disable(u32 pid)
         PMC->PCR = reg | (1 << 12);
     }
 }
+
+void clk_gck_enable(u8 pid, enum gck_src src, u8 div)
+{
+    /* Write mode */
+    PMC->PCR = pid & 0x7F;
+    u32 en = (PMC->PCR & (1 << 28)) ? 1 : 0;
+    PMC->PCR = (en << 28) | (src << 8) | (1 <<12) | (div << 20) | (1 << 29) |
+        (pid & 0x7F);
+}

@@ -187,17 +187,19 @@ void sched_init_rq(struct rq* rq)
 /// This is the IDLE thread which is run when no other scheduling class can
 /// offer any new thread. This might not need to occupy a full timeslice but
 /// should probably wait for a signal
-static void idle_func(void* args)
+static u32 idle_func(void* args)
 {
     while (1) {
 
     }
+
+    return 1;
 }
 
 static void add_idle(struct rq* rq)
 {
     struct thread* idle_thread =
-    create_process(idle_func, 500, "IDLE", NULL, SCHED_IDLE);
+        create_process(idle_func, 500, "Idle", NULL, SCHED_IDLE);
 }
 
 static inline void reschedule(void);

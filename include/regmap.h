@@ -182,10 +182,7 @@ struct mmc_reg {
     _rw u32 ARG1R;
     _rw u16 TMR;
     _rw u16 CR;
-    __r u32 RR0;
-    __r u32 RR1;
-    __r u32 RR2;
-    __r u32 RR3;
+    __r u32 RR[4];
     _rw u32 BDPR;
     __r u32 PSR;
     _rw u8  HC1R;

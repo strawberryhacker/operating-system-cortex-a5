@@ -4,6 +4,7 @@
 #include <cinnamon/print.h>
 #include <cinnamon/sched.h>
 #include <cinnamon/thread.h>
+#include <cinnamon/page_alloc.h>
 #include <cinnamon/mm.h>
 
 /// Called by the SVC vector. The AAPCS stackframe are preserved before this call.
@@ -16,7 +17,7 @@ void supervisor_exception(u32* sp)
     if (sp[0]) {
         sp += 3;
     } else {
-            sp += 2;
+        sp += 2;
     }
     
     // The SP is pointing to the r0 in the standard interrupt stack frame
@@ -29,12 +30,16 @@ void supervisor_exception(u32* sp)
 
     switch(svc_num) {
         case 0 : {
-            sp[0] = (u32)create_thread((void (*)(void *))svc0, svc1,
+            sp[0] = (u32)create_thread((u32 (*)(void *))svc0, svc1,
                 (const char *)svc2, (void *)svc3, sp[7]);
             break;
         }
         case 1 : {
             sp[0] = (u32)set_break(sp[0]);
+            break;
+        }
+        case 2: {
+            alloc_page();
             break;
         }
         case 8 : {

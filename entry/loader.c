@@ -62,7 +62,7 @@ static void loader_new_frame(volatile struct packet* p)
                   (p->data[2] << 16) | (p->data[3] << 24);
         print("Allocating data => %d\n", elf_size);
 
-        elf_order = pages_to_order((u32)align_up((void *)elf_size, 0x1000) / 0x1000);
+        elf_order = pages_to_order((u32)align_up((void *)elf_size, 4096) / 4096);
         elf_page = alloc_pages(elf_order);
 
         elf_ptr = page_to_va((struct page *)elf_page);
