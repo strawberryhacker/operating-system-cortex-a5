@@ -29,14 +29,4 @@ static struct thread* SVC_ATTR syscall_create_thread(u32 (*func)(void *),
     __SVC(0);
 }
 
-u32* SVC_ATTR sbrk(u32 bytes)
-{
-    __SVC(1);
-}
-
-void SVC_ATTR syscall_alloc(void)
-{
-    __SVC(2);
-}
-
 #endif

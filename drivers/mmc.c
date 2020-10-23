@@ -7,13 +7,19 @@
 #include <cinnamon/clock.h>
 #include <cinnamon/apic.h>
 #include <cinnamon/thread.h>
+#include <cinnamon/kmalloc.h>
 #include <stddef.h>
 
 /// This code is configuring the MMC driver to work in SD / SDIO mode
 
 /// Sets the bus width of the MMC hardware. Currently only 1 and 8 bit supported
-static void mmc_set_bus_width(struct mmc_reg* mmc, u32 bus_width)
+static void mmc_set_bus_width(struct sd* sd, u32 bus_width)
 {
+    if (sd->mmc == MMC1) {
+        print("Setting the bus width for MMC1\n");
+    }
+    struct mmc_reg* mmc = sd->mmc;
+
     assert(bus_width == 4 || bus_width == 1);
 
     if (bus_width == 1) {
@@ -24,8 +30,10 @@ static void mmc_set_bus_width(struct mmc_reg* mmc, u32 bus_width)
 }
 
 /// Enables the high-speed MMC mode
-static void mmc_set_high_speed(struct mmc_reg* mmc, u32 high_speed)
+static void mmc_set_high_speed(struct sd* sd, u32 high_speed)
 {
+    struct mmc_reg* mmc = sd->mmc;
+
     if (high_speed) {
         mmc->HC1R |= (1 << 2);
     } else {
@@ -45,8 +53,10 @@ static void mmc_set_high_speed(struct mmc_reg* mmc, u32 high_speed)
 /// formula target_clock = base_clock / (DIV + 1). The capabilities register 
 /// shows wheather this clock mode is supported. A non-zero value in this
 /// register indicates this
-static void mmc_set_frequency(struct mmc_reg* mmc, u32 frequency)
+static void mmc_set_frequency(struct sd* sd, u32 frequency)
 {
+    struct mmc_reg* mmc = sd->mmc;
+
     // We should be able to use the programmable clock mode. In this case the 
     // mult field in the capabilities register has to be non-zero
     assert((mmc->CA1R >> 16) & 0xFF);
@@ -82,7 +92,7 @@ static void mmc_set_frequency(struct mmc_reg* mmc, u32 frequency)
 
 /// Set bus power 
 static void mmc_set_bus_power(struct mmc_reg* mmc)
-{
+{    
     // Get the supported bus power
     mmc->PCR |= (1 << 0);
 }
@@ -92,6 +102,9 @@ static void mmc_init_hardware(struct mmc_reg* mmc)
     // Perform a full software reset of the MMC module
     mmc->SRR |= (1 << 0);
     while (mmc->SRR & 1);
+
+    // Set the bus power
+    mmc_set_bus_power(mmc);
 }
 
 /// Enabled interrupt on card insert
@@ -102,6 +115,19 @@ static void mmc_card_detect_irq_enable(struct mmc_reg* mmc)
 
     // Clear the status
     mmc->NISTR |= (1 << 6) | (1 << 7);
+}
+
+/// Creates a new SD card and initializes the SD card structure
+static struct sd* mmc_create_sd_card(void)
+{
+    struct sd* card = kzmalloc(sizeof(struct sd));
+
+    card->write_cmd = mmc_send_command;
+    card->set_frequency = mmc_set_frequency;
+    card->set_bus_width = mmc_set_bus_width;
+    card->set_high_speed = mmc_set_high_speed;
+
+    return card;
 }
 
 /// SD protocol thread function that will enumerate and add a new card
@@ -125,8 +151,13 @@ static void mmc_card_insert(struct mmc_reg* mmc)
     mmc->EISTER = 0xFFFF;
     mmc->NISTER = 0b111011 | (1 << 6) | (1 << 7) | (1 << 15);
 
+    struct sd* card = mmc_create_sd_card();
+
+    // Set the right private interface
+    card->mmc = mmc;
+
     // Create a new user (kernel) thread to enumerate the card
-    create_process(sd_init_thread, 500, "sdinit", NULL, SCHED_RT);
+    create_process(sd_init_thread, 500, "sdinit", card, SCHED_RT);
 }
 
 /// Internal interrupt handler which will handle both requests from MMC0 and
@@ -223,8 +254,10 @@ struct mmc_adma {
 };
 
 /// Performs a send command operation
-void mmc_send_command(struct mmc_reg* mmc, struct mmc_cmd* cmd, struct mmc_data* data)
+u32 mmc_send_command(struct sd* sd, struct mmc_cmd* cmd, struct mmc_data* data)
 {
+    struct mmc_reg* mmc = sd->mmc;
+
     // If ADMA is used for transfer
     struct mmc_adma adma[16];
 
@@ -354,8 +387,6 @@ void mmc_send_command(struct mmc_reg* mmc, struct mmc_cmd* cmd, struct mmc_data*
         panic("Timeout during command completion");
     }
 
-    print("Command complete\n");
-
     // Clear the status bits except the buffer read and write ready flags
     mmc->NISTR = status & ~(0b11 << 4);
 
@@ -386,4 +417,6 @@ void mmc_send_command(struct mmc_reg* mmc, struct mmc_cmd* cmd, struct mmc_data*
         // Clear the flag
         mmc->NISTR = (1 << 1);
     }
+
+    return 1;
 }

@@ -28,7 +28,7 @@ static void sd_send_interface_condition(struct sd* sd)
 
     // Get the operating conditions from the host driver. This assumes that the
     // host driver can operate between 2.7 - 3.6 V
-    u32 arg = 0b0001 | 0b10101010;
+    u32 arg = (0b0001 << 8) | 0b10101010;
 
     // Send IF condition
     cmd->cmd = 8;
@@ -51,13 +51,18 @@ static void sd_send_interface_condition(struct sd* sd)
 
 /// This thread is launced by the scheduler when a new SD has been inserted. 
 /// This will initialize and enumerate the SD card such that the SD card can 
-/// be accessed by the file system driver
+/// be accessed by the file system driver. After the initialization it will 
+/// make a disk object and mount the disk
 u32 sd_init_thread(void* sd)
 {
     // This thread is given a new SD card struct in the parameter list
     struct sd* card = (struct sd *)sd;
 
     if (!card) return 0;
+
+    // Configure the MMC device for intialization
+    card->set_frequency(card, 400000);
+    card->set_bus_width(card, 1);
 
     sd_go_to_idle(card);
     sd_send_interface_condition(card);

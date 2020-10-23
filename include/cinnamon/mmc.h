@@ -35,9 +35,10 @@ struct sd {
     struct mmc_cmd cmd;
 
     // Functions for accessing this SD card
-    u32 (*init)(struct sd* sd);
     u32 (*write_cmd)(struct sd* sd, struct mmc_cmd* cmd, struct mmc_data* data);
-    
+    void (*set_bus_width)(struct sd* sd, u32 bus_width);
+    void (*set_high_speed)(struct sd* sd, u32 high_speed);
+    void (*set_frequency)(struct sd* sd, u32 frequency);
 };
 
 
@@ -54,6 +55,6 @@ void mmc_init(void);
 
 void sd_card_init(void);
 
-void sd_protocol_init(struct mmc_reg* mmc);
+u32 mmc_send_command(struct sd* sd, struct mmc_cmd* cmd, struct mmc_data* data);
 
 #endif
