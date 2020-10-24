@@ -1,3 +1,4 @@
+
 /// Copyright (C) strawberryhacker 
 
 #ifndef BUDDY_PAGE_ALLOC_H
@@ -17,6 +18,9 @@ struct buddy_order {
 struct buddy_struct {
     struct buddy_order* orders;
     u32 max_orders;
+
+    // Memory stats fields
+    u32 used;
 };
 
 u8 buddy_alloc_init(struct mm_zone* zone);

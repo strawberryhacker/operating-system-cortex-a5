@@ -49,6 +49,10 @@ struct mm_zone {
 
     // Points to the allocator which is used 
     void* alloc;
+
+    u32 (*get_used)(struct mm_zone* zone);
+    u32 (*get_free)(struct mm_zone* zone);
+    u32 (*get_total)(struct mm_zone* zone);
 };
 
 /// For later 
@@ -157,5 +161,9 @@ u32 mm_process_map_memory(struct mm_process* mm, struct page* page,
     u32 page_cnt, u32 vaddr, u32 flags, u8 domain);
 
 u32* set_break(u32 bytes);
+
+/// Functions for gettting the total amount of allocated memory
+u32 mm_get_total_used(void);
+u32 mm_get_total(void);
 
 #endif

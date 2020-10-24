@@ -36,6 +36,5 @@ struct slob_struct {
 u8 slob_init(struct mm_zone* zone);
 void* slob_alloc(u32 size, struct mm_zone* zone);
 void slob_free(void* ptr, struct mm_zone* zone);
-u32 slob_get_used(struct mm_zone* zone);
 
 #endif

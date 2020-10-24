@@ -4,6 +4,7 @@
 #include <cinnamon/thread.h>
 #include <cinnamon/sched.h>
 #include <cinnamon/syscall.h>
+#include <cinnamon/mm.h>
 
 void print_thread_header(void)
 {
@@ -18,7 +19,6 @@ void print_thread_stats(u32 pid, const char* name, u8 percent, u8 frac, u32 mem)
 void print_cpu_usage(u8 cpu_usage)
 {
     u8 bars = cpu_usage / 5;
-
     u8 space = 20 - bars;
 
     print("CPU [" GREEN);
@@ -28,6 +28,20 @@ void print_cpu_usage(u8 cpu_usage)
     print(NORMAL "%*s %3d%%]\n", space, "", cpu_usage);
 }
 
+/// Prints the memory usage in the system
+void print_mem_usage(u32 total, u32 used)
+{
+    print("TOTAL %d\n", used);
+    u8 bars = (used / (total / 100)) / 5;
+    u8 space = 20 - bars;
+
+    print("MEM [" BLUE);
+    for (u32 i = 0; i < bars; i++) {
+        print("|");
+    }
+    print(NORMAL "%*s %3d%%]\n", space, "", used / (total / 100));
+}
+
 extern struct rq rq;
 
 u32 task_manager(void* args)
@@ -35,16 +49,19 @@ u32 task_manager(void* args)
     while (1) {
         syscall_thread_sleep(1000000);
 
+        //syscall_sbrk(8388608);
+
         // Print the task manager header
         u32 p = (100 * rq.idle_rq.idle->window_runtime) / rq.time.window;
 
         print_cpu_usage(100 - p);
+        //print_mem_usage(mm_get_total(), mm_get_total_used());
         print_thread_header();
 
         // Print runtime stats for all the threads
         struct list_node* it;
         list_iterate(it, &rq.thread_list) {
-            struct thread* t = list_get_entry(it, struct thread, thread_node);
+                struct thread* t = list_get_entry(it, struct thread, thread_node);
 
             u32 w_runtime = t->window_runtime;
             u32 w = rq.time.window;

@@ -157,9 +157,14 @@ context_switch:
     dsb
     isb
 
+    @ Load the privilege level
+    ldr r5, [r1, #4]
+    cmp r5, #0
+    bne skip_mm_switch
+
+    @ Switch the memory map
     ldr r4, [r1, #8]
     ldr r3, [r4]              @ Get the base address of the next memory map
-
     mcr p15, 0, r3, c2, c0, 0
     mcr p15, 0, r0, c8, c7, 0 @ Flush the entire TLB / uTLB
     dsb
@@ -169,11 +174,31 @@ context_switch:
     dmb
     isb
 
+skip_mm_switch:
     @ Make sure next_thread is zero and that curr_thread is pointing to
     @ the current running thread (aka next_thread)
     str r1, [r2]
-    mov r1, #0
-    str r1, [r0]
+    mov r2, #0
+    str r2, [r0]
+
+    @ Make sure we manually update the MODE field in the CPSR so that threads 
+    @ cant manipulate the stack
+    
+    @ The privilege level is stored in r5
+    ldr r3, [sp, #32]         @ Padding
+    cmp r3, #0
+    bne .
+    mov r4, #64
+    add r3, r3, r4            @ Fix the CPSR offset due to AAPCS padding
+    ldr r2, [sp, r3]
+
+    bic r2, r2, #MODE_MASK    @ r2 will hold the thread CPSR without MODE
+    cmp r0, #0
+    orreq r2, r2, #USER_MODE
+    orrne r2, r2, #SYS_MODE
+
+    @ Store the modified CPSR back on the kernel / user stack
+    str r2, [r1, r3]
 
     ldmia sp!, {r4 - r11}
 

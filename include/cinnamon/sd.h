@@ -6,6 +6,6 @@
 #include <cinnamon/types.h>
 #include <cinnamon/mmc.h>
 
-u32 sd_init_thread(void* sd);
+u32 sd_init_thread(void* sd_card);
 
 #endif

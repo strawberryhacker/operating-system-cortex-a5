@@ -5,6 +5,7 @@
 #include <cinnamon/mem.h>
 #include <cinnamon/kmalloc.h>
 #include <cinnamon/align.h>
+#include <cinnamon/panic.h>
 
 static inline u32 get_order_map_words(u32 order, u32 max_orders)
 {
@@ -39,12 +40,46 @@ static inline void toggle_bit(u32 bit, void* ptr)
     src[bit / 32] ^= (1 << (bit % 32)); 
 }
 
+/// Gets the total number of bytes free
+static u32 buddy_get_free(struct mm_zone* zone)
+{
+    u32 total = zone->page_cnt * 4096;
+    struct buddy_struct* buddy = (struct buddy_struct *)zone->alloc;
+    return total - buddy->used;
+}
+
+/// Gets the total number of bytes used
+static u32 buddy_get_used(struct mm_zone* zone)
+{
+    struct buddy_struct* buddy = (struct buddy_struct *)zone->alloc;
+    return buddy->used;
+}
+
+/// Gets the total number of bytes in total
+static u32 buddy_get_total(struct mm_zone* zone)
+{
+    return zone->page_cnt * 4096;
+}
+
+/// Initailzie the zone structure used for the buddy allocator
+static void buddy_init_zone(struct mm_zone* zone)
+{
+    zone->get_used = buddy_get_used;
+    zone->get_total = buddy_get_total;
+    zone->get_free = buddy_get_free;
+}
+
 /// The zone should have a pointer to the buddy structure. The buddy structure
 /// need a bitmap and a order list in order to work. This should ideally be 
 /// dynamically allocated by kmalloc
 u8 buddy_alloc_init(struct mm_zone* zone)
 {
+    // Initialize the zone
+    buddy_init_zone(zone);
+
     struct buddy_struct* buddy = (struct buddy_struct *)zone->alloc;
+
+    buddy->used = 0;
 
     // Find the order of the buddy allocator
     u32 two_pwr_pages = round_down_power_two(zone->page_cnt);
@@ -153,6 +188,9 @@ struct page* buddy_alloc_pages(u32 order, struct mm_zone* zone)
 
     // Update the size from the allocation 
     new_page->order = order;
+    print("OK\n");
+    buddy->used += (1 << order) * 4096;
+
     return new_page;
 }
 
@@ -186,4 +224,9 @@ void buddy_free_pages(struct page* page, u32 order, struct mm_zone* zone)
 
     page = zone->start + index;
     list_add_first(&page->node, &buddy->orders[order].free_list);
+
+    if (buddy->used < (1 << order) * 4096) {
+        panic("Buddy error\n");
+    }
+    buddy->used -= (1 << order) * 4096;
 }

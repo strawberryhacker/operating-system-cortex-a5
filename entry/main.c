@@ -22,6 +22,7 @@
 #include <cinnamon/gpio.h>
 #include <cinnamon/mmc.h>
 #include <cinnamon/task_manager.h>
+#include <cinnamon/disk.h>
 
 #include <regmap.h>
 #include <stdarg.h>
@@ -50,6 +51,7 @@ void kernel_init(void)
 {
     mm_init();
     sched_init();
+    disk_init();
 }
 
 /// This will handle driver initialization
@@ -70,7 +72,7 @@ void main(void)
 
     // Add all the kernel processes here
     print("Adding kernel processes\n");
-    task_manager_init();
+    //task_manager_init();
 
     // This will start the scheduler. After this point the main does not exist
     // anymore

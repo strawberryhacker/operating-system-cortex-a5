@@ -92,6 +92,38 @@ void mm_allocators_init(void)
     }
 }
 
+/// Iterates trough all the zones and returns the number of used bytes by the
+/// allocators
+u32 mm_get_total_used(void)
+{
+    u32 used = 0;
+    for (u32 i = 0; i < MM_ZONE_CNT; i++) {
+        struct mm_zone* zone = &zones[i];
+
+        if (zone->get_used) {
+            used += zone->get_used(zone);
+        }
+    }
+
+    return used;
+}
+
+/// Iterates trough all the zones and returns the number of total bytes
+/// available for allocation
+u32 mm_get_total(void)
+{
+    u32 total = 0;
+    for (u32 i = 0; i < MM_ZONE_CNT; i++) {
+        struct mm_zone* zone = &zones[i];
+
+        if (zone->get_total) {
+            total += zone->get_total(zone);
+        }
+    }
+
+    return total;
+}
+
 /// Early memory manager init routine
 static void mm_early_init(void)
 {
@@ -363,6 +395,7 @@ u32 mm_process_map_memory(struct mm_process* mm, struct page* page,
 /// pointers if 
 u32* set_break(u32 bytes)
 {
+    print("SET BRAKE\n");
     struct mm_process* mm = get_curr_mm_process();
 
     if (mm->heap_e == 0) {
@@ -381,14 +414,12 @@ u32* set_break(u32 bytes)
     u32 pages = align_up_val(bytes, 4096) / 4096;
     u32 order = pages_to_order(pages);
 
-    //print("Order => %d\n", order);
-
     struct page* page_ptr = alloc_pages(order);
 
     if (!page_ptr) {
         return mm->heap_e;
     }
-
+    print(GREEN "Number of pages allocated %d\n" NORMAL, 1 << order);
     curr_thread_add_pages(page_ptr, 1 << order);
 
     u32 flags = LV2_PT_SECTION |

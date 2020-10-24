@@ -2,6 +2,7 @@
 
 #include <cinnamon/print.h>
 #include <cinnamon/types.h>
+#include <cinnamon/sched.h>
 #include <regmap.h>
 
 /// Performs a software reboot. This is called to avoid a manual hardware reset
@@ -149,8 +150,13 @@ void prefetch_exception(u32 pc)
     while (1);
 }
 
+extern struct rq rq;
+
 void data_exception(u32 pc)
 {
+    print("Next => %p\n", rq.next);
+    print("Curr => %p\n", rq.curr);
+
     print_regs();
 
     print("\nKernel fault: data exception\n");

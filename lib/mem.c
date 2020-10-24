@@ -36,3 +36,16 @@ void mem_copy(const void* src, void* dest, u32 size)
         *dest_b++ = *src_b++;
     }
 }
+
+u32 mem_cmp(const void* src1, const void* src2, u32 size)
+{
+    const u8* srca = (const u8 *)src1;
+    const u8* srcb = (const u8 *)src2;
+
+    while (size--) {
+        if (*srca++ != *srcb++) {
+            return 0;
+        }
+    }
+    return 1;
+}

@@ -13,6 +13,7 @@
 #include <cinnamon/atomic.h>
 #include <cinnamon/panic.h>
 #include <cinnamon/interrupt.h>
+#include <cinnamon/syscall.h>
 
 #define USER_THREAD_CPSR  0b10000
 #define KERNEL_THREAD_CPSR 0b11111
@@ -30,8 +31,11 @@ void thread_exit(u32 status_code)
     struct thread* t = get_curr_thread();
     __atomic_leave(flags);
 
-    print("Quitting thread with PID => %d\n", t->pid);
-    while (1);
+    // TODO kill the thread
+    print("Quitting  PID: %d with status %d\n", t->pid, status_code);
+    while (1) {
+        syscall_thread_sleep(10000000);
+    }
 }
 
 u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
@@ -102,11 +106,11 @@ static void thread_set_class(struct thread* t, u32 flags)
 struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags)
 {
-    print("Creating kernel thread\n");
-
     // Allocate the thread control block
     struct thread* new = kmalloc(sizeof(struct thread));
     init_thread_struct(new);
+
+    print("Creating kernel thread: %p\n", new);
 
     // Set the name of the thread
     thread_set_name(new, name);
@@ -118,6 +122,9 @@ struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size,
     new->sp = new->stack_base + stack_size - 1;
     new->sp = stack_setup(new->sp, func, args, KERNEL_THREAD_CPSR);
 
+    // Indicating a kernel thread
+    new->privileged = 1;
+
     // Add the thread to the global thread list
     sched_add_thread(new);
     thread_set_class(new, flags);
@@ -125,7 +132,6 @@ struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size,
 
     icache_invalidate();
     dcache_clean();
-
 
     return new;
 }
@@ -144,8 +150,13 @@ static inline void create_user_thread_core(struct thread* thread,
         panic("Need to setup memory space first");
     }
 
+    print("Creating a user thread: %p\n", thread);
+
     // Set the name of the thread
     thread_set_name(thread, name);
+
+    // Indicating a user non-privileged thread
+    thread->privileged = 0;
 
     // Map in the stack region. This will allocate a number of pages and map
     // them into the high user addresses
@@ -188,8 +199,6 @@ static inline void create_user_thread_core(struct thread* thread,
 struct thread* create_thread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags)
 {
-    print("Creating thread\n");
-
     struct thread* new = kmalloc(sizeof(struct thread));
     init_thread_struct(new);
 
@@ -214,8 +223,6 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_size,
 struct thread* create_process(u32 (*func)(void *), u32 stack_size,
     const char* name, void* args, u32 flags)
 {
-    print("Creating process\n");
-
     struct thread* new = kmalloc(sizeof(struct thread));
     init_thread_struct(new);
 

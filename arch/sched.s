@@ -4,6 +4,7 @@
 .cpu cortex-a5
 .arm
 
+MODE_MASK  = 0b11111
 SYS_MODE   = 0b11111
 USER_MODE  = 0b10000
 
@@ -72,9 +73,21 @@ sched_start:
 
     ldr r0, =rq
     ldr r1, [r0, #4]
-    ldr sp, [r1]      @ Update the register SP
+    ldr sp, [r1]      @ Update the register SP into SP_sys
     dsb
     isb
+
+    @ Since the stackframe is laid out by the kenrel the CPSR will allways have
+    @ offset 64 and there will be no padding 
+    
+    ldr r0, [sp, #64] @ r0 will hold the CPSR of the first thread
+    bic r0, r0, #MODE_MASK
+    ldr r2, [r1, #4]  @ Load the privilege level into r2
+    cmp r2, #0
+    orreq r0, r0, #USER_MODE
+    orrne r0, r0, #SYS_MODE
+
+    str r0, [sp, #64] @ Storing the modified CPSR back on stack
 
     @ Unstack the first thread stack frame
     ldmia sp!, {r4 - r11}

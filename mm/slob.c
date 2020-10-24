@@ -5,9 +5,41 @@
 #include <cinnamon/mm.h>
 #include <stddef.h>
 
+/// Gets the total number of bytes free
+static u32 slob_get_free(struct mm_zone* zone)
+{
+    struct slob_struct* slob = (struct slob_struct *)zone->alloc;
+    return slob->stats.total - slob->stats.used;
+}
+
+/// Gets the total number of bytes used
+static u32 slob_get_used(struct mm_zone* zone)
+{
+    struct slob_struct* slob = (struct slob_struct *)zone->alloc;
+    return slob->stats.used;
+}
+
+/// Gets the total number of bytes in total
+static u32 slob_get_total(struct mm_zone* zone)
+{
+    struct slob_struct* slob = (struct slob_struct *)zone->alloc;
+    return slob->stats.total;
+}
+
+/// Initailzie the zone structure used for the buddy allocator
+static void slob_init_zone(struct mm_zone* zone)
+{
+    zone->get_used = slob_get_used;
+    zone->get_total = slob_get_total;
+    zone->get_free = slob_get_free;
+}
+
 /// Initialized the SLOB allocator. The zone must be setup correctly
 u8 slob_init(struct mm_zone* zone)
 {
+    // Initiaize the zone
+    slob_init_zone(zone);
+
     struct slob_struct* slob = (struct slob_struct *)zone->alloc;
 
     // Find the absolute start and end address of the slob allocator space 
@@ -114,7 +146,7 @@ void slob_extend(struct mm_zone* zone, u32 pages)
     slob->last_node = (struct slob_node *)
         (slob->end_addr - sizeof(struct slob_node));
     
-    // This is the new last node
+    // This is the new last nod
     slob->last_node->next = NULL;
     slob->last_node->size = 0;
     
@@ -129,6 +161,9 @@ void slob_extend(struct mm_zone* zone, u32 pages)
 
     // Update the statistics
     slob->stats.total += pages * 4096;
+
+    // Update the ZONE
+    zone->page_cnt += pages;
 }
 
 /// Allocates a physically and virtually continous memory region. This is based 
@@ -211,11 +246,4 @@ void slob_free(void* ptr, struct mm_zone* zone)
     }
     slob->stats.used -= free->size;
     slob_insert_free(slob->first_node, slob->last_node, free);
-}
-
-u32 slob_get_used(struct mm_zone* zone)
-{
-    struct slob_struct* slob = (struct slob_struct *)zone->alloc;
-
-    return slob->stats.used;
 }
