@@ -44,7 +44,7 @@ struct partition {
 
 /// This describes a phyiscal disk. For example an SD card
 struct disk {
-    char name[DISK_NAME_LEN];
+    char name[DISK_NAME_LEN];   sd
 
     void* priv;
 

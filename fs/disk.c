@@ -97,8 +97,21 @@ void disk_find_partitions(struct disk* disk)
     kfree(buf);
 }
 
+static char disk_get_letter(const char* name)
+{
+    char letter = 'a';
+    struct list_node* it;
+    list_iterate(it, &sys_disk.disks) {
+        struct disk* disk = list_get_entry(it, disk, node);
+
+        print("ok");
+    }
+}
+
 void disk_add(struct disk* disk, const char* name)
 {
+    // Find a letter
+
     string_add_name(disk->name, name, DISK_NAME_LEN);
     add_disk(disk);
 

@@ -84,39 +84,57 @@
 #define INFO_NEXT_FREE		492
 
 /// Status defines in the file system
-#define FAT_EOCC 1
-#define FAT_OK   0
+#define FAT_DOT   4
+#define FAT_ERROR 3
+#define FAT_EOF   2
+#define FAT_EOD   2
+#define FAT_EOCC  1
+#define FAT_OK    0
 
 struct fat {
-    char label[BPB_32_VOL_LABEL_SIZE];
+    // Fast lookup
+    u32 page_order;
+    u32 page_mask;
+    u32 clust_order;
+    u32 clust_mask;
+    u32 fat_ent_order;
+    u32 fat_ent_mask;
 
-    // Private file system info
-    u32 sect_size;
-    u32 clust_size;
-    u32 fat_entries_per_sect;
+    // Holds the virtual index of the root cluster
+    u32 root_clust_num;
+
+    // Holds the global offsets
+    u32 root_glob_page;
+    u32 fat_glob_page;
+    u32 glob_page;
+    u32 info_glob_page;
+
+    // Slow lookup
     u8 fats;
 
-    u32 fat_off;
-    u32 root_off;
-    u32 root_clust;
-    u32 info_off;
+    // BPB file system label (not in use?)
+    char label[BPB_32_VOL_LABEL_SIZE];
 };
 
 /// Structure describing a file and a directory
 struct file {
+    // Holds the offset whithin a file
     u32 file_offset;
-    u32 cluster;
-    u32 cluster_off;
-    u32 sector_off;
+
+    // This holds the local offset whithin a page
+    u32 page_offset;
+
+    // This hold the page offset whitin the data region of the FAT32 file system
+    u32 page;
 
     // Working buffer
     u8 cache[512];
-    u32 cache_lba;
+    u32 cache_glob_page;
     u8 cache_dirty;
 
     // FAT cache for caching 128 FAT entries
     u32 fat_cache[128];
-    u32 fat_cache_lba;
+    u32 fat_cache_glob_page;
 
     // Buffer for LFN calculation
     u8 lfn_buffer[256];
@@ -124,21 +142,51 @@ struct file {
 
     // Add a pointer to the partition
     struct partition* part;
+
+    // Misc
+    struct list_node open;
+    struct list_node parent;
+};
+
+struct file_date {
+    u16 year;
+    u8 month;
+    u8 day;
+};
+
+struct file_time {
+    u16 hour : 5;
+    u16 min  : 6;
+    u16 sec  : 5;
 };
 
 struct file_info {
-    
+    // File name for the user either a SFN or a LFN
+    // terminated with a NULL
+    char name[256];
+
+    u8 attr;
+
+    // File time
+    struct file_time create_time;
+    struct file_date create_date;
+    struct file_time write_time;
+    struct file_date write_date;
+    struct file_date access_date;
+
+    // Size of the file or directory
+    u32 size;
+
 };
 
 void fat_test(struct disk* disk);
 
 u32 fat_mount_partition(struct partition* part);
 
-u32 fat_open_dir(struct partition* part, struct file* dir, const char* path, 
+u8 fat_dir_open(struct partition* part, struct file* dir, const char* path, 
     u32 size);
 
-u32 fat_dir_read(struct partition* part, struct file* dir,
+u8 fat_dir_read(struct partition* part, struct file* dir,
     struct file_info* info);
-
 
 #endif
