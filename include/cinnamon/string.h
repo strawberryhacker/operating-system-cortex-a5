@@ -7,4 +7,6 @@
 
 void string_add_name(char* dest, const char* name, u32 size);
 
+u32 string_length(const char* string);
+
 #endif

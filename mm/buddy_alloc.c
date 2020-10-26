@@ -188,7 +188,6 @@ struct page* buddy_alloc_pages(u32 order, struct mm_zone* zone)
 
     // Update the size from the allocation 
     new_page->order = order;
-    print("OK\n");
     buddy->used += (1 << order) * 4096;
 
     return new_page;

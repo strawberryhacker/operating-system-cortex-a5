@@ -15,9 +15,6 @@
 /// Sets the bus width of the MMC hardware. Currently only 1 and 8 bit supported
 static void mmc_set_bus_width(struct sd_card* sd, u32 bus_width)
 {
-    if (sd->mmc == MMC1) {
-        print("Setting the bus width for MMC1\n");
-    }
     struct mmc_reg* mmc = sd->mmc;
 
     assert(bus_width == 4 || bus_width == 1);

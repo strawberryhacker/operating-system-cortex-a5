@@ -83,13 +83,21 @@
 #define INFO_CLUST_CNT		488
 #define INFO_NEXT_FREE		492
 
+/// FAT table defines
+#define FAT_ENTRY_MASK 0xFFFFFFF
+
 /// Status defines in the file system
-#define FAT_DOT   4
-#define FAT_ERROR 3
-#define FAT_EOF   2
-#define FAT_EOD   2
-#define FAT_EOCC  1
-#define FAT_OK    0
+#define FAT_OK         0x00
+#define FAT_DISK_ERROR 0x01
+#define FAT_PATH_ERROR 0x02
+#define FAT_BAD_CLUST  0x04
+#define FAT_EOF        0x08
+#define FAT_EOCC       0x10
+#define FAT_DOT        0x20
+#define FAT_FAIL       0x40
+
+#define FAT_ERROR      (FAT_DISK_ERROR | \
+                       FAT_BAD_CLUST)
 
 struct fat {
     // Fast lookup
@@ -135,13 +143,14 @@ struct file {
     // FAT cache for caching 128 FAT entries
     u32 fat_cache[128];
     u32 fat_cache_glob_page;
+    u8 fat_cache_dirty;
 
     // Buffer for LFN calculation
     u8 lfn_buffer[256];
     u32 lfn_offset;
 
     // Add a pointer to the partition
-    struct partition* part;
+    const struct partition* part;
 
     // Misc
     struct list_node open;
@@ -183,10 +192,12 @@ void fat_test(struct disk* disk);
 
 u32 fat_mount_partition(struct partition* part);
 
-u8 fat_dir_open(struct partition* part, struct file* dir, const char* path, 
-    u32 size);
+void fat_file_init(struct file* file);
 
-u8 fat_dir_read(struct partition* part, struct file* dir,
+u8 fat_dir_open(const struct partition* part, struct file* dir,
+    const char* path, u32 size);
+
+u8 fat_dir_read(const struct partition* part, struct file* dir,
     struct file_info* info);
 
 #endif

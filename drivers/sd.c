@@ -172,8 +172,6 @@ static u32 sd_send_all_cid(struct sd_card* sd)
     }
     sd->cid_name[6] = 0;
 
-    print("Card name => %s\n", sd->cid_name);
-
     // The card is now in identification state
 
     return 1;
@@ -303,8 +301,6 @@ static u32 sd_get_scr(struct sd_card* sd)
     sd_invert_byte_order(&data_buff[0]);
     sd_invert_byte_order(&data_buff[1]);
 
-    print("DATA => %032b\n", data_buff[0]);
-
     // Check if we have 4 bit bus support
     u8 bus_width = (data_buff[0] >> 16) & 0xF;
     if (bus_width & (1 << 2)) {
@@ -375,13 +371,6 @@ static u32 sd_check_high_speed(struct sd_card* sd)
     status = cmd->resp[0];
     if (status & (1 << 7)) {
         return 0;
-    }
-
-    u32* src = (u32 *)buffer;
-
-    for (u32 i = 0; i < 16; i++) {
-        sd_invert_byte_order(src + i);
-        print("> %032b\n", *(src + 1));
     }
 }
 
@@ -466,7 +455,7 @@ static inline u32 sd_read(struct sd_card* sd, u32 sect, u32 cnt, u8* buffer)
     return 1;
 }
 
-u32 sd_disk_read(struct disk* disk, u32 sect, u32 cnt, u8* data)
+u32 sd_disk_read(const struct disk* disk, u32 sect, u32 cnt, u8* data)
 {
     struct sd_card* sd = (struct sd_card *)disk->priv;
     
@@ -521,8 +510,6 @@ u32 sd_init_thread(void* sd_card)
     if (card->bus4) {
         sd_set_bus_width(4, card);
         card->set_bus_width(card, 4);
-
-        print("Changed the bud width to 4 bits\n");
     }
 
     card->set_frequency(card, 25000000);
@@ -530,7 +517,7 @@ u32 sd_init_thread(void* sd_card)
     struct disk* disk = sd_create_disk(card);
 
     // Add the new disk to the kernel
-    disk_add(disk, "sd");
+    disk_add(disk, DISK_SD);
 
     return 1;   
 }

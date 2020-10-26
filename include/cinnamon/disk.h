@@ -14,6 +14,12 @@ struct sys_disk {
     struct list_node partitions;
 };
 
+/// Disk type
+enum disk_type {
+    DISK_SD,
+    DISK_MMC
+};
+
 /// Used to identify the paritions in the MBR
 struct part_table_entry {
     u8 status;
@@ -30,9 +36,11 @@ struct fat;
 /// pointer (address) of the first sector in the partition and the partition 
 /// size
 struct partition {
-    struct fat* fs;
+    const struct fat* fs;
 
-    struct disk* parent_disk;
+    const struct disk* parent_disk;
+
+    char name[DISK_NAME_LEN];
     u8 part_number;
 
     struct list_node node;
@@ -44,7 +52,8 @@ struct partition {
 
 /// This describes a phyiscal disk. For example an SD card
 struct disk {
-    char name[DISK_NAME_LEN];   sd
+    char name[DISK_NAME_LEN];
+    enum disk_type type;
 
     void* priv;
 
@@ -53,10 +62,12 @@ struct disk {
 
     struct partition partitions[4];
 
-    u32 (*read)(struct disk* disk, u32 sect, u32 cnt, u8* data);
+    u32 (*read)(const struct disk* disk, u32 sect, u32 cnt, u8* data);
 };
 
 void disk_init(void);
-void disk_add(struct disk* disk, const char* name);
+void disk_add(struct disk* disk, enum disk_type type);
+
+struct partition* name_to_partition(const char* name, u8 cnt);
 
 #endif

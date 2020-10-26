@@ -64,20 +64,18 @@ void driver_init(void)
 void main(void)
 {
     print(BLUE "Cinnamon starting...\n" NORMAL);
-    
+
     // Initializes the system
     early_init();
     kernel_init();
     driver_init();
 
     // Add all the kernel processes here
-    print("Adding kernel processes\n");
+    print(BLUE "Adding kernel processes\n" NORMAL);
     //task_manager_init();
 
-    // This will start the scheduler. After this point the main does not exist
-    // anymore
-    print("Start the scheduler\n");
-    sched_start();
+    print(BLUE "Start the scheduler\n" NORMAL);
 
-    while (1);
+    // main does not exist after this point
+    sched_start();
 }

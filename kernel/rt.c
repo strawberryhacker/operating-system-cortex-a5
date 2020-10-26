@@ -11,7 +11,7 @@
 
 void rt_init(struct rq* rq)
 {
-    print("Init RT\n");
+    //print("Init RT\n");
     struct rt_rq* rt_rq = &rq->rt_rq;
 
     list_init(&rt_rq->queue);

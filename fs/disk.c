@@ -8,6 +8,11 @@
 #include <cinnamon/kmalloc.h>
 #include <cinnamon/fat.h>
 
+static const char* disk_names[] = {
+    "sd",
+    "mmc"
+};
+
 static struct sys_disk sys_disk = {0};
 
 void disk_init(void)
@@ -19,43 +24,60 @@ void disk_init(void)
 /// Adds a disk to the system
 static inline void add_disk(struct disk* disk)
 {
-    list_add_first(&disk->node, &sys_disk.disks);
+    list_add_last(&disk->node, &sys_disk.disks);
 }
 
 /// Adds a partition to the system
 static inline void add_partition(struct partition* vol)
 {
-    list_add_first(&vol->node, &sys_disk.partitions);
+    list_add_last(&vol->node, &sys_disk.partitions);
 }
 
+/// Print a list of all the disks in the system
 void list_disks(void)
 {
     struct list_node* node;
     print("Disks \n");
     list_iterate(node, &sys_disk.disks) {
         struct disk* disk = list_get_entry(node, struct disk, node);
-        print("%s\n", disk->name);
+        print("> %s\n", disk->name);
     }
 }
 
-void print_part(struct partition* part)
-{
-    struct disk* disk = part->parent_disk;
-    print("%s%d\n", disk->name, part->part_number);
-}
-
+/// Print a list of all the partitions in the system
 void list_partitions(void)
 {
     struct list_node* node;
     print("Partitions \n");
     list_iterate(node, &sys_disk.partitions) {
         struct partition* part = list_get_entry(node, struct partition, node);
-        print_part(part);
+        print("> %s\n", part->name);
     }
 }
 
+/// Sets the name on a partition based on the disk and the partition number
+static void partition_set_name(const struct disk* disk, struct partition* part,
+    u8 index)
+{
+    const char* src = disk->name;
+    char* dest = part->name;
+
+    // Set the first part of the name
+    while (*src) {
+        *dest++ = *src++;
+    }
+
+    // Set the parition number
+    if (index > 9) {
+        panic("Unsupported feature!");
+    }
+
+    *dest++ = '1' + index;
+    *dest = 0x00;
+}
+
 /// Read the disk MBR (sector 0) and find the disk partitions and add them to 
-/// the partitions
+/// the partitions. This will give all valid partitins a name
 void disk_find_partitions(struct disk* disk)
 {
     mem_set(disk->partitions, 0, sizeof(disk->partitions));
@@ -72,8 +94,10 @@ void disk_find_partitions(struct disk* disk)
         return;
     }
 
+    // Partition table entry
     struct part_table_entry* pte = (struct part_table_entry *)(buf + 446);
 
+    u8 part_index = 0;
     for (u32 i = 0; i < 4; i++, pte++) {
         // Check if the partition is active
         if (pte->status >= 0x01 && pte->status <= 0x7F) {
@@ -83,52 +107,99 @@ void disk_find_partitions(struct disk* disk)
 
         // Check if this is a valid partition
         if (pte->sectors) {
-            disk->partitions[i].sect_count = pte->sectors;
-            disk->partitions[i].start_lba = pte->lba;
 
-            disk->partitions[i].parent_disk = disk;
-            disk->partitions[i].part_number = i;
+            struct partition* part = &disk->partitions[i];
+            part->sect_count = pte->sectors;
+            part->start_lba = pte->lba;
 
-            // This is a valid partition
-            add_partition(&disk->partitions[i]);
+            part->parent_disk = disk;
+            part->part_number = i;
+
+            // Set the partition name
+            partition_set_name(disk, part, part_index);
+            part_index++;
         }
     }
-
     kfree(buf);
 }
 
-static char disk_get_letter(const char* name)
+/// This function will take in a disk and a disk type and give the disk a name
+void disk_set_name(struct disk* disk, enum disk_type type)
 {
+    // The name is determined from the disk type
     char letter = 'a';
-    struct list_node* it;
-    list_iterate(it, &sys_disk.disks) {
-        struct disk* disk = list_get_entry(it, disk, node);
 
-        print("ok");
+    struct list_node* node;
+    list_iterate(node, &sys_disk.disks) {
+        struct disk* disk = list_get_entry(node, struct disk, node);
+        if (disk->type == type) {
+            letter++;
+        }
     }
+    
+    // Copy the name
+    const char* src = disk_names[type];
+    char* dest = disk->name;
+    while (*src) {
+        *dest++ = *src++;
+    }
+
+    // Set the letter and NULL termination
+    *dest++ = letter;
+    *dest = 0x00;
 }
 
-void disk_add(struct disk* disk, const char* name)
+/// Compares a partition string and a name
+static u8 partition_name_cmp(const char* part_name, const char* name, u8 cnt)
+{
+    cnt++;
+    while (--cnt && *part_name) {
+        if (*part_name++ != *name++) {
+            return 0;
+        }
+    }
+    return ((cnt == 0) && (*part_name == 0));
+}
+
+/// Returns the partition of the given name
+struct partition* name_to_partition(const char* name, u8 cnt)
+{
+    struct list_node* node;
+
+    list_iterate(node, &sys_disk.partitions) {
+        struct partition* part = list_get_entry(node, struct partition, node);
+        if (partition_name_cmp(part->name, name, cnt)) {
+            return part;
+        }
+    }
+    return NULL;
+}
+
+/// Adds a new disk to the system
+void disk_add(struct disk* disk, enum disk_type type)
 {
     // Find a letter
+    disk_set_name(disk, type);
 
-    string_add_name(disk->name, name, DISK_NAME_LEN);
+    // Add the disk to the system
     add_disk(disk);
-
     list_disks();
 
-    // Find all the partitions
+    // Find all the partitions on the MBR
     disk_find_partitions(disk);
-    list_partitions();
 
-    // Try to mount the disk
+    // Try to mount the partitions
     for (u32 i = 0; i < 4; i++) {
         if (disk->partitions[i].sect_count) {
 
             // Try to mount the partition
-            u32 status = fat_mount_partition(&disk->partitions[i]);
+            if(fat_mount_partition(&disk->partitions[i])) {
+                add_partition(&disk->partitions[i]);
+            }
         }
     }
+
+    list_partitions();
 
     fat_test(disk);
 }

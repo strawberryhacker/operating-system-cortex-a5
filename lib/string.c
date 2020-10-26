@@ -11,3 +11,13 @@ void string_add_name(char* dest, const char* name, u32 size)
     }
     *dest = '\0';
 }
+
+u32 string_length(const char* string)
+{
+    u32 cnt = 0;
+    const char* start = string;
+    while (*string) {
+        string++;
+    }
+    return string - start;
+}

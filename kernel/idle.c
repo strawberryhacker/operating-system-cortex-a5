@@ -8,7 +8,7 @@
 
 void idle_init(struct rq* rq)
 {
-    print("Init idle\n");
+    //print("Init idle\n");
     rq->idle_rq.idle = NULL;
 }
 
