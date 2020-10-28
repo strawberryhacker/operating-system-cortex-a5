@@ -187,7 +187,6 @@ skip_mm_switch:
     @ The privilege level is stored in r5
     ldr r3, [sp, #32]         @ Padding
     cmp r3, #0
-    bne .
     mov r4, #64
     add r3, r3, r4            @ Fix the CPSR offset due to AAPCS padding
     ldr r2, [sp, r3]

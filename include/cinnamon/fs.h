@@ -11,8 +11,12 @@ struct fs {
 
 };
 
-struct file* opendir(const char* path);
-u8 readdir(struct file* dir, struct file_info* info);
-struct file* fopen(const char* path, u8 attr);
+struct file* file_open(const char* path, u8 attr);
+struct file* dir_open(const char* path);
+
+u8 file_close(struct file* file);
+u8 dir_close(struct file* dir);
+
+u8 dir_read(struct file* dir, struct file_info* info);
 
 #endif

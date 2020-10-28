@@ -60,22 +60,27 @@ void driver_init(void)
     mmc_init();
 }
 
-/// Entry point for the kernel after the assembly entry
+extern struct rq rq;
+
+/// Called by entry.s after low level initialization finishes
 void main(void)
 {
-    print(BLUE "Cinnamon starting...\n" NORMAL);
-
-    // Initializes the system
+    // Initialize the kernel system
     early_init();
     kernel_init();
-    driver_init();
+    //driver_init();
 
-    // Add all the kernel processes here
-    print(BLUE "Adding kernel processes\n" NORMAL);
-    //task_manager_init();
+    // ==================================================
+    // Add the kernel threads / startup routines below 
+    // ==================================================
+    task_manager_init();
 
-    print(BLUE "Start the scheduler\n" NORMAL);
+    struct list_node* node;
+    list_iterate(node, &rq.thread_list) {
+        struct thread* t = list_get_entry(node, struct thread, thread_node);
 
-    // main does not exist after this point
+        print("Thread > %s with mm %p\n", t->name, t->mm);
+    }
+
     sched_start();
-}
+} 

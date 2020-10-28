@@ -31,8 +31,9 @@ static struct partition* get_part_from_path(const char** path)
 
 /// This functions opens a directory corresponding to the directory `path`. It
 /// returns a file object pointing to the first entry in that directory
-struct file* opendir(const char* path)
+struct file* dir_open(const char* path)
 {
+    // Get the correct partition
     const struct partition* part = get_part_from_path(&path);
     if (!part) {
         return NULL;
@@ -54,7 +55,7 @@ struct file* opendir(const char* path)
 
 /// This functions reads the current directory pointed to by dir, and return
 /// its file info
-u8 readdir(struct file* dir, struct file_info* info)
+u8 dir_read(struct file* dir, struct file_info* info)
 {
     if (!dir->part) {
         return FAT_ERROR;

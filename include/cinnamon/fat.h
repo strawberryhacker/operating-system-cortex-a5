@@ -89,18 +89,21 @@
 /// Status defines in the file system
 #define FAT_OK         0x00
 #define FAT_DISK_ERROR 0x01
-#define FAT_PATH_ERROR 0x02
+#define FAT_ERROR      0x02
 #define FAT_BAD_CLUST  0x04
-#define FAT_EOF        0x08
-#define FAT_EOCC       0x10
-#define FAT_DOT        0x20
-#define FAT_FAIL       0x40
+#define FAT_BAD_PATH   0x08 
+#define FAT_EOF        0x10
+#define FAT_EOCC       0x20
 
-#define FAT_ERROR      (FAT_DISK_ERROR | \
-                       FAT_BAD_CLUST)
+/// Error mask for hard fauts. The rest of the faults does not nessecarily 
+/// terminate the function
+#define FAT_ERROR_MASK (FAT_DISK_ERROR | FAT_BAD_CLUST | FAT_ERROR)
 
+/// Main FAT file system structure. Every disk (partition) with a valid FAT32
+/// will have a pointer to this structure. There is one structure per file 
+/// system
 struct fat {
-    // Fast lookup
+    // We use the order and the mask for fast division and modulo
     u32 page_order;
     u32 page_mask;
     u32 clust_order;
@@ -117,7 +120,7 @@ struct fat {
     u32 glob_page;
     u32 info_glob_page;
 
-    // Slow lookup
+    //Miscillanious stuff
     u8 fats;
 
     // BPB file system label (not in use?)

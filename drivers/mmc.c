@@ -152,7 +152,7 @@ static void mmc_card_insert(struct mmc_reg* mmc)
     card->mmc = mmc;
 
     // Create a new user (kernel) thread to enumerate the card
-    create_process(sd_init_thread, 500, "sdinit", card, SCHED_RT);
+    create_kernel_thread(sd_init_thread, 500, "sdinit", card, SCHED_RT);
 }
 
 /// Internal interrupt handler which will handle both requests from MMC0 and

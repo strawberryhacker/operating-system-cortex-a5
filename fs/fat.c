@@ -21,25 +21,6 @@
 ///
 /// This file is for internal use by the operating system
 
-/// Used for searchin an a directory where the name does not matter but the 
-/// cluster and attributes should be returns. Internal use
-struct file_info_short {
-    u32 cluster;
-    u8 attr;
-};
-
-/// Strings representing FAT status codes
-static const char* fat_status_strings[] = {
-    "FAT_OK",          // 0
-    "FAT_DISK_ERROR",  // 1
-    "FAT_PATH_ERROR",  // 2
-    "FAT_BAD_CLUST",   // 3
-    "FAT_EOF",         // 4
-    "FAT_EOCC",        // 5
-    "FAT_DOT",         // 6
-    "FAT_FAIL"         // 7
-};
-
 /// Prints the FAT status code to the serial console
 static void fat_status(u8 status)
 {
@@ -47,26 +28,23 @@ static void fat_status(u8 status)
         return;
     }
     
-    if (status & FAT_PATH_ERROR) {
-        print(" > %s\n", fat_status_strings[1]);
+    if (status & FAT_BAD_PATH) {
+        print(" > BAD_PATH\n");
     }
-    if (status & FAT_FAIL) {
-        print(" > %s\n", fat_status_strings[7]);
+    if (status & FAT_ERROR) {
+        print(" > FAT_ERROR\n");
     }
     if (status & FAT_EOF) {
-        print(" > %s\n", fat_status_strings[4]);
+        print(" > EOF\n");
     }
     if (status & FAT_EOCC) {
-        print(" > %s\n", fat_status_strings[5]);
-    }
-    if (status & FAT_DOT) {
-        print(" > %s\n", fat_status_strings[6]);
+        print(" > EOCC\n");
     }
     if (status & FAT_DISK_ERROR) {
-        print(" > %s\n", fat_status_strings[1]);
+        print(" > DISK_ERROR\n");
     }
     if (status & FAT_BAD_CLUST) {
-        print(" > %s\n", fat_status_strings[3]);
+        print(" > BAD_CLUST\n");
     }
 }
 
@@ -406,7 +384,7 @@ static u8 fat_inc_file_ptr(const struct partition* part, struct file* file,
                 clust_jump);
 
             // The cluster chain walk might fail because of FAT cache update
-            if (status & FAT_ERROR) {
+            if (status & FAT_ERROR_MASK) {
                 return status;
             }
 
@@ -420,7 +398,7 @@ static u8 fat_inc_file_ptr(const struct partition* part, struct file* file,
 
         // If the page number has changed we have to cache another buffer
         u8 status = fat_cache(part, file);
-        if (status & FAT_ERROR) {
+        if (status & FAT_ERROR_MASK) {
             return status;
         }
     }
@@ -437,16 +415,14 @@ static inline u8 fat_jump_entries(const struct partition* part,
 
 /// Takes in a dir pointer and increment the pointer so that it is pointing to 
 /// the next valid entry in the directory. This is returns a FAT status code. 
-/// It might return some kind of FAT_ERROR, FAT_EOD og FAT_OK
+/// It might return some kind of FAT_ERROR, FAT_EOD or FAT_OK
 static u8 fat_get_next_entry(const struct partition* part, struct file* dir)
 {
-    // If the current one is a LFN iterate untill the corresponding SFN
+    // If the current one is a LFN jump past all LFN entries
     if (dir->cache[dir->page_offset + SFN_ATTR] == ATTR_LFN) {
         u8 cnt = (dir->cache[dir->page_offset] & LFN_SEQ_MSK);
-
-        // Jump above all the LFN entries
         u8 status = fat_jump_entries(part, dir, cnt);
-        if (status & FAT_ERROR) {
+        if (status & FAT_ERROR_MASK) {
             return status;
         }
     }
@@ -455,7 +431,7 @@ static u8 fat_get_next_entry(const struct partition* part, struct file* dir)
     // find a used entry or the EOD
     while (1) {
         u8 status = fat_jump_entries(part, dir, 1);
-        if (status & FAT_ERROR) {
+        if (status & FAT_ERROR_MASK) {
             return status;
         }
         u8 tmp = dir->cache[dir->page_offset];
@@ -466,7 +442,7 @@ static u8 fat_get_next_entry(const struct partition* part, struct file* dir)
             // Entry is free and no subsequent entries are in use
             return FAT_EOF;
         }
-        if (tmp != 0x05 && tmp != 0x2E && tmp != 0xE5) {
+        if (tmp != 0x05 && tmp != 0xE5) {
             // The current entry is valid
             return FAT_OK;
         }
@@ -548,7 +524,7 @@ static u8 fat_file_set_root(const struct partition* part, struct file* dir)
     dir->page = 0;
 
     u32 status = fat_cache(part, dir);
-    if (status & FAT_ERROR) {
+    if (status & FAT_ERROR_MASK) {
         return status;
     }
     return FAT_OK;
@@ -599,7 +575,7 @@ static inline char fat_to_upper(char a)
     if (a <= 'z' && a >= 'a') {
         return a - 32;
     }
-    return '#';
+    return a;
 }
 
 /// Converts a char to lowercase
@@ -608,7 +584,7 @@ static inline char fat_to_lower(char a)
     if (a <= 'Z' && a >= 'A') {
         return a + 32;
     }
-    return '#';
+    return a;
 }
 
 /// Compare two chars case insensitive. Returns 1 if they are equal
@@ -705,9 +681,37 @@ static void fat_sfn_to_file_name(const char* sfn, char* buffer)
     buffer[i + j + dot] = 0x00;
 }
 
+/// Converts a dot entry file name to a SFN 8.3 name
+static u8 fat_dot_file_name_to_sfn(const char* file_name, u32 len, u8* sfn)
+{
+    // Either we have a . or a ..
+    if (len > 2 && len == 0) {
+        return 0;
+    }
+
+    // Fill the buffer with spaces
+    for (u8 i = 0; i < 11; i++) {
+        sfn[i] = ' ';
+    }
+
+    for (u8 i = 0; i < len; i++) {
+        if (*file_name++ != '.') {
+            return 0;
+        }
+        *sfn++ = '.';
+    }
+    return 1;
+}
+
 /// Converts a filename to a SFN 8.3 name
 static u8 fat_file_name_to_sfn(const char* file_name, u32 len, u8* sfn)
 {
+    // Check if the file name is a dot entry name. If it is we have to handle
+    // it differently
+    if (*file_name == '.') {
+        return fat_dot_file_name_to_sfn(file_name, len, sfn);
+    }
+
     const char* file_tmp = file_name;
     u8 i;
     for (i = 0; (i < 8) && (i < len); i++) {
@@ -771,12 +775,14 @@ static u8 fat_file_name_to_sfn(const char* file_name, u32 len, u8* sfn)
 /// ther is a perfect match
 static u8 fat_sfn_compare(const char* sfn, const char* file_name, u32 len)
 {
-    u8 sfn_buffer[12];
+    u8 sfn_buffer[11];
 
     // First convert the file name to SFN and then convert it
     if (!fat_file_name_to_sfn(file_name, len, sfn_buffer)) {
         return 0;
     }
+    
+    // Check if the match
     if (!mem_cmp(sfn_buffer, sfn, 11)) {
         return 0;
     }
@@ -855,7 +861,7 @@ static u8 fat_compare_entry(const struct partition* part, struct file* dir,
         if (fat_sfn_compare((char *)entry, file_name, len)) {
             return FAT_OK;
         } else {
-            return FAT_PATH_ERROR;
+            return FAT_BAD_PATH;
         }
     }
 
@@ -880,15 +886,15 @@ static u8 fat_compare_entry(const struct partition* part, struct file* dir,
         if (!fat_lfn_cmp_frag(file_name, len, lfn, lfn_size, 13 * (seq - 1))) {
             
             u8 status = fat_jump_entries(part, dir, seq);
-            if (status & FAT_ERROR) {
+            if (status & FAT_ERROR_MASK) {
                 return status;
             }
-            return FAT_PATH_ERROR;
+            return FAT_BAD_PATH;
         }
 
         // Move the directory entry window
         u8 status = fat_jump_entries(part, dir, 1);
-        if (status & FAT_ERROR) {
+        if (status & FAT_ERROR_MASK) {
             return status;
         }
 
@@ -919,8 +925,8 @@ static u8 fat_get_lfn_full_name(const struct partition* part, struct file* dir,
 
     // The dir should point to the first LFN entry. In this case bit 6 is set
     // in the LFN sequence number
-    if (!(entry[LFN_SEQ] & (1 << 6))) {
-        return FAT_FAIL;
+    if ((entry[LFN_SEQ] & (1 << 6)) == 0) {
+        return FAT_ERROR;
     }
 
     // Compare the LFN file name
@@ -935,7 +941,7 @@ static u8 fat_get_lfn_full_name(const struct partition* part, struct file* dir,
 
         // Move the directory entry window
         u8 status = fat_jump_entries(part, dir, 1);
-        if (status & FAT_ERROR) {
+        if (status & FAT_ERROR_MASK) {
             return status;
         }
 
@@ -949,7 +955,7 @@ static u8 fat_get_lfn_full_name(const struct partition* part, struct file* dir,
     // the 8.3 SFN file name
     if (crc != fat_get_sfn_crc(entry)) {
         panic("CRC error");
-        return FAT_FAIL;
+        return FAT_ERROR;
     }
     *bytes = cnt;
     return FAT_OK;
@@ -959,7 +965,7 @@ static u8 fat_get_lfn_full_name(const struct partition* part, struct file* dir,
 /// directory. The file pointer will point to either the EOF or the SFN entry
 /// of the matching file or folder. Returns a FAT status code
 static u8 fat_dir_search(const struct partition* part, struct file* dir,
-    const char* file_name, u32 len, struct file_info_short* info)
+    const char* file_name, u32 len)
 {
     print("Searching for: %*s\n", len, file_name);
 
@@ -967,7 +973,7 @@ static u8 fat_dir_search(const struct partition* part, struct file* dir,
         //print_entry(part, dir);
         // Search after filename in the current dir entry
         u8 status = fat_compare_entry(part, dir, file_name, len);
-        if (status & FAT_ERROR) {
+        if (status & FAT_ERROR_MASK) {
             return status;
         }
 
@@ -1013,32 +1019,39 @@ static u8 fat_follow_path(const struct partition* part, struct file* dir,
 
         // This has a directory pointed to by file and a file name pointed to 
         // by curr_frag and len
-        struct file_info_short info;
-        u32 status = fat_dir_search(part, dir, curr_frag, len, &info);
+        u32 status = fat_dir_search(part, dir, curr_frag, len);
         if (status != FAT_OK) {
             return status;
         }
+
+        u8* ent_ptr = dir->cache + dir->page_offset;
 
         // We have a match. If it is a file and the `dir_only` is specified 
         // we dont go into it and return a path error
         if (dir_only) {
-            u8 attr = dir->cache[dir->page_offset + SFN_ATTR];
+            u8 attr = ent_ptr[SFN_ATTR];
             if ((attr & ATTR_DIR) == 0) {
-                return FAT_PATH_ERROR;
+                return FAT_BAD_PATH;
             }
         }
 
         // We have a match in the path
-        u32 clust = fat_dir_ent_to_clust(dir->cache + dir->page_offset);
+        u32 clust = fat_dir_ent_to_clust(ent_ptr);
         dir->file_offset = 0;
 
-        // This is the point where we move the file pointer
-        status = fat_set_cluster(part, dir, clust);
+        // If the directory is a .. and the cluster number is 0 go to root
+        if (ent_ptr[0] == '.' && ent_ptr[1] == '.' && clust == 0) {
+            status = fat_file_set_root(part, dir);
+        } else {
+            status = fat_set_cluster(part, dir, clust);
+        }
+
         if (status != FAT_OK) {
+            fat_status(status);
             return status;
         }
 
-        print("Going into directory - cluster %d\n", clust);
+        print("Going into directory %*s - cluster %d\n", len, curr_frag, clust);
     }
 
     return FAT_OK;
@@ -1075,7 +1088,7 @@ static u8 fat_get_entry_name(const struct partition* part, struct file* dir,
     // We have a LFN entry
     u8 cnt = 0;
     u8 status = fat_get_lfn_full_name(part, dir, buffer, &cnt);
-    if (status & FAT_ERROR) {
+    if (status & FAT_ERROR_MASK) {
         return status;
     }
 
@@ -1093,7 +1106,7 @@ struct file_ptr {
 };
 
 /// Saves the internal position of a file into the lightweight file pointer
-static void _fat_file_save(const struct file* file, struct file_ptr* ptr)
+static void fat_file_save(const struct file* file, struct file_ptr* ptr)
 {
     ptr->file_offset = file->file_offset;
     ptr->page_offset = file->page_offset;
@@ -1101,7 +1114,7 @@ static void _fat_file_save(const struct file* file, struct file_ptr* ptr)
 }
 
 /// Restores the internal position of a file from the lightweight file pointer
-static u8 _fat_file_restore(const struct partition* part, struct file* file,
+static u8 fat_file_restore(const struct partition* part, struct file* file,
     struct file_ptr* ptr)
 {
     file->page = ptr->page;
@@ -1166,7 +1179,7 @@ u8 fat_dir_read(const struct partition* part, struct file* dir,
 {
     // Save the raw file pointer
     struct file_ptr ptr;
-    _fat_file_save(dir, &ptr);
+    fat_file_save(dir, &ptr);
 
     // Get the entry name and increase the dir pointer in case of LFN
     u8 status = fat_get_entry_name(part, dir, info->name);
@@ -1178,7 +1191,7 @@ u8 fat_dir_read(const struct partition* part, struct file* dir,
     fat_get_sfn_info(dir->cache + dir->page_offset, info);
 
     // This only fails in case of disk error
-    status = _fat_file_restore(part, dir, &ptr);
+    status = fat_file_restore(part, dir, &ptr);
     if (status != FAT_OK) {
         return status;
     }
@@ -1188,13 +1201,13 @@ u8 fat_dir_read(const struct partition* part, struct file* dir,
 
 #define NW 20
 #define DW 16
-#define TW 20
+#define TW 10
 
 static void file_header(void)
 {
-    
-    print("%-*s %-*s %-*s\n", NW, "Name", DW, "Date modified", TW, "Type");
-    print("-----------------------------------------------\n");
+    print("%-*s %-*s %-*s Size [bytes]\n", NW, "Name", DW, "Date modified", TW,
+        "Type");
+    print("-------------------------------------------------------------\n");
 }
 
 static void file_print(struct file_info* info)
@@ -1207,11 +1220,16 @@ static void file_print(struct file_info* info)
         info->write_date.day, info->write_date.month, info->write_date.year,
         info->write_time.hour, info->write_time.min);
     
+    // Attributes
     if (info->attr & ATTR_DIR) {
         print("%-*s", TW, "folder");
     } else {
         print("%-*s", TW, "file");
     }
+
+    // Print the size
+    print(" %u", info->size);
+
     print("\n");
 }
 
@@ -1257,7 +1275,7 @@ void fat_test(struct disk* disk)
 {
     print("--- Running FAT test ---\n");
 
-    struct file* dir = opendir("/sda2/");
+    struct file* dir = dir_open("/sda2/arch/../drivers/gpio");
     
     if (!dir) {
         print("Cannot open file\n");
@@ -1269,8 +1287,8 @@ void fat_test(struct disk* disk)
     u8 status;
     file_header();
     while (1) {
-        status = readdir(dir, info);
-        if (status != FAT_OK && status != FAT_DOT) {
+        status = dir_read(dir, info);
+        if (status != FAT_OK) {
             break;
         }
         file_print(info);
