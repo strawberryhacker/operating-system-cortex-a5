@@ -19,8 +19,6 @@ struct thread {
     // The stack pointer has to be the first element 
     u32* sp;
 
-    u32 privileged;
-
     // Indicated if this thread is a kernel thread. We need to keep this here
     // to prevent the thread from modifying the stack and obtaining privileged
     // mode. The thread stack will provide the CPSR and this field will

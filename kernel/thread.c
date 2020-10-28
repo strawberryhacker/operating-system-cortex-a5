@@ -122,9 +122,6 @@ struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size,
     new->sp = new->stack_base + stack_size - 1;
     new->sp = stack_setup(new->sp, func, args, KERNEL_THREAD_CPSR);
 
-    // Indicating a kernel thread
-    new->privileged = 1;
-
     // Add the thread to the global thread list
     sched_add_thread(new);
     thread_set_class(new, flags);
@@ -154,9 +151,6 @@ static inline void create_user_thread_core(struct thread* thread,
 
     // Set the name of the thread
     thread_set_name(thread, name);
-
-    // Indicating a user non-privileged thread
-    thread->privileged = 0;
 
     // Map in the stack region. This will allocate a number of pages and map
     // them into the high user addresses
@@ -202,9 +196,6 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_size,
     struct thread* new = kmalloc(sizeof(struct thread));
     init_thread_struct(new);
 
-    // The user thread should be non-privileged
-    new->privileged = 0;
-
     // Find the parent thread
     struct thread* parent = get_curr_thread();
 
@@ -225,9 +216,6 @@ struct thread* create_process(u32 (*func)(void *), u32 stack_size,
 {
     struct thread* new = kmalloc(sizeof(struct thread));
     init_thread_struct(new);
-
-    // The user process should be non-privileged
-    new->privileged = 0;
 
     // Make a new memory space
     process_mm_init(new, stack_size);

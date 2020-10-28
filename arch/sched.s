@@ -54,7 +54,7 @@ sched_start:
 
     @ Updating the memory map
     ldr r1, [r0, #4]  @ r1 is pointing to rq->curr
-    ldr r2, [r1, #8]
+    ldr r2, [r1, #4]
     ldr r0, [r2]
     mcr p15, 0, r0, c2, c0, 0  @ Update the TTBR0 with the current memory map
     isb
@@ -76,18 +76,6 @@ sched_start:
     ldr sp, [r1]      @ Update the register SP into SP_sys
     dsb
     isb
-
-    @ Since the stackframe is laid out by the kenrel the CPSR will allways have
-    @ offset 64 and there will be no padding 
-    
-    ldr r0, [sp, #64] @ r0 will hold the CPSR of the first thread
-    bic r0, r0, #MODE_MASK
-    ldr r2, [r1, #4]  @ Load the privilege level into r2
-    cmp r2, #0
-    orreq r0, r0, #USER_MODE
-    orrne r0, r0, #SYS_MODE
-
-    str r0, [sp, #64] @ Storing the modified CPSR back on stack
 
     @ Unstack the first thread stack frame
     ldmia sp!, {r4 - r11}
