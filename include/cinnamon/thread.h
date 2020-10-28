@@ -26,8 +26,9 @@ struct thread {
     
     // Hold the setup for the process memory space (must be second)
     struct mm_process* mm;
-    
 
+    // ============================================================
+    // Do NOT modify anything above this line
     u32 page_cnt;
 
     u32* stack_base;

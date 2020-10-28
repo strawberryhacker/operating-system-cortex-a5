@@ -68,7 +68,7 @@ void main(void)
     // Initialize the kernel system
     early_init();
     kernel_init();
-    //driver_init();
+    driver_init();
 
     // ==================================================
     // Add the kernel threads / startup routines below 

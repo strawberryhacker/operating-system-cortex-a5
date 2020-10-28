@@ -105,7 +105,7 @@ __supervisor_exception:
     mov r0, sp
     bl supervisor_exception
 
-    b context_check            @ Check if we are going to do a context switch
+    b context_core             @ Check if we are going to do a context switch
 
 @ IRQ exception handler. This will handle both secure and non-secure interrupts
 @ and the context switch if the next_thread is set be the scheduler
@@ -119,72 +119,64 @@ __irq_exception:
     srsfd sp!, #SYS_MODE       @ Stores LR_irq and CPSR_irq in SP_sys
     cps #SYS_MODE
 
-    stmdb sp!, {r0 - r3, r12}  @ Store AAPCS registers on the kernel stack
+    stmdb sp!, {r0 - r3, r12}  @ Store AAPCS registers on the SP_sys
 
     @ The AAPCS for ABI requires the SP to be aligned with 8 bytes due to 
     @ maximizing the 64-bit AXI matrix performance. The SP is always word 
-    @ aligned so we only need to care about bit number 3
+    @ aligned so we only need to care about bit 3
     and r1, sp, #4
     sub sp, sp, r1
-    stmdb sp!, {r1, lr}        @ Push the padding and the real LR
+    stmdb sp!, {r1, lr}         @ Push the padding and the real LR
 
     ldr r1, =APIC_BASE
-    ldr r0, [r1, #APIC_IVR]    @ Get the interrupt source from the APIC
+    ldr r0, [r1, #APIC_IVR]     @ Get the interrupt source from the APIC
     str r1, [r1, #APIC_IVR]
-    ldr r1, [r1, #APIC_SMR]    @ To avoid crash
+    ldr r1, [r1, #APIC_SMR]     @ To avoid crash
 
     cpsie i
-    blx r0                     @ Branch to APIC interrupt handler
+    blx r0                      @ Branch to APIC interrupt handler
     cpsid i
 
     ldr r0, =APIC_BASE
-    str r0, [r0, #APIC_EOICR]  @ Acknowledge interrupt
+    str r0, [r0, #APIC_EOICR]
 
-    @ Check if the next_thread is non zero. This means we have to perform a new
-    @ context switch
-context_check:
+context_core:
+    @ If rq->next is non-zero we execute the context switch
     ldr r0, =rq
-    ldr r1, [r0]               @ Addr of the next thread to run
+    ldr r1, [r0]                @ Addr of the next thread to run
     cmp r1, #0
     beq skip_context
 
-context_switch:
     stmdb sp!, {r4 - r11}
 
-    add r2, r0, #4
-    ldr r3, [r2]
-    str sp, [r3]               @ Store the SP in the curr_thread_sp
-    dsb
-    isb
+    ldr r3, [r0, #4]
+    str sp, [r3]                @ Store the SP in the curr_thread_sp
 
-    @ Switch the memory map
+    @ Switch the memory map in case of user threads
     ldr r4, [r1, #4]
     cmp r4, #0
-    beq skip_mm_switch
-
-    ldr r3, [r4]              @ Get the base address of the next memory map
-    mcr p15, 0, r3, c2, c0, 0
-    mcr p15, 0, r0, c8, c7, 0 @ Flush the entire TLB / uTLB
+    ldrne r3, [r4]              @ Get the base address of the next memory map
+    mcrne p15, 0, r3, c2, c0, 0
+    isb
+    mcrne p15, 0, r0, c8, c7, 0 @ Flush the entire TLB / uTLB
     dsb
     isb
 
-    ldr sp, [r1]              @ Load the new stack pointer
-    dmb
-    isb
-
-skip_mm_switch:
-    @ Make sure next_thread is zero and that curr_thread is pointing to
-    @ the current running thread (aka next_thread)
-    str r1, [r2]
+    @ Set rq->curr to rq->next, and rq->next to NULL
+    str r1, [r0, #4]
     mov r2, #0
     str r2, [r0]
+    
+    ldr sp, [r1]                @ Load the new stack pointer
+    dmb
+    isb
 
     ldmia sp!, {r4 - r11}
 
 skip_context:
-    ldmia sp!, {r1, lr}       @ This is accouted for in the inital stack setup
+    ldmia sp!, {r1, lr}
     add sp, sp, r1
 
-    ldmia sp!, {r0 - r3, r12} @ Pop the AAPCS registers
-    rfefd sp!                 @ Return from exception
+    ldmia sp!, {r0 - r3, r12}   @ Pop the AAPCS registers
+    rfefd sp!                   @ Return from exception
     

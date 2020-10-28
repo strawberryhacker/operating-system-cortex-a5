@@ -71,6 +71,9 @@ u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
 
 static void init_thread_struct(struct thread* thread)
 {
+    // Initialize the mm to NULL so that kernel threads dont update memory map
+    thread->mm = NULL;
+
     thread->page_cnt = 0;
 
     // Initialize the list nodes
