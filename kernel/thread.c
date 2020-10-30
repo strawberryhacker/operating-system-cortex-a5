@@ -15,9 +15,12 @@
 #include <cinnamon/interrupt.h>
 #include <cinnamon/syscall.h>
 
+/// Initial CPSR values for kernel / user threads. The mode is set, interrupts
+/// are unmasked and the status bits are cleared
 #define USER_THREAD_CPSR  0b10000
 #define KERNEL_THREAD_CPSR 0b11111
 
+/// The scheduling class occupies the three lowest bits in the thread attributes
 #define FLAG_CLASS_MSK 0b111
 #define FLAG_CLASS_POS 0
 
@@ -38,6 +41,8 @@ void thread_exit(u32 status_code)
     }
 }
 
+/// Sets up the stack for any process. This takes in the arguments and the
+/// return function as well as the CPSR for user / kernel threads
 u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
 {
     sp--;
@@ -52,7 +57,7 @@ u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
     *sp-- = (u32)thread_exit;  // r12   
 
     // To optimize the context switch time the context switch is closly embedded
-    // into the IRQ routine. The IRQ padds the stack pointer  in order to
+    // into the IRQ routine. The IRQ padds the stack pointer in order to
     // archeive 8-byte alignment. This is because the IRQ routine calls
     // C-functions and has to be AAPCS compliant
     *sp-- = 0;  
@@ -69,22 +74,19 @@ u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
     return sp;
 }
 
+/// Initializes the thread structure. The thread structure MUST be allocated
+/// using kzalloc. This way the mm field will be zero which is required for
+/// kernel threads whithin the context switch
 static void init_thread_struct(struct thread* thread)
 {
-    // Initialize the mm to NULL so that kernel threads dont update memory map
-    thread->mm = NULL;
-
-    thread->page_cnt = 0;
-
     // Initialize the list nodes
     list_node_init(&thread->node);
     list_node_init(&thread->thread_group);
-    list_node_init(&thread->thread_node);
-
-    thread->tick_to_wake = 0;
+    list_node_init(&thread->thread_node);  
 }
 
-/// Copies in the thread name into the thread control block
+/// Copies in the thread name into the thread control block. This adds NULL
+/// termination such that the thread name can be easily printed
 static void thread_set_name(struct thread* thread, const char* name)
 {
     u32 i;
@@ -92,48 +94,52 @@ static void thread_set_name(struct thread* thread, const char* name)
 
     for (i = 0; i < THREAD_MAX_NAME - 1 && *name; i++) {
         *dest++ = *name++;
-
     }
     *dest = '\0';
 }
 
 /// Sets the scheduler class in a thread given the thread flags
-static void thread_set_class(struct thread* t, u32 flags)
+static void thread_set_sched_class(struct thread* thread, u32 flags)
 {
-    // Enqueue the process into the right scheduler
     const struct sched_class* class = get_sched_class(flags & 0b111);
-    t->class = class;
+    thread->class = class;
 }
 
 /// Creates a lightweight kernel thread in the kernel memory space
 struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags)
 {
-    // Allocate the thread control block
-    struct thread* new = kmalloc(sizeof(struct thread));
-    init_thread_struct(new);
+    // Allocate a new TCB + stack
+    u32 alloc_size = sizeof(struct thread) + stack_size * 4;
+    alloc_size = align_up_val(alloc_size, 8);
+    struct thread* thread = kzmalloc(alloc_size);
 
-    print("Creating kernel thread: %p\n", new);
+    print("Creating kernel thread: %p\n", thread);
+    init_thread_struct(thread);    
 
     // Set the name of the thread
-    thread_set_name(new, name);
+    thread_set_name(thread, name);
 
+    // Do not know if this is neseccary
     dcache_clean_invalidate();
 
-    // Setup the stack for the thead
-    new->stack_base = kmalloc(stack_size * 4);
-    new->sp = new->stack_base + stack_size - 1;
-    new->sp = stack_setup(new->sp, func, args, KERNEL_THREAD_CPSR);
+    // The stack goes after the thread control block and will be 8 byte aligned
+    thread->stack_base = (u32 *)((u8 *)thread + sizeof(struct thread));
+    thread->stack_base = align_up(thread->stack_base, 8);
+
+    // Update the stack pointer address
+    thread->sp = thread->stack_base + stack_size - 1;
+    thread->sp = stack_setup(thread->sp, func, args, KERNEL_THREAD_CPSR);
 
     // Add the thread to the global thread list
-    sched_add_thread(new);
-    thread_set_class(new, flags);
-    sched_enqueue_thread(new);
+    sched_add_thread(thread);
+    thread_set_sched_class(thread, flags);
+    sched_enqueue_thread(thread);
 
     icache_invalidate();
     dcache_clean();
 
-    return new;
+    return thread;
 }
 
 /// TODO implement the kill kernel thread function
@@ -142,108 +148,127 @@ void kill_kernel_thread(struct thread* t)
 
 }
 
-/// Core function for creating a user thread.
+/// Core function for creating a user thread. This assumes that a memory space 
+/// is created. It will allocate a new stack region and 
 static inline void create_user_thread_core(struct thread* thread,
     u32 (*func)(void *), u32 stack_size,const char* name, void* args, u32 flags)
 {
-    if (thread->mm == NULL) {
-        panic("Need to setup memory space first");
-    }
-
-    print("Creating a user thread: %p\n", thread);
+    assert(thread->mm != NULL);
 
     // Set the name of the thread
     thread_set_name(thread, name);
 
     // Map in the stack region. This will allocate a number of pages and map
-    // them into the high user addresses
-    u32 stack_order = 
-        pages_to_order((u32)align_up((void *)stack_size, 4096) / 4096);
+    // them into the stack region in the process memory map
+    u32 stack_page_cnt = (u32)align_up((void *)stack_size, 4096) / 4096;
+    u32 stack_order = pages_to_order(stack_page_cnt);
+    stack_page_cnt = (1 << stack_order);
+    
+    // Allocate and add the pages
     struct page* stack_page_ptr = alloc_pages(stack_order);
     mm_process_add_page(stack_page_ptr, thread->mm);
 
-    u32 pt_flags = LV2_PT_SECTION |
-                   LV2_PT_SECTION_FULL_ACC |
-                   LV2_PT_SECTION_WRITE_THROUGH;
-    u32 domain = 15;
+    struct pte_attr attr = {
+        .access = PTE_ACCESS_FULL_ACC,
+        .mem    = PTE_MEM_WRITE_THROUGH,
+        .domain = 15,
+        .nG     = 0,
+        .xn     = 0
+    };
 
-    u32 stack_pages = (1 << stack_order);
-    thread->mm->stack_e -= stack_pages * 1024;
+    // Allocate space in the process virtual memory space for the stack
+    thread->mm->stack_e -= stack_page_cnt * (4096 / 4);
 
     // Map in the stack in the process virtual memory
-    mm_process_map_memory(thread->mm, stack_page_ptr, stack_pages, 
-        (u32)thread->mm->stack_e, pt_flags, domain);
+    u8 status = mm_map_in_pages(thread->mm, stack_page_ptr, stack_page_cnt, 
+        (u32)thread->mm->stack_e, &attr);
+
+    assert(status);
 
     // Invalidate the stack region in the D-cache
     u32 start = (u32)page_to_va(stack_page_ptr);
-    dcache_clean_invalidate_range(start, start + stack_pages * 4096);
+    //dcache_clean_invalidate_range(start, start + stack_page_cnt * 4096);
+    //dcache_clean();
 
-    // Set the stack using kernel logical addressing
+    // Setup the stack using kernel logical addressing
     u32* sp_kern_virt = page_to_va(stack_page_ptr);
     u32* sp_usr_virt = thread->mm->stack_e;
 
-    u32* sp = sp_kern_virt + stack_pages * 1024 - 1;
+    u32* sp = sp_kern_virt + stack_page_cnt * 1024 - 1;
     sp = stack_setup(sp, func, args, USER_THREAD_CPSR);
     thread->sp = sp_usr_virt + (sp - sp_kern_virt);    
 
     // Add the thread to the global thread list
     sched_add_thread(thread);
-    thread_set_class(thread, flags);
+    thread_set_sched_class(thread, flags);
     sched_enqueue_thread(thread);
 }
 
-/// Creating a thread
+/// Creates a user thread within the memory space of the parent process
 struct thread* create_thread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags)
 {
-    struct thread* new = kmalloc(sizeof(struct thread));
-    init_thread_struct(new);
+    struct thread* thread = kzmalloc(sizeof(struct thread));
+    print("Creating a user thread: %p\n", thread);
+
+    init_thread_struct(thread);
 
     // Find the parent thread
     struct thread* parent = get_curr_thread();
 
-    // Binding the new thread to the current running process (parent)
-    new->mm = parent->mm;
-    new->process = parent;
-    list_add_first(&new->thread_group, &parent->thread_group);
-    create_user_thread_core(new, func, stack_size, name, args, flags);
+    // Bind the new thread to the current running process
+    thread->mm = parent->mm;
+    thread->process = parent;
+    list_add_first(&thread->thread_group, &parent->thread_group);
+
+    // Create the thread
+    create_user_thread_core(thread, func, stack_size, name, args, flags);
 
     dcache_clean();
 
     return NULL;
 }
 
-/// Creating a process
+/// Create new heavy process
 struct thread* create_process(u32 (*func)(void *), u32 stack_size,
     const char* name, void* args, u32 flags)
 {
-    struct thread* new = kmalloc(sizeof(struct thread));
-    init_thread_struct(new);
+    struct thread* thread = kzmalloc(sizeof(struct thread));
+    print("Creating a user process: %p\n", thread);
+
+    init_thread_struct(thread);
 
     // Make a new memory space
-    process_mm_init(new, stack_size);
-    create_user_thread_core(new, func, stack_size, name, args, flags);
+    process_mm_init(thread, stack_size);
+    create_user_thread_core(thread, func, stack_size, name, args, flags);
 
     // Must be initialized after the create_thread_core beacuse it initializes
     // the thread group as a list node
-    new->process = new;
-    list_init(&new->thread_group);
+    thread->process = thread;
+    list_init(&thread->thread_group);
 
     dcache_clean();
 
-    return new;
+    return thread;
 }
 
-void map_in_code(struct page* code_page, u32 pages, struct thread* t)
+/// This functions maps in a number of code pages into the process memory space
+void map_in_code(struct page* code_page, u32 pages, struct thread* thread)
 {
-    t->mm->data_s += pages * 4096;
+    thread->mm->data_s += pages * 4096;
 
-    u32 flags = LV2_PT_SECTION |
-                LV2_PT_SECTION_FULL_ACC |
-                LV2_PT_SECTION_WRITE_THROUGH;
+    struct pte_attr attr = {
+        .access = PTE_ACCESS_FULL_ACC,
+        .mem    = PTE_MEM_WRITE_THROUGH,
+        .domain = 15,
+        .nG     = 0,
+        .xn     = 0
+    };
 
-    u32 domain = 15;
-    mm_process_map_memory(t->mm, code_page, pages, 0x00100000, flags, domain);
+    // Map in the memory
+    u32 status = mm_map_in_pages(thread->mm, code_page, pages, 0x00100000, &attr);
+    assert(status);
+
     mm_tlb_invalidate();
     icache_invalidate();
     dcache_clean();
@@ -263,7 +288,7 @@ void curr_thread_add_pages(struct page* page, u32 pages)
 
 /// Returns the memory managment structure of the current (parent) process of 
 /// the current running thread
-struct mm_process* get_curr_mm_process(void)
+struct thread_mm* get_curr_mm_process(void)
 {
     struct thread* t = get_curr_thread();
     return t->mm;

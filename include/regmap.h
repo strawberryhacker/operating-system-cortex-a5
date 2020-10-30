@@ -397,6 +397,7 @@ struct l2cache_reg {
 
 #define L2CAHCE ((struct l2cache_reg *)0x00A00000)
 
+/// True random number generator
 struct trng_reg {
     __w u32 CR;
     __r u32 RESERVED0[3];
@@ -410,6 +411,7 @@ struct trng_reg {
 
 #define TRNG ((struct trng_reg *)0xFC01C000)
 
+/// Timer channel registers
 struct timer_channel_reg {
     __w u32 CCR;
     _rw u32 CMR;
@@ -443,5 +445,50 @@ struct timer_reg {
 
 #define TIMER0 ((struct timer_reg *)0xF800C000)
 #define TIMER1 ((struct timer_reg *)0xF8010000)
+
+#define DMA_CHANNELS 16
+
+/// DMA registers
+struct dma_reg {
+    __r u32 GTYPE;
+    _rw u32 GCFG;
+    _rw u32 GWAC;
+    __w u32 GIE;
+    __w u32 GID;
+    __r u32 GIM;
+    __r u32 GIS;
+    __w u32 GE;
+    __w u32 GD;
+    __r u32 GS;
+    _rw u32 GRS;
+    _rw u32 GWS;
+    __w u32 GRWS;
+    __w u32 GRWR;
+    __w u32 GSWR;
+    __r u32 GSWS;
+    __w u32 GSWF;
+    __r u32 RESERVED0[3];
+
+    struct {
+        __w u32 CIE;
+        __w u32 CID;
+        __r u32 CIM;
+        __r u32 CIS;
+        _rw u32 CSA;
+        _rw u32 CDA;
+        _rw u32 CNDA;
+        _rw u32 CNDC;
+        _rw u32 CUBC;
+        _rw u32 CBC;
+        _rw u32 CC;
+        _rw u32 CDS_MSP;
+        _rw u32 CSUS;
+        _rw u32 CDUS;
+        __r u32 RESERVED1[2];
+    } channel[DMA_CHANNELS];
+};
+
+#define DMA0 ((struct dma_reg *)0xF0010000)
+#define DMA1 ((struct dma_reg *)0xF0004000)
 
 #endif

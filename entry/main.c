@@ -23,6 +23,7 @@
 #include <cinnamon/mmc.h>
 #include <cinnamon/task_manager.h>
 #include <cinnamon/disk.h>
+#include <cinnamon/dma.h>
 
 #include <regmap.h>
 #include <stdarg.h>
@@ -38,7 +39,7 @@ void early_init(void)
     loader_init();
 
     // Enable interrupt now to support reboot
-    irq_disable();
+    irq_enable();
     async_abort_enable();
 
     // Enable the L1 cache
@@ -58,9 +59,8 @@ void kernel_init(void)
 void driver_init(void)
 {
     mmc_init();
+    //dma_init();
 }
-
-extern struct rq rq;
 
 /// Called by entry.s after low level initialization finishes
 void main(void)
@@ -70,17 +70,14 @@ void main(void)
     kernel_init();
     driver_init();
 
+    enum pte_access pte = PTE_ACCESS_NO_USR_WRITE;
+
+    print("PTE => %032b\n", pte);
+
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
     task_manager_init();
-
-    struct list_node* node;
-    list_iterate(node, &rq.thread_list) {
-        struct thread* t = list_get_entry(node, struct thread, thread_node);
-
-        print("Thread > %s with mm %p\n", t->name, t->mm);
-    }
 
     sched_start();
 } 

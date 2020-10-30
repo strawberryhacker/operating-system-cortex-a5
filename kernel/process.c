@@ -17,8 +17,8 @@
 struct page* process_mm_init(struct thread* thread, u32 stack_size)
 {
     // The init process has to dynamically allocte the mm struct
-    struct mm_process* mm = (struct mm_process *)
-        kzmalloc(sizeof(struct mm_process));
+    struct thread_mm* mm = (struct thread_mm *)
+        kzmalloc(sizeof(struct thread_mm));
 
     mm_process_init(mm);
     thread->mm = mm;

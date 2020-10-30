@@ -3,6 +3,8 @@
 #include <cinnamon/slob.h>
 #include <cinnamon/print.h>
 #include <cinnamon/mm.h>
+#include <cinnamon/atomic.h>
+#include <cinnamon/panic.h>
 #include <stddef.h>
 
 /// Gets the total number of bytes free
@@ -132,6 +134,8 @@ static u8 slob_insert_free(struct slob_node* first, struct slob_node* last,
 /// Extend the memory region covered by the SLOB allocator
 void slob_extend(struct mm_zone* zone, u32 pages)
 {
+    u32 atomic = __atomic_enter();
+
     struct slob_struct* slob = (struct slob_struct *)zone->alloc;
     u32 prev_end = slob->end_addr;
 
@@ -164,18 +168,22 @@ void slob_extend(struct mm_zone* zone, u32 pages)
 
     // Update the ZONE
     zone->page_cnt += pages;
+
+    __atomic_leave(atomic);
 }
 
 /// Allocates a physically and virtually continous memory region. This is based 
 /// on the SLOB allocator (simple list of block)
 void* slob_alloc(u32 size, struct mm_zone* zone)
 {
-    struct slob_struct* slob = (struct slob_struct *)zone->alloc;
-
     if (size == 0) {
         return NULL;
     }
 
+    // Due to kernel thread concurrency the memory allocation must disable irq
+    u32 atomic = __atomic_enter();
+
+    struct slob_struct* slob = (struct slob_struct *)zone->alloc;
     size += sizeof(struct slob_node);
 
     // Align the size 
@@ -196,7 +204,7 @@ void* slob_alloc(u32 size, struct mm_zone* zone)
     }
     if (it == NULL) {
         // We are out of memory 
-        print("Dangit\n");
+        __atomic_leave(atomic);
         return NULL;
     }
 
@@ -222,28 +230,36 @@ void* slob_alloc(u32 size, struct mm_zone* zone)
     it->size = size;
     it->next =(struct slob_node *)0xC0DEBABE;
 
+    // Restore the irq state
+    __atomic_leave(atomic);
+    
     return (void *)((u32)it + sizeof(struct slob_node));
 }
 
+/// Frees a pointer allocated by slob_alloc
 void slob_free(void* ptr, struct mm_zone* zone)
 {
+    u32 atomic = __atomic_enter();
     struct slob_struct* slob = (struct slob_struct *)zone->alloc;
 
     if (ptr == NULL) {
-        return;
+        panic("NULL pointer freed!");
     }
     struct slob_node* free = (struct slob_node *)((u32)ptr - sizeof(struct slob_node));
 
+    // Check if the kmalloc tracks this pointer
     if ((u32)free->next != 0xC0DEBABE) {
-        // This is not a pointer we track 
-        return;
+        panic("Non-tracked pointer freed!");
     }
 
     // Range check 
     if (((u32)free < (u32)slob->first_node) ||
         ((u32)free >= (u32)slob->last_node)) {
-        return;
+        panic("kmalloc free error!");
     }
+
     slob->stats.used -= free->size;
     slob_insert_free(slob->first_node, slob->last_node, free);
+
+    __atomic_leave(atomic);
 }

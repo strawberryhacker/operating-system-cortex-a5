@@ -8,9 +8,13 @@
 #include <cinnamon/mem.h>
 #include <cinnamon/boot_alloc.h>
 #include <cinnamon/panic.h>
-#include <cinnamon/pt_entry.h>
 #include <cinnamon/sched.h>
 #include <cinnamon/thread.h>
+#include <cinnamon/panic.h>
+
+// TODO
+// Fix kernel page table
+// 
 
 extern u32 _kernel_e;
 
@@ -90,6 +94,9 @@ void mm_allocators_init(void)
     if (!buddy_alloc_init(zones + 1)) {
         print("cant initialize buddy allocator\n");
     }
+
+    print("Zone => %u\n", zones[0].get_total(&zones[0]));
+    print("Zone => %u\n", zones[1].get_total(&zones[1]));
 }
 
 /// Iterates trough all the zones and returns the number of used bytes by the
@@ -200,7 +207,7 @@ u32 pages_to_order(u32 pages)
 struct page* lv1_pt_alloc(void)
 {
     struct page* page = buddy_alloc_pages(1, zones + 1);
-    mem_set(page_to_va(page), 0, 0x2000);
+    mem_set(page_to_va(page), 0, 4096 * 2);
     return page;
 }
 
@@ -234,10 +241,10 @@ void* page_to_pa(struct page* page)
     u32 index = page - page_array;
     u32 vaddr = KERNEL_START + (index * 4096);
 
-    return _pa((void *)vaddr);
+    return va_to_pa((void *)vaddr);
 }
 
-/// Converts a kernel logical virtual address to a virtual page address
+/// Converts a kernel virtual address to a virtual page address
 struct page* va_to_page(void* page_addr)
 {
     if ((u32)page_addr & 0xFFF) {
@@ -251,7 +258,7 @@ struct page* va_to_page(void* page_addr)
 /// Converts a physical address to a virtual page address
 struct page* pa_to_page(void* page_addr)
 {
-    u32 vaddr = (u32)_va(page_addr);
+    u32 vaddr = (u32)pa_to_va(page_addr);
     if (vaddr & 0xFFF) {
         return NULL;
     }
@@ -260,7 +267,9 @@ struct page* pa_to_page(void* page_addr)
     return page_array + page_index;
 }
 
-/// Initializes the page used for secondary level page tables
+/// Initializes the page used for secondary level page tables. One page contains
+/// three level 2 page tables. A pt2 structure is place in the first 1 KiB of
+/// the page. This will contain info about the status of the page tables
 void lv2_pt_init(struct page* page)
 {
     struct pt2* pt = (struct pt2 *)page_to_va(page);
@@ -284,8 +293,9 @@ u32* lv2_pt_find_in_page(struct page* page)
     return NULL;
 }
 
-/// Initializes a mm_process structure
-void mm_process_init(struct mm_process* mm)
+/// Initializes a thread_mm structure. This is allocated per process basis and
+/// contains info about the process memory map
+void mm_process_init(struct thread_mm* mm)
 {
     list_init(&mm->page_list);
     mm->pt2_ptr = NULL;
@@ -302,92 +312,184 @@ void mm_process_init(struct mm_process* mm)
     mm->heap_e = 0;
 }
 
-/// Takes in the base virtual address of a 1M mapping and a level 2 page table,
-/// and creates a new entry in the level 1 page table given by `ttbr_paddr` with
-/// the given domain
-void lv1_pt_map_in_lv2_pt(u32* ttbr_paddr, u32* pt2_vaddr, u32 vaddr, u8 domain)
+/// Returns the PTE entry value based on the physical address of the page and
+/// the page table attibutes
+static inline u32 mm_get_pte(u32 phys_addr, const struct pte_attr* attr)
 {
-    if (vaddr & 0xFFFFF) {
-        panic("Unaligned page table mapping");
+    u32 pte = attr->access | attr->mem | PTE_MASK;
+
+    // Execute never
+    if (attr->xn) {
+        pte |= PTE_XN;
     }
-    u32* pt1 = _va(ttbr_paddr);
 
-    u32 pte = LV1_PT_PTR |
-              LV1_PT_PTR_BASE((u32)_pa(pt2_vaddr)) |
-              LV1_PT_PTR_DOMAIN(domain & 0xF);
+    // Not global
+    if (attr->nG) {
+        pte |= PTE_nG;
+    }
 
-    pt1[vaddr >> 20] = pte;
+    // Physical base address of the page
+    pte |= PTE_BASE(phys_addr);
+
+    return pte;
 }
 
-/// Returns if a lv1 page table entry is mapped. The entry must be in the L1
-/// range
-static u32 lv1_is_mapped(u32* ttbr_paddr, u32 entry)
+/// Returns the STE entry value based on the physical address of the section and
+/// the page table attibutes
+static inline u32 mm_get_ste_sect(u32 phys_addr, const struct ste_attr* attr)
 {
-    u32* vaddr = _va(ttbr_paddr);
-    return !pte_is_empty(vaddr[entry]);
+    u32 ste = attr->access | attr->mem | STE_SECTION_MASK |
+        STE_SECTION_DOMAIN(attr->domain);
+
+    // Execute never
+    if (attr->xn) {
+        ste |= STE_SECTION_XN;
+    }
+
+    // Not global
+    if (attr->nG) {
+        ste |= STE_SECTION_nG;
+    }
+
+    // Physical base address of the page
+    ste |= STE_SECTION_BASE(phys_addr);
+
+    return ste;
 }
 
-/// Maps in a new 4k page into the page table. This returns 1 if the region was
-/// successfully mapped and zero if the l2 page table does not exist
-u32 lv2_pt_map_page(u32* ttbr_paddr, u32* page_vaddr, u32 vaddr, u32 attr)
+/// Returns the STE entry value for a level 2 page table pointer. It takes in 
+/// the physical address of the level 2 page table as well as the domain
+static inline u32 mm_get_ste_ptr(u32 phys_addr, u8 domain)
 {
-    if (vaddr & 0xFFF) {
-        panic("Virtual page address is not aligned");
-    }
-
-    u32* pt1 = _va(ttbr_paddr);
-    u32 pte = pt1[vaddr >> 20];
-
-    if (pte_is_empty(pte)) {
-        return 0;
-    }
-
-    u32* pt2 = _va((u32 *)LV1_PT_PTR_BASE(pte));
-
-    pt2[(vaddr >> 12) & 0xFF] = LV2_PT_SECTION_BASE((u32)_pa(page_vaddr)) |
-                                attr;
-    return 1;
+    assert(domain < 16);
+    return STE_PTR_BASE(phys_addr) | STE_PTR_DOMAIN(domain) | STE_PTR_MASK;
 }
 
-/// Maps in a number of pages for a user process, into the process mm structure
-u32 mm_process_map_memory(struct mm_process* mm, struct page* page,
-    u32 page_cnt, u32 vaddr, u32 attr, u8 domain)
+/// Maps in a level 2 page table in the memory space pointed to by ttbr. The
+/// phys_addr hold the physical address of the page table and the virt_address
+/// holds the virtual address of the target address
+static void mm_map_in_pt(u32* ttbr_virt, u32 phys_addr, u32 virt_addr, u8 domain)
 {
-    if (vaddr & 0xFFF) {
-        panic("Non aligned");
-    }
-    
-    while (page_cnt--) {
-        // Map in page to the vaddr
-        if (lv1_is_mapped(mm->ttbr_phys, vaddr >> 20) == 0) {
-            u32* new_vaddr = lv2_pt_find_in_page(mm->pt2_ptr);
+    // The virtual address must be aligned to a 1 MiB boundary
+    assert((virt_addr & 0xFFFFF) == 0);
 
-            if (!new_vaddr) {
+    // The physical base address must be aligned to a 1 KiB boundary
+    assert((phys_addr & 0x3FF) == 0);
 
-                // We dont have any more secondary page tables
-                struct page* new_page = lv2_pt_alloc();
-                if (!new_page) {
-                    return 0;
-                }
-                mm->pt2_ptr = new_page;
-                mm_process_add_page(new_page, mm);
-                lv2_pt_init(new_page);
+    u32 ste = mm_get_ste_ptr(phys_addr, domain);
 
-                new_vaddr = lv2_pt_find_in_page(mm->pt2_ptr);
+    // Map in the page table
+    ttbr_virt[virt_addr >> 20] = ste;
+}
 
-                if (!new_vaddr) {
-                    panic("Panic");
-                }
+/// Maps in a page into the memory space pointed to by ttbr. The phys_addr holds
+/// the the physical address of the page and the virt_addr holds the target 
+/// virtual address. This is unsafe because the level 2 page table has to exist
+static void mm_map_in_page_unsafe(u32* ttbr_virt, u32 phys_addr, u32 virt_addr,
+    struct pte_attr* attr)
+{
+
+    // The virtual and physical address must be aligned to a 4 KiB boundary
+    assert((virt_addr & 0xFFF) == 0);
+    assert((phys_addr & 0xFFF) == 0);
+
+    // Get the physical base of the secondary level page table
+    u32* pt2_phys = (u32 *)STE_PTR_BASE(ttbr_virt[virt_addr >> 20]); 
+    assert(pt2_phys);
+
+    // Get virtual address of the secondary level page table
+    u32* pt2_virt = pa_to_va(pt2_phys);
+
+    pt2_virt[(virt_addr >> 12) & 0xFF] = mm_get_pte(phys_addr, attr);
+}
+
+/// Returns if the STE entry is empty (fault)
+static inline u8 mm_is_ste_empty(u32 ste)
+{
+    return ((ste & 0b11) == 0);
+}
+
+/// Check if the level 1 page table has a valid level 2 page page table mapping
+/// at virt_addr 
+static inline u8 mm_has_ste_ptr_mapping(u32* ttbr_virt, u32 virt_addr)
+{
+    u32 ste = ttbr_virt[virt_addr >> 20];
+
+    return (mm_is_ste_empty(ste)) ? 0 : 1;
+}
+
+/// Returns a new level 2 page table. This might require a page allocation 
+/// which will store the new page within the mm->pt2_ptr. This returns the 
+/// virtual address of the new level 2 page table
+static u32* mm_get_l2_pt(struct thread_mm* mm)
+{
+    assert(mm);
+
+    if (mm->pt2_ptr) {
+        // Check if it can hold another one
+        struct pt2* pt = page_to_va(mm->pt2_ptr);
+
+        for (u32 i = 0; i < 3; i++) {
+            if (pt->bitmap & (1 << i)) {   
+                pt->bitmap |= (1 << i);
+
+                // If a bit is free return the address
+                return (u32 *)((u8 *)pt + 1024 * (i + 1));
             }
-            lv1_pt_map_in_lv2_pt(mm->ttbr_phys, new_vaddr, vaddr & ~(0xFFFFF),
-                domain);
+        }
+    }
+
+    // The mm->pt2_ptr is either NULL or full. Allocate a new page
+    struct page* pt2 = lv2_pt_alloc();
+
+    if (pt2 == NULL) {
+        return NULL;
+    }
+
+    // Add the page to the page list
+    mm->pt2_ptr = pt2;
+    mm_process_add_page(pt2, mm);
+
+    return (u32 *)((u8 *)page_to_va(pt2) + 1024);
+}
+
+static void mm_print_l1_pt(u32* ttbr_phys);
+
+/// Maps in a number of pages into the virtual address space specified by ttbr.
+/// This takes in the virtual address that the pages should be mapped to. It 
+/// returns 1 if success and 0 if an alocation failure has occured
+u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt, 
+    u32 virt_addr, struct pte_attr* attr)
+{
+    // The virtual address must be aligned at a 4 KiB boundary
+    assert((virt_addr & 0xFFF) == 0);
+
+    u32* ttbr_virt = pa_to_va(mm->ttbr_phys);
+    while (page_cnt--) {
+
+        // Check if the first level page table has a valid mapping
+        if (mm_has_ste_ptr_mapping(ttbr_virt, virt_addr) == 0) {
+
+            // Map in a new level 2 page table
+            u32* pt2_virt = mm_get_l2_pt(mm);
+
+            // Allocation failed
+            if (pt2_virt == NULL) {
+                return 0;
+            }
+
+            u32 pt2_phys = (u32)va_to_pa(pt2_virt);
+            mm_map_in_pt(ttbr_virt, pt2_phys, virt_addr & ~0xFFFFF, attr->domain);
         }
 
-        lv2_pt_map_page(mm->ttbr_phys, page_to_va(page), vaddr, attr);
+        // We now have a level 2 page table mapping so we can map in the pages
+        u32 page_phys = (u32)page_to_pa(page);
+        mm_map_in_page_unsafe(ttbr_virt, page_phys, virt_addr, attr);
 
-        vaddr += 4096;
         page++;
+        virt_addr += 4096;
     }
+
     return 1;
 }
 
@@ -395,8 +497,8 @@ u32 mm_process_map_memory(struct mm_process* mm, struct page* page,
 /// pointers if 
 u32* set_break(u32 bytes)
 {
-    print("SET BRAKE\n");
-    struct mm_process* mm = get_curr_mm_process();
+    //print("Setting break => %u\n", bytes);
+    struct thread_mm* mm = get_curr_mm_process();
 
     if (mm->heap_e == 0) {
         // Heap is not mapped
@@ -419,16 +521,18 @@ u32* set_break(u32 bytes)
     if (!page_ptr) {
         return mm->heap_e;
     }
-    print(GREEN "Number of pages allocated %d\n" NORMAL, 1 << order);
+    //print(GREEN "Number of pages allocated %d\n" NORMAL, 1 << order);
     curr_thread_add_pages(page_ptr, 1 << order);
 
-    u32 flags = LV2_PT_SECTION |
-                LV2_PT_SECTION_FULL_ACC |
-                LV2_PT_SECTION_WRITE_THROUGH;
+    struct pte_attr attr = {
+        .access = PTE_ACCESS_FULL_ACC,
+        .mem    = PTE_MEM_WRITE_THROUGH,
+        .domain = 15,
+        .nG     = 0,
+        .xn     = 0
+    };
 
-    u32 domain = 15;
-
-    mm_process_map_memory(mm, page_ptr, 1 << order, (u32)mm->heap_e, flags, domain);
+    assert(mm_map_in_pages(mm, page_ptr, 1 << order, (u32)mm->heap_e, &attr));
 
     // Extend the heap region
     mm->heap_e += 4096 * (1 << order);

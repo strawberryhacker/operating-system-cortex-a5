@@ -11,7 +11,8 @@
 #include <cinnamon/pt_entry.h>
 #include <cinnamon/align.h>
 #include <cinnamon/cache.h>
-#include <stddef.h>
+#include <cinnamon/panic.h>
+    #include <stddef.h>
 
 /// ELF type
 enum elf_type {
@@ -267,8 +268,19 @@ void elf_init(const u8* elf_data, u32 elf_size)
     struct thread* t = create_process((u32 (*)(void *))elf_header->entry, 500,
         "ELF application", NULL, SCHED_RT);
 
-    mm_process_map_memory(t->mm, bin_page_ptr, (1 << bin_order), prog_header->vaddr,
-        flags, domain);
+    struct pte_attr attr = {
+        .access = PTE_ACCESS_FULL_ACC,
+        .mem    = PTE_MEM_WRITE_THROUGH,
+        .domain = 15,
+        .nG     = 0,
+        .xn     = 0
+    };
+
+    u8 status = mm_map_in_pages(t->mm, bin_page_ptr, (1 << bin_order),
+        prog_header->vaddr, &attr);
+
+    assert(status);
+
     asm volatile("dsb" : : :"memory");
     asm volatile("dmb" : : :"memory");
     asm volatile("isb" : : :"memory");

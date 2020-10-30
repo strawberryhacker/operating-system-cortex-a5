@@ -49,7 +49,6 @@ vector_table:
 
 .type __undef_exception, %function
 __undef_exception:
-
     stmdb sp!, {r0 - r3, r12, lr}
     mov r0, lr
     bl undef_exception

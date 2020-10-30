@@ -1273,9 +1273,10 @@ u32 fat_mount_partition(struct partition* part)
 
 void fat_test(struct disk* disk)
 {
+    return;
     print("--- Running FAT test ---\n");
 
-    struct file* dir = dir_open("/sda2/arch/../drivers/gpio");
+    struct file* dir = dir_open("/sda3");
     
     if (!dir) {
         print("Cannot open file\n");
@@ -1294,36 +1295,4 @@ void fat_test(struct disk* disk)
         file_print(info);
         fat_get_next_entry(dir->part, dir);
     };
-
-/*
-    struct partition* part = &disk->partitions[1];
-    struct file* dir = kmalloc(sizeof(struct file));
-    fat_file_init(dir);
-
-    // hello this is small test to check if LFN are working
-    // thisisatesttoseeifthisisworking
-    char str[] = "";
-
-    u8 status = fat_dir_open(part, dir, str, sizeof(str) - 1);
-    fat_status(status);
-
-    struct file_info* finfo = kmalloc(sizeof(struct file_info));
-    
-    file_header();
-    for (u32 i = 0; i <  25; i++) {
-        status = fat_dir_read(part, dir, finfo);
-        if (status != FAT_OK && status != FAT_DOT) {
-            break;
-        }
-
-        if (status != FAT_DOT) {
-            file_print(finfo);
-        }
-
-        status = fat_get_next_entry(part, dir);
-
-    }
-
-    print("DONE\n");
-    */
 }

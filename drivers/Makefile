@@ -10,3 +10,4 @@ obj-y += /drivers/gpio.o
 obj-y += /drivers/cpu_timer.o
 obj-y += /drivers/mmc.o
 obj-y += /drivers/sd.o
+obj-y += /drivers/dma.o

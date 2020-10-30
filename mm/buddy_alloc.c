@@ -6,6 +6,7 @@
 #include <cinnamon/kmalloc.h>
 #include <cinnamon/align.h>
 #include <cinnamon/panic.h>
+#include <cinnamon/atomic.h>
 
 static inline u32 get_order_map_words(u32 order, u32 max_orders)
 {
@@ -131,6 +132,8 @@ u8 buddy_alloc_init(struct mm_zone* zone)
 /// the first page in that region
 struct page* buddy_alloc_pages(u32 order, struct mm_zone* zone)
 {
+    u32 atomic = __atomic_enter();
+
     struct buddy_struct* buddy = (struct buddy_struct *)zone->alloc;
 
     struct buddy_order* curr_order_obj = buddy->orders + order;
@@ -145,6 +148,8 @@ struct page* buddy_alloc_pages(u32 order, struct mm_zone* zone)
     }
 
     if (curr_order >= buddy->max_orders) {
+        __atomic_leave(atomic);
+        //panic("Failed\n");
         return NULL;
     }
     
@@ -167,7 +172,7 @@ struct page* buddy_alloc_pages(u32 order, struct mm_zone* zone)
     list_delete_first(&curr_order_obj->free_list);
 
     if (order == curr_order) {
-        return new_page;
+        goto alloc_ok;
     }
 
     /// If the block is too big - but found - we are splitting the block until
@@ -186,17 +191,22 @@ struct page* buddy_alloc_pages(u32 order, struct mm_zone* zone)
 
     } while (curr_order > order);
 
+alloc_ok:
     // Update the size from the allocation 
     new_page->order = order;
     buddy->used += (1 << order) * 4096;
 
-    return new_page;
+    __atomic_leave(atomic);
+    return new_page;    
 }
 
+/// Frees a page pointer allocated by the buddy allocator. This requires the
+/// the order to be specified
 void buddy_free_pages(struct page* page, u32 order, struct mm_zone* zone)
 {
-    struct buddy_struct* buddy = (struct buddy_struct *)zone->alloc;
+    u32 atomic = __atomic_enter();
 
+    struct buddy_struct* buddy = (struct buddy_struct *)zone->alloc;
     struct buddy_order* curr_order = &buddy->orders[order];
     u32 index = page - zone->start;
 
@@ -228,4 +238,6 @@ void buddy_free_pages(struct page* page, u32 order, struct mm_zone* zone)
         panic("Buddy error\n");
     }
     buddy->used -= (1 << order) * 4096;
+
+    __atomic_leave(atomic);
 }

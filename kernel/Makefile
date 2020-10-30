@@ -8,3 +8,4 @@ obj-y += /kernel/syscall.o
 obj-y += /kernel/process.o
 obj-y += /kernel/elf.o
 obj-y += /kernel/task_manager.o
+obj-y += /kernel/pid.o
