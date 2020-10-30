@@ -12,10 +12,7 @@
 #include <cinnamon/thread.h>
 #include <cinnamon/panic.h>
 
-// TODO
-// Fix kernel page table
-// 
-
+/// Hold the virtual end address of the kernel memory. Defined in the linker
 extern u32 _kernel_e;
 
 #define MM_ZONE_CNT 2
@@ -82,21 +79,14 @@ void mm_allocators_init(void)
     zones[0].alloc = &slob_allocator;
     zones[0].start = page_array + kernel_pages;
     zones[0].page_cnt = slob_pages;
-    if (!slob_init(zones)) {
-        print("cant initialize SLOB allocator\n");
-    }
+    assert(slob_init(zones));
 
     // Make the buddy allocator
     buddy_allocator.max_orders = 15;  // Fix this
     zones[1].alloc = &buddy_allocator;
     zones[1].start = page_array + kernel_pages + slob_pages;
     zones[1].page_cnt = buddy_pages;
-    if (!buddy_alloc_init(zones + 1)) {
-        print("cant initialize buddy allocator\n");
-    }
-
-    print("Zone => %u\n", zones[0].get_total(&zones[0]));
-    print("Zone => %u\n", zones[1].get_total(&zones[1]));
+    assert(buddy_alloc_init(zones + 1));
 }
 
 /// Iterates trough all the zones and returns the number of used bytes by the
@@ -131,11 +121,20 @@ u32 mm_get_total(void)
     return total;
 }
 
+static void mm_struct_init(struct mm* mm)
+{
+    list_init(&mm->zones);
+    list_init(&mm->buddy_zones);
+    list_init(&mm->slob_zones);
+}
+
 /// Early memory manager init routine
 static void mm_early_init(void)
 {
     boot_alloc_init();
     mm_setup_page_array();
+
+    mm_struct_init(&mm);
 }
 
 /// This sets up the main allocator for use in the kernel space. The buddy
@@ -147,16 +146,18 @@ void mm_init(void)
 
     // Retire the boot allocator before the main allocators are enabled
     boot_alloc_retire();
-
     mm_allocators_init();
 }
 
-/// Wrappers for the kernel malloc SLOB allocator
+/// Allocates a number of bytes for use by the kernel. This will return a 
+/// kernel virtual address
 void* kmalloc(u32 size)
 {
     return slob_alloc(size, zones);
 }
 
+/// Allocates a number of bytes for use by the kernel. This will return a 
+/// kernel virtual address pointer to zeroed memory
 void* kzmalloc(u32 size) 
 {
     u32* ptr = slob_alloc(size, zones);
@@ -164,6 +165,7 @@ void* kzmalloc(u32 size)
     return ptr;
 }
 
+/// Free a pointer allocated with the SLOB allocator
 void kfree(void* ptr)
 {
     slob_free(ptr, zones);
@@ -433,8 +435,6 @@ static u32* mm_get_l2_pt(struct thread_mm* mm)
     return (u32 *)((u8 *)page_to_va(pt2) + 1024);
 }
 
-static void mm_print_l1_pt(u32* ttbr_phys);
-
 /// Maps in a number of pages into the virtual address space specified by ttbr.
 /// This takes in the virtual address that the pages should be mapped to. It 
 /// returns 1 if success and 0 if an alocation failure has occured
@@ -473,14 +473,14 @@ u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt,
     return 1;
 }
 
-/// This functions sets the heap break point. This also remappes the heap 
-/// pointers if 
+/// Extends the heap limit in a user process memory space. This will move the 
+/// heap break up.
 u32* set_break(u32 bytes)
 {
-    //print("Setting break => %u\n", bytes);
     struct thread_mm* mm = get_curr_mm_process();
 
     if (mm->heap_e == 0) {
+
         // Heap is not mapped
         mm->heap_s = mm->data_e;
 
@@ -501,7 +501,7 @@ u32* set_break(u32 bytes)
     if (!page_ptr) {
         return mm->heap_e;
     }
-    //print(GREEN "Number of pages allocated %d\n" NORMAL, 1 << order);
+
     curr_thread_add_pages(page_ptr, 1 << order);
 
     struct pte_attr attr = {

@@ -32,8 +32,6 @@ void print_cpu_usage(u8 cpu_usage)
 /// Prints the memory usage in the system
 void print_mem_usage(u32 total, u32 used)
 {
-    print("TOTAL %d\n", total);
-    print("USED  %d\n", used);
     u8 bars = (used / (total / 100)) / 5;
     u8 space = 20 - bars;
 
@@ -46,22 +44,10 @@ void print_mem_usage(u32 total, u32 used)
 
 extern struct rq rq;
 
-u32 thread(void* args)
-{
-    while (1) {
-        syscall_thread_sleep(10000);
-        syscall_sbrk(1);
-    }
-}
-
 u32 task_manager(void* args)
 {
-    //dcache_clean();
-    syscall_create_thread(thread, 500, "allocthread", NULL, SCHED_RT);
     while (1) {
         syscall_thread_sleep(1000000);
-
-        syscall_sbrk(33000000);
 
         // Print the task manager header
         u32 p = (100 * rq.idle_rq.idle->window_runtime) / rq.time.window;
@@ -90,5 +76,5 @@ u32 task_manager(void* args)
 
 void task_manager_init(void)
 {
-    create_process(task_manager, 500, "taskmgmt", "HELLO", SCHED_RT);
+    create_kernel_thread(task_manager, 500, "taskmgmt", "HELLO", SCHED_RT);
 }

@@ -199,7 +199,7 @@ static u32 idle_func(void* args)
 static void add_idle(struct rq* rq)
 {
     struct thread* idle_thread =
-        create_process(idle_func, 500, "idle", NULL, SCHED_IDLE);
+        create_kernel_thread(idle_func, 500, "idle", NULL, SCHED_IDLE);
 }
 
 static inline void reschedule(void);

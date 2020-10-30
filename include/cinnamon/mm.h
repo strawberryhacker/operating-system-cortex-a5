@@ -56,15 +56,26 @@ struct mm_zone {
     // Points to the internal allocator deployed
     void* alloc;
 
+    // List node for both the zone list and the zone allocator list
+    struct list_node zone_node;
+    struct list_node alloc_node;
+
     // Functions for getting the statistics from the allocator
     u32 (*get_used)(struct mm_zone* zone);
     u32 (*get_free)(struct mm_zone* zone);
     u32 (*get_total)(struct mm_zone* zone);
 };
 
-/// For later 
+/// Main mm structure used in the system. This will contain a list of all the
+/// zones allocated
 struct mm {
     struct list_node zones;
+
+    // Buddy allocator zones
+    struct list_node buddy_zones;
+
+    // SLOB allocator zones
+    struct list_node slob_zones;
 };
 
 void mm_init(void);
@@ -175,9 +186,6 @@ static inline void mm_process_add_page(struct page* page, struct thread_mm* mm)
 }
 
 void mm_process_init(struct thread_mm* mm);
-
-void lv1_pt_map_in_lv2_pt(u32* ttbr_paddr, u32* pt2_vaddr, u32 paddrm,
-    u8 domain);
 
 u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt, 
     u32 virt_addr, struct pte_attr* attr);

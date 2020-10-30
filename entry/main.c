@@ -62,6 +62,11 @@ void driver_init(void)
     //dma_init();
 }
 
+u32 t(void* args)
+{
+    while (1);
+}
+
 /// Called by entry.s after low level initialization finishes
 void main(void)
 {
@@ -70,14 +75,12 @@ void main(void)
     kernel_init();
     driver_init();
 
-    enum pte_access pte = PTE_ACCESS_NO_USR_WRITE;
-
-    print("PTE => %032b\n", pte);
-
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
     task_manager_init();
+
+    create_kernel_thread(t, 500, "benchmark", NULL, SCHED_RT);
 
     sched_start();
 } 
