@@ -169,28 +169,29 @@ void kfree(void* ptr)
     slob_free(ptr, zones);
 }
 
-/// Wrappers for the page allocation using binary buddy
+/// Allocates a number of pages from the binary buddy using the given order.
+/// This will allocate 2 ** order number of pages. Returns a pointer to a
+/// virtual page structure
 struct page* alloc_pages(u32 order)
 {
     return buddy_alloc_pages(order, zones + 1);
 }
 
+/// Allocates one page from the binary buddy. Returns a pointer to a virtual 
+/// page structure
 struct page* alloc_page(void)
 {
     return buddy_alloc_pages(0, zones + 1);
 }
 
-void free_pages(struct page* page, u32 order)
+/// Frees one or more pages. The size is contains within internal structures
+void free_pages(struct page* page)
 {
-    buddy_free_pages(page, order, zones + 1);
+    buddy_free_pages(page, zones + 1);
 }
 
-void free_page(struct page* page)
-{
-    buddy_free_pages(page, 0, zones + 1);
-}
-
-/// Getting the lowest possible order for a binary buddy allocation
+/// Converts a number of bytes to an allocation order for the binary buddy
+/// allocator
 u32 bytes_to_order(u32 bytes)
 {
     u32 pages = (u32)align_up((void *)bytes, 4096) / 4096;
@@ -198,12 +199,16 @@ u32 bytes_to_order(u32 bytes)
     return __builtin_ctz(round_up_power_two(pages));
 }
 
+/// Converts a number of pages to an allocation order for the binary buddy
+/// allocator
 u32 pages_to_order(u32 pages)
 {
     return __builtin_ctz(round_up_power_two(pages));
 }
 
-/// Page table allocation wrappers
+/// Allocates a level 1 page table. Due the the kernel 2GB:2GB split this page
+/// table is 2048 bytes and not 4096. Thus it will only cover 2BG of address
+/// space. This returns a virtual page struct address
 struct page* lv1_pt_alloc(void)
 {
     struct page* page = buddy_alloc_pages(1, zones + 1);
@@ -211,6 +216,8 @@ struct page* lv1_pt_alloc(void)
     return page;
 }
 
+/// Allocates a level 2 page table. This is 4096 bytes in size. This returns a
+/// virtual page struct address
 struct page* lv2_pt_alloc(void)
 {
     struct page* page = buddy_alloc_pages(0, zones + 1);
@@ -218,24 +225,14 @@ struct page* lv2_pt_alloc(void)
     return page;
 }
 
-void lv1_pt_free(struct page* page)
-{
-    buddy_free_pages(page, 1, zones + 1);
-}
-
-void lv2_pt_free(struct page* page)
-{
-    buddy_free_pages(page, 0, zones + 1);
-}
-
-/// Gets the kernel virtual address from a page address
+/// Converts a page address to a kernel virtual address
 void* page_to_va(struct page* page)
 {
     u32 index = page - page_array;
     return (void *)(KERNEL_START + (index * 4096));
 }
 
-/// Gets the physical address from a page address
+/// Converts a page address to a phyiscal address
 void* page_to_pa(struct page* page)
 {
     u32 index = page - page_array;
@@ -274,23 +271,6 @@ void lv2_pt_init(struct page* page)
 {
     struct pt2* pt = (struct pt2 *)page_to_va(page);
     pt->bitmap = 0xFFFFFFFF;
-}
-
-/// Returns the virtual address of a L2 page table whitin the specified page
-u32* lv2_pt_find_in_page(struct page* page)
-{
-    if (page == NULL) {
-        return NULL;
-    }
-    struct pt2* pt = (struct pt2 *)page_to_va(page);
-    for (u32 i = 0; i < 3; i++) {
-        // Can only allocate when a bit is free
-        if (pt->bitmap & (1 << i)) {   
-            pt->bitmap |= (1 << i);
-            return ((u32 *)pt + 0x100 * i);
-        }
-    }
-    return NULL;
 }
 
 /// Initializes a thread_mm structure. This is allocated per process basis and

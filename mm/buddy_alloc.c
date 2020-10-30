@@ -202,9 +202,10 @@ alloc_ok:
 
 /// Frees a page pointer allocated by the buddy allocator. This requires the
 /// the order to be specified
-void buddy_free_pages(struct page* page, u32 order, struct mm_zone* zone)
+void buddy_free_pages(struct page* page, struct mm_zone* zone)
 {
     u32 atomic = __atomic_enter();
+    u32 order = page->order;
 
     struct buddy_struct* buddy = (struct buddy_struct *)zone->alloc;
     struct buddy_order* curr_order = &buddy->orders[order];

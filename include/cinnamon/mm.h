@@ -13,6 +13,7 @@
 #define KERNEL_START 0x80000000
 #define KERNEL_OFFSET 0x60000000
 
+/// Converts a kernel virtual address to physical address
 static inline void* va_to_pa(void* va)
 {
     u8* va_ptr = (u8 *)va;
@@ -20,16 +21,13 @@ static inline void* va_to_pa(void* va)
     return va_ptr;
 }
 
+/// Converts a physical address to kernel virtual address
 static inline void* pa_to_va(void* pa)
 {
     u8* pa_ptr = (u8 *)pa;
     pa_ptr += KERNEL_OFFSET;
     return pa_ptr;
 }
-
-/// Returns the kernel viertual base address for the page array continaing a 
-/// struct page for every physical page
-struct page* mm_get_page_array(void);
 
 /// Main page descriptor. Keep this short
 struct page {
@@ -38,19 +36,27 @@ struct page {
     struct list_node node;
 };
 
+/// Returns the kernel virtual base address for the page array continaing a 
+/// struct page for every physical page
+struct page* mm_get_page_array(void);
+
+/// Functions for converting between pages and virtual / physical addresses
 void* page_to_va(struct page* page);
 void* page_to_pa(struct page* page);
 struct page* va_to_page(void* page_addr);
 struct page* pa_to_page(void* page_addr);
 
-// Used together with the allocators private data to start an allocator 
+// Describes a memory zone used by a allocator
 struct mm_zone {
+
+    // Page start and stop address
     struct page* start;
     u32 page_cnt;
 
-    // Points to the allocator which is used 
+    // Points to the internal allocator deployed
     void* alloc;
 
+    // Functions for getting the statistics from the allocator
     u32 (*get_used)(struct mm_zone* zone);
     u32 (*get_free)(struct mm_zone* zone);
     u32 (*get_total)(struct mm_zone* zone);
@@ -69,15 +75,14 @@ struct page* lv2_pt_alloc(void);
 void lv1_pt_free(struct page* page);
 void lv2_pt_free(struct page* page);
 
-
-/// Sets the translation table base address 0
+/// Verious coprocessor accesses for page table management. Do NOT try to run
+/// this in user mode. This will trigger a UNDEF exception
 static inline void set_ttbr0(u32 paddr)
 {
     asm volatile ("mcr p15, 0, %0, c2, c0, 0" : : "r" (paddr));
     asm volatile ("isb" : : : "memory");
 }
 
-/// Sets the translation table base address 1
 static inline void set_ttbr1(u32 paddr)
 {
     asm volatile ("mcr p15, 0, %0, c2, c0, 1" : : "r" (paddr));
@@ -97,7 +102,6 @@ static inline u32 get_ttbr1(void)
     return paddr;
 }
 
-/// TLB maintenance
 static inline void mm_tlb_invalidate(void)
 {
     asm volatile ("mcr p15, 0, r0, c8, c7, 0");
@@ -108,7 +112,8 @@ static inline void mm_tlb_invalidate(void)
 
 /// Bitmap for the secondary level page table. Each page can store 3 secondary
 /// level page tables and this bit maps indicated which page tables whithin the
-/// page that are free
+/// page that are free. The first bit corresponds to l2 page table number 0 at 
+/// offset page_addr + 1024
 struct pt2 {
     u32 bitmap;
 };
@@ -168,18 +173,11 @@ static inline void mm_process_add_page(struct page* page, struct thread_mm* mm)
 {
     list_add_first(&page->node, &mm->page_list);
 }
+
 void mm_process_init(struct thread_mm* mm);
 
-/// Page table operations 
-static inline u32 pte_is_empty(u32 pte)
-{
-    return ((pte & 0b11) == 0) ? 1 : 0;
-}
-
-void lv1_pt_map_in_lv2_pt(u32* ttbr_paddr, u32* pt2_vaddr, u32 paddrm, u8 domain);
-
-//u32 mm_map_in_pages(struct thread_mm* mm, struct page* page,
-//    u32 page_cnt, u32 vaddr, u32 flags, u8 domain);
+void lv1_pt_map_in_lv2_pt(u32* ttbr_paddr, u32* pt2_vaddr, u32 paddrm,
+    u8 domain);
 
 u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt, 
     u32 virt_addr, struct pte_attr* attr);

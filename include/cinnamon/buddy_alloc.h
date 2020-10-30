@@ -25,6 +25,6 @@ struct buddy_struct {
 
 u8 buddy_alloc_init(struct mm_zone* zone);
 struct page* buddy_alloc_pages(u32 order, struct mm_zone* zone);
-void buddy_free_pages(struct page* page, u32 order, struct mm_zone* zone);
+void buddy_free_pages(struct page* page, struct mm_zone* zone);
 
 #endif
