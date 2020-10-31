@@ -1,3 +1,7 @@
+<p align="center">
+  <img width="460" height="500" src="https://github.com/strawberryhacker/cinnamonOS/blob/master/doc/cover.png">
+</p>
+
 ## Summary
 
 Cinnamon is a bare metal lightweight operation system designed for the Cortex®-A series. Every thing will be completely bare metal - no libraries - literally.
