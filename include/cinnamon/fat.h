@@ -138,6 +138,9 @@ struct file {
     // This hold the page offset whitin the data region of the FAT32 file system
     u32 page;
 
+    // Size - only on files
+    u32 size;
+
     // Working buffer
     u8 cache[512];
     u32 cache_glob_page;
@@ -202,5 +205,13 @@ u8 fat_dir_open(const struct partition* part, struct file* dir,
 
 u8 fat_dir_read(const struct partition* part, struct file* dir,
     struct file_info* info);
+
+u8 fat_file_open(const struct partition* part, struct file* file,
+    const char* path, u32 size);
+
+u8 fat_file_read(const struct partition* part, struct file* file,
+    u8* data, u32 req_cnt, u32* ret_cnt);
+
+u8 fat_get_label(const struct partition* part, struct file_info* info);
 
 #endif

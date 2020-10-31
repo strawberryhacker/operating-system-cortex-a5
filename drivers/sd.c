@@ -481,7 +481,7 @@ u32 sd_init_thread(void* sd_card)
 {
     // This thread is given a new SD card struct in the parameter list
     struct sd_card* card = (struct sd_card *)sd_card;
-
+    
     if (!card) return 0;
 
     sd_init_struct(card);

@@ -2,7 +2,7 @@
 
 TOP         = $(shell pwd)
 BUILDDIR    = $(TOP)/build
-TARGET_NAME = cinnamon
+TARGET_NAME = application
 #MAKEFLAGS   = -j6
 COM_PORT    = /dev/ttyS4
 

@@ -5,6 +5,7 @@
 #include <cinnamon/kmalloc.h>
 #include <cinnamon/disk.h>
 #include <cinnamon/string.h>
+#include <cinnamon/panic.h>
 
 /// Takes in a double pointer to a path and modifies it to point to the 
 /// local path after stripping the partition name. This returns the partition
@@ -48,6 +49,7 @@ struct file* dir_open(const char* path)
     // Try to open the relative path inside the partition
     u8 status = fat_dir_open(part, dir, path, string_length(path));
     if (status != FAT_OK) {
+        kfree(dir);
         return NULL;
     }
     return dir;
@@ -63,4 +65,40 @@ u8 dir_read(struct file* dir, struct file_info* info)
     return fat_dir_read(dir->part, dir, info);
 }
 
-struct file* fopen(const char* path, u8 attr);
+/// Opens a file. If takes in a global path and returns a file object
+struct file* file_open(const char* path, u8 attr)
+{
+    // Get the partition from the file name
+    const struct partition* part = get_part_from_path(&path);
+    if (part == NULL) {
+        return NULL;
+    }
+
+    // Allocate a new file
+    struct file* file = kmalloc(sizeof(struct file));
+
+    fat_file_init(file);
+    file->part = part;
+
+    // Try to open the file
+    u8 status = fat_file_open(part, file, path, string_length(path));
+    if (status != FAT_OK) {
+        kfree(file);
+        print("Status => %8b\n", status);
+        return NULL;
+    }
+    print("Status\n");
+    return file;
+}
+
+/// This will read a number of bytes from a file pointed to by `file`. It will
+/// return the acctual number of bytes written
+u8 file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt)
+{
+    // This is used in this function
+    assert(file->part);
+
+    // Read from a file
+    return fat_file_read(file->part, file, data, req_cnt, ret_cnt);
+}
+

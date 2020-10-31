@@ -357,7 +357,7 @@ static u8 fat_cache(const struct partition* part, struct file* file)
 
 /// Increments the file pointer by a number of bytes and caches the new page. 
 /// Returns a FAT status code
-static u8 fat_inc_file_ptr(const struct partition* part, struct file* file,
+static inline u8 fat_inc_file_ptr(const struct partition* part, struct file* file,
     u32 bytes)
 {
     const struct fat* fat = part->fs;
@@ -384,7 +384,7 @@ static u8 fat_inc_file_ptr(const struct partition* part, struct file* file,
                 clust_jump);
 
             // The cluster chain walk might fail because of FAT cache update
-            if (status & FAT_ERROR_MASK) {
+            if (status & (FAT_ERROR_MASK | FAT_EOCC)) {
                 return status;
             }
 
@@ -528,6 +528,15 @@ static u8 fat_file_set_root(const struct partition* part, struct file* dir)
         return status;
     }
     return FAT_OK;
+}
+
+/// Returns if a dir object is the root directory
+static u8 dir_is_root(const struct file* dir)
+{
+    if (dir->page == 0 && dir->page_offset == 0) {
+        return 1;
+    }
+    return 0;
 }
 
 #define LFN_INDEX_SIZE 3
@@ -1007,7 +1016,7 @@ static u32 fat_dir_ent_to_clust(const u8* dir_ent)
 /// file object to the resulting file or folder if existing. If the path is 
 /// wrong it returns a path error. 
 static u8 fat_follow_path(const struct partition* part, struct file* dir,
-    const char* path, u32 size, u8 dir_only)
+    const char* path, u32 size)
 {
     const char* curr_frag = path;
 
@@ -1023,17 +1032,7 @@ static u8 fat_follow_path(const struct partition* part, struct file* dir,
         if (status != FAT_OK) {
             return status;
         }
-
         u8* ent_ptr = dir->cache + dir->page_offset;
-
-        // We have a match. If it is a file and the `dir_only` is specified 
-        // we dont go into it and return a path error
-        if (dir_only) {
-            u8 attr = ent_ptr[SFN_ATTR];
-            if ((attr & ATTR_DIR) == 0) {
-                return FAT_BAD_PATH;
-            }
-        }
 
         // We have a match in the path
         u32 clust = fat_dir_ent_to_clust(ent_ptr);
@@ -1043,6 +1042,8 @@ static u8 fat_follow_path(const struct partition* part, struct file* dir,
         if (ent_ptr[0] == '.' && ent_ptr[1] == '.' && clust == 0) {
             status = fat_file_set_root(part, dir);
         } else {
+            // Update the file size first
+            dir->size = *(u32 *)(dir->cache + dir->page_offset + SFN_FILE_SIZE);
             status = fat_set_cluster(part, dir, clust);
         }
 
@@ -1170,7 +1171,20 @@ u8 fat_dir_open(const struct partition* part, struct file* dir,
     if (status != FAT_OK) {
         return status;
     }
-    return fat_follow_path(part, dir, path, size, 1);
+    status = fat_follow_path(part, dir, path, size);
+
+    // Check for errors
+    if (status != FAT_OK) {
+        return status;
+    }
+
+    // Check if the opened file is acctually a directory
+    if ((dir->cache[dir->page_offset + SFN_ATTR] & ATTR_DIR) == 0) {
+        if (dir_is_root(dir) == 0) {
+            return FAT_BAD_PATH;
+        }
+    }
+    return FAT_OK;
 }
 
 /// Takes in a directory pointer and reads the directory entry
@@ -1197,6 +1211,97 @@ u8 fat_dir_read(const struct partition* part, struct file* dir,
     }
 
     return FAT_OK;
+}
+
+/// Gets the volume label
+u8 fat_get_label(const struct partition* part, struct file_info* info)
+{
+    struct file* dir = kmalloc(sizeof(struct file));
+
+    // Set the dir to the root directory
+    u8 status = fat_file_set_root(part, dir);
+    if (status & FAT_ERROR_MASK) {
+        return status;
+    }
+
+    while (1) {
+        // Read one entry
+        status = fat_dir_read(part, dir, info);
+        if (status & (FAT_ERROR_MASK | FAT_EOF)) {
+            kfree(dir);
+            return status;
+        }
+
+        // Check if it is the volume label
+        if (info->attr & ATTR_VOL_LABEL) {
+            kfree(dir);
+            return FAT_OK;
+        }
+    }
+}
+
+/// Read a number of bytes from a file and returns the numbr of of bytes
+/// written
+u8 fat_file_open(const struct partition* part, struct file* file,
+    const char* path, u32 size)
+{
+    // Start at the root directory
+    u8 status = fat_file_set_root(part, file);
+    if (status != FAT_OK) {
+        return status;
+    }
+    status = fat_follow_path(part, file, path, size);
+
+    // Check for errors
+    if (status != FAT_OK) {
+        return status;
+    }
+
+    // Check if the opened file is acctually a directory
+    if (file->cache[file->page_offset + SFN_ATTR] & ATTR_DIR) {
+        if (dir_is_root(file) == 0) {
+            return FAT_BAD_PATH;
+        }
+    }
+    return FAT_OK;
+}
+
+u8 fat_file_read(const struct partition* part, struct file* file,
+    u8* data, u32 req_cnt, u32* ret_cnt)
+{
+    // Check the parameters
+    assert(file);
+    assert(data);
+    assert(ret_cnt);
+
+    // Check if the file is zero
+    if (file->size == 0) {
+        *ret_cnt = 0;
+        return FAT_EOF;
+    }
+
+    u32 i;
+    u8 status = FAT_OK;
+    for (i = 0; i < req_cnt; i++) {
+
+        // Read the data into the buffer
+        *data++ = file->cache[file->page_offset];
+
+        status = fat_inc_file_ptr(part, file, 1);
+        if (file->file_offset >= file->size) {
+            i++;
+            break;
+        }
+
+        // Break if error or end of file
+        if (status & (FAT_ERROR_MASK | FAT_EOCC)) {
+            i++;
+            break;
+        }
+    }
+
+    *ret_cnt = i;
+    return status;
 }
 
 #define NW 20
@@ -1271,20 +1376,22 @@ u32 fat_mount_partition(struct partition* part)
     return 1;
 }
 
+
+extern struct sys_disk sys_disk;
+
 void fat_test(struct disk* disk)
 {
-    return;
     print("--- Running FAT test ---\n");
 
-    struct file* dir = dir_open("/sda3");
-    
+    // Open the root directory
+    struct file* dir = dir_open("/sda2");
     if (!dir) {
         print("Cannot open file\n");
         return;
     }
 
+    // Print the root directory
     struct file_info* info = kmalloc(sizeof(struct file_info));
-
     u8 status;
     file_header();
     while (1) {
@@ -1295,4 +1402,27 @@ void fat_test(struct disk* disk)
         file_print(info);
         fat_get_next_entry(dir->part, dir);
     };
+
+    // Test file read
+    struct file* elf = file_open("/sda2/Makefile", FILE_ATTR_R);
+
+    if (elf == NULL) {
+        print("Thats right\n");
+    }
+
+    u32 ret_cnt;
+    u8* buffer = kmalloc(512);
+    do {
+        u8 status = file_read(elf, buffer, 512, &ret_cnt);
+        print("Return => %d\n", ret_cnt);
+        if (status != FAT_OK) {
+            print("\nWrong\n");
+            fat_status(status);
+            break;
+        }
+
+        // We a new data from the file
+        print("%*s", ret_cnt, buffer);
+
+    } while (ret_cnt == 512);
 }

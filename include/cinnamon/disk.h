@@ -40,7 +40,9 @@ struct partition {
 
     const struct disk* parent_disk;
 
+    // Names for the partition
     char name[DISK_NAME_LEN];
+    char label[256];
     u8 part_number;
 
     struct list_node node;

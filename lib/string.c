@@ -21,3 +21,14 @@ u32 string_length(const char* string)
     }
     return string - start;
 }
+
+/// Copies the string pointed to by src to dest. The src string should be NULL
+/// terminated
+void string_copy(const char* src, char* dest)
+{
+    while (*src) {
+        *dest++ = *src++;
+    }
+    // NULL termination
+    *dest = *src;
+}

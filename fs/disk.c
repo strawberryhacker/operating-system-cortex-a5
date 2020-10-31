@@ -13,7 +13,7 @@ static const char* disk_names[] = {
     "mmc"
 };
 
-static struct sys_disk sys_disk = {0};
+struct sys_disk sys_disk = {0};
 
 void disk_init(void)
 {
@@ -51,7 +51,7 @@ void list_partitions(void)
     print("Partitions \n");
     list_iterate(node, &sys_disk.partitions) {
         struct partition* part = list_get_entry(node, struct partition, node);
-        print("> %s\n", part->name);
+        print("> %s label %s\n", part->name, part->label);
     }
 }
 
@@ -188,13 +188,27 @@ void disk_add(struct disk* disk, enum disk_type type)
     // Find all the partitions on the MBR
     disk_find_partitions(disk);
 
+    // Allocate onf file info for the file name
+    struct file_info* info = kmalloc(sizeof(struct file_info));
+
     // Try to mount the partitions
     for (u32 i = 0; i < 4; i++) {
-        if (disk->partitions[i].sect_count) {
+        struct partition* part = &disk->partitions[i];
+        if (part->sect_count) {
 
             // Try to mount the partition
-            if(fat_mount_partition(&disk->partitions[i])) {
-                add_partition(&disk->partitions[i]);
+            if(!fat_mount_partition(part)) {
+                continue;
+            }
+
+            // Add the partition
+            add_partition(part);
+
+            // Get the volume label
+            if (fat_get_label(part, info) == FAT_OK) {
+                string_copy(info->name, part->label);
+            } else {
+                string_copy("No label", part->label);
             }
         }
     }

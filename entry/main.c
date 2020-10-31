@@ -62,11 +62,6 @@ void driver_init(void)
     //dma_init();
 }
 
-u32 t(void* args)
-{
-    while (1);
-}
-
 /// Called by entry.s after low level initialization finishes
 void main(void)
 {
@@ -78,9 +73,7 @@ void main(void)
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
-    task_manager_init();
-
-    create_kernel_thread(t, 500, "benchmark", NULL, SCHED_RT);
+    //task_manager_init();
 
     sched_start();
 } 
