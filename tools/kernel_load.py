@@ -15,7 +15,7 @@ class flasher:
     POLYNOMIAL = 0xB2
     CMD_WRITE_PAGE = 0x04
     CMD_RESET = 0x06
-    BAR_LENGTH = 40
+    BAR_LENGTH = 25
     total = 1
     progress = 0
 
@@ -45,7 +45,7 @@ class flasher:
 
     def serial_open(self):
         try:
-            self.com = serial.Serial(port=self.com_port, baudrate=230400, timeout=1)
+            self.com = serial.Serial(port=self.com_port, baudrate=576000, timeout=1)
         except serial.SerialException as e:
             print(e)
             exit()

@@ -68,6 +68,9 @@ void main(void)
     // Initialize the kernel system
     early_init();
     kernel_init();
+
+    irq_enable();
+    while (1);
     driver_init();
 
     // ==================================================

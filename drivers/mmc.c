@@ -478,6 +478,7 @@ u32 mmc_send_command(struct sd_card* sd, struct mmc_cmd* cmd, struct mmc_data* d
             if (!timeout) {
                 print("Desc => %p\n", mmc->AESR);
                 print("Desc => %p\n", mmc->ASAR);
+                
                 struct mmc_adma* a = (struct mmc_adma *)mmc->ASAR;
                 print("A => %p\n", a->addr);
                 print("A => %05b\n", a->attr);

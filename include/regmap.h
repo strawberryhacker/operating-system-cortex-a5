@@ -491,4 +491,33 @@ struct dma_reg {
 #define DMA0 ((struct dma_reg *)0xF0010000)
 #define DMA1 ((struct dma_reg *)0xF0004000)
 
+/// SPI registers
+struct spi_reg {
+    __w u32 CR;
+    _rw u32 MR;
+    __r u32 RDR;
+    __w u32 TDR;
+    __r u32 SR;
+    __w u32 IER;
+    __w u32 IDR;
+    __r u32 IMR; 
+    __r u32 RESERVED0[4];
+
+    // Chip select registers
+    struct {
+        _rw u32 CSR;
+    } chip_select[4];
+
+    _rw u32 FMR;
+    __r u32 FLR;
+    __r u32 CMPR;
+    __r u32 RESERVED1[38];
+    _rw u32 WPMR;
+    __r u32 WPSR;
+};
+
+#define SPI0 ((struct spi_reg *)0xF8000000)
+#define SPI1 ((struct spi_reg *)0xFC000000)
+
+
 #endif

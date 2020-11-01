@@ -7,6 +7,7 @@
 #include <cinnamon/string.h>
 #include <cinnamon/disk.h>
 #include <cinnamon/fs.h>
+#include <cinnamon/page_alloc.h>
 
 /// This file implements the Microsoft® FAT32 file system. The implementation
 /// supports the LFN extension as well as the known 8.3 file name. 
@@ -357,8 +358,8 @@ static u8 fat_cache(const struct partition* part, struct file* file)
 
 /// Increments the file pointer by a number of bytes and caches the new page. 
 /// Returns a FAT status code
-static inline u8 fat_inc_file_ptr(const struct partition* part, struct file* file,
-    u32 bytes)
+static inline u8 fat_inc_file_ptr(const struct partition* part,
+    struct file* file, u32 bytes)
 {
     const struct fat* fat = part->fs;
 
@@ -373,7 +374,7 @@ static inline u8 fat_inc_file_ptr(const struct partition* part, struct file* fil
         file->page_offset &= fat->page_mask;
 
         // The page increment might overflow the current cluster
-        u32 curr_cluster = file->page >> fat->clust_order;
+        u32 curr_cluster = (file->page >> fat->clust_order) + fat->root_clust_num;
         u32 clust_jump = ((file->page + page_inc) >> fat->clust_order) -
             curr_cluster;
 
@@ -1217,6 +1218,7 @@ u8 fat_dir_read(const struct partition* part, struct file* dir,
 u8 fat_get_label(const struct partition* part, struct file_info* info)
 {
     struct file* dir = kmalloc(sizeof(struct file));
+    fat_file_init(dir);
 
     // Set the dir to the root directory
     u8 status = fat_file_set_root(part, dir);
@@ -1376,16 +1378,15 @@ u32 fat_mount_partition(struct partition* part)
     return 1;
 }
 
-
-extern struct sys_disk sys_disk;
-
+/// Test function for testing the file syatem
 void fat_test(struct disk* disk)
 {
     print("--- Running FAT test ---\n");
 
     // Open the root directory
-    struct file* dir = dir_open("/sda2");
-    if (!dir) {
+    struct file* dir = dir_open("/sda2/application/build");
+    if (!dir) 
+    {
         print("Cannot open file\n");
         return;
     }
@@ -1404,25 +1405,33 @@ void fat_test(struct disk* disk)
     };
 
     // Test file read
-    struct file* elf = file_open("/sda2/Makefile", FILE_ATTR_R);
+    struct file* elf = 
+        file_open("/sda2/application/build/application.elf", FILE_ATTR_R);
 
     if (elf == NULL) {
-        print("Thats right\n");
+        return;
     }
 
+    print("ELF size => %d\n", elf->size);
+
     u32 ret_cnt;
-    u8* buffer = kmalloc(512);
+
+    // Getting the allocation size in `order`
+    u32 elf_order = bytes_to_order(elf->size);
+
+    // Allocating the pages
+    struct page* elf_alloc = alloc_pages(elf_order);
+    u8* elf_buffer = page_to_va(elf_alloc);
+    u8* buffer = elf_buffer;
     do {
-        u8 status = file_read(elf, buffer, 512, &ret_cnt);
-        print("Return => %d\n", ret_cnt);
+        u8 status = file_read(elf, buffer, 512000, &ret_cnt);
+        print("Bytes acctually written => %d\n", ret_cnt);
         if (status != FAT_OK) {
-            print("\nWrong\n");
             fat_status(status);
             break;
         }
-
-        // We a new data from the file
-        print("%*s", ret_cnt, buffer);
-
+        buffer += 512;
     } while (ret_cnt == 512);
+
+    print("Done\n");
 }
