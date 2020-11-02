@@ -374,9 +374,13 @@ static inline u8 fat_inc_file_ptr(const struct partition* part,
         file->page_offset &= fat->page_mask;
 
         // The page increment might overflow the current cluster
-        u32 curr_cluster = (file->page >> fat->clust_order) + fat->root_clust_num;
-        u32 clust_jump = ((file->page + page_inc) >> fat->clust_order) -
-            curr_cluster;
+        u32 curr_cluster = (file->page >> fat->clust_order) +
+            fat->root_clust_num;
+        u32 next_cluster = ((file->page + page_inc) >> fat->clust_order) + 
+            fat->root_clust_num;
+
+        // Find how many clusters we have to jump
+        u32 clust_jump = next_cluster - curr_cluster;
 
         // If cluster jump is non-zero we have to follow the cluster chain in
         // the file allocation table
@@ -1384,7 +1388,7 @@ void fat_test(struct disk* disk)
     print("--- Running FAT test ---\n");
 
     // Open the root directory
-    struct file* dir = dir_open("/sda2/application/build");
+    struct file* dir = dir_open("/sda2/application/");
     if (!dir) 
     {
         print("Cannot open file\n");

@@ -60,7 +60,7 @@ void kernel_init(void)
 /// This will handle driver initialization
 void driver_init(void)
 {
-    //mmc_init();
+    mmc_init();
     //dma_init();
 }
 
@@ -75,8 +75,7 @@ void main(void)
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
-    task_manager_init();
-    led_strip_init();
+    //task_manager_init();
 
     sched_start();
 } 
