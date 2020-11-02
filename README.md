@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="460" height="500" src="https://github.com/strawberryhacker/citrusOS/blob/master/doc/cover.png">
+  <img width="460" height="500" src="https://github.com/strawberryhacker/citrusOS/blob/master/doc/citrus.png">
 </p>
 
 ## Summary
