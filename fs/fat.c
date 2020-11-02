@@ -1382,6 +1382,8 @@ u32 fat_mount_partition(struct partition* part)
     return 1;
 }
 
+#include <citrus/elf.h>
+
 /// Test function for testing the file syatem
 void fat_test(struct disk* disk)
 {
@@ -1436,6 +1438,8 @@ void fat_test(struct disk* disk)
         }
         buffer += 512;
     } while (ret_cnt == 512);
+
+    elf_init(elf_buffer, ret_cnt);
 
     print("Done\n");
 }
