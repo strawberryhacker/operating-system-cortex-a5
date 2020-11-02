@@ -1,7 +1,7 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/apic.h>
-#include <cinnamon/matrix.h>
+#include <citrus/apic.h>
+#include <citrus/matrix.h>
 #include <regmap.h>
 
 #define PERIPH_CNT 72

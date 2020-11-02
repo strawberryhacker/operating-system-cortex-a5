@@ -1,16 +1,16 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/mm.h>
-#include <cinnamon/align.h>
-#include <cinnamon/kmalloc.h>
-#include <cinnamon/slob.h>
-#include <cinnamon/buddy_alloc.h>
-#include <cinnamon/mem.h>
-#include <cinnamon/boot_alloc.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/sched.h>
-#include <cinnamon/thread.h>
-#include <cinnamon/panic.h>
+#include <citrus/mm.h>
+#include <citrus/align.h>
+#include <citrus/kmalloc.h>
+#include <citrus/slob.h>
+#include <citrus/buddy_alloc.h>
+#include <citrus/mem.h>
+#include <citrus/boot_alloc.h>
+#include <citrus/panic.h>
+#include <citrus/sched.h>
+#include <citrus/thread.h>
+#include <citrus/panic.h>
 
 /// Hold the virtual end address of the kernel memory. Defined in the linker
 extern u32 _kernel_e;

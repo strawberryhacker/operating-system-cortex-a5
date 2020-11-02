@@ -1,13 +1,13 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/mmc.h>
-#include <cinnamon/print.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/gpio.h>
-#include <cinnamon/clock.h>
-#include <cinnamon/apic.h>
-#include <cinnamon/thread.h>
-#include <cinnamon/kmalloc.h>
+#include <citrus/mmc.h>
+#include <citrus/print.h>
+#include <citrus/panic.h>
+#include <citrus/gpio.h>
+#include <citrus/clock.h>
+#include <citrus/apic.h>
+#include <citrus/thread.h>
+#include <citrus/kmalloc.h>
 #include <stddef.h>
 
 /// This code is configuring the MMC driver to work in SD / SDIO mode

@@ -1,16 +1,16 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/loader.h>
-#include <cinnamon/types.h>
-#include <cinnamon/timer.h>
-#include <cinnamon/print.h>
-#include <cinnamon/apic.h>
-#include <cinnamon/crc.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/interrupt.h>
-#include <cinnamon/page_alloc.h>
-#include <cinnamon/align.h>
-#include <cinnamon/elf.h>
+#include <citrus/loader.h>
+#include <citrus/types.h>
+#include <citrus/timer.h>
+#include <citrus/print.h>
+#include <citrus/apic.h>
+#include <citrus/crc.h>
+#include <citrus/panic.h>
+#include <citrus/interrupt.h>
+#include <citrus/page_alloc.h>
+#include <citrus/align.h>
+#include <citrus/elf.h>
 #include <regmap.h>
 #include <stddef.h>
 

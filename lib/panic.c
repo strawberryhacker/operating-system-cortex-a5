@@ -1,7 +1,7 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/panic.h>
-#include <cinnamon/print.h>
+#include <citrus/panic.h>
+#include <citrus/print.h>
 #include <regmap.h>
 
 void assert_handler(const char* file, u32 line, u32 statement)

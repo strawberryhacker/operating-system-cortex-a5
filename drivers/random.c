@@ -1,6 +1,6 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/random.h>
+#include <citrus/random.h>
 
 void random_init(void)
 {

@@ -13,7 +13,7 @@
 #ifndef REGMAP_H
 #define REGMAP_H
 
-#include <cinnamon/types.h>
+#include <citrus/types.h>
 
 // Types used for registers 
 #define __r volatile const
@@ -518,6 +518,5 @@ struct spi_reg {
 
 #define SPI0 ((struct spi_reg *)0xF8000000)
 #define SPI1 ((struct spi_reg *)0xFC000000)
-
 
 #endif

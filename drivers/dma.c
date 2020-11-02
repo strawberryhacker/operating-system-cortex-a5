@@ -1,10 +1,10 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/dma.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/print.h>
-#include <cinnamon/apic.h>
-#include <cinnamon/clock.h>
+#include <citrus/dma.h>
+#include <citrus/panic.h>
+#include <citrus/print.h>
+#include <citrus/apic.h>
+#include <citrus/clock.h>
 #include <regmap.h>
 
 static inline void dma_channel_irq_en(struct dma_reg* dma, u8 channel)

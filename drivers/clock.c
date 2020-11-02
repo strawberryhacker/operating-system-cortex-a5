@@ -1,6 +1,6 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/clock.h>
+#include <citrus/clock.h>
 #include <regmap.h>
 
 /// Enables a peripheral clock by its PID

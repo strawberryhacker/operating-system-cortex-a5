@@ -1,12 +1,12 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/types.h>
-#include <cinnamon/sched.h>
-#include <cinnamon/print.h>
-#include <cinnamon/list.h>
-#include <cinnamon/thread.h>
-#include <cinnamon/interrupt.h>
-#include <cinnamon/atomic.h>
+#include <citrus/types.h>
+#include <citrus/sched.h>
+#include <citrus/print.h>
+#include <citrus/list.h>
+#include <citrus/thread.h>
+#include <citrus/interrupt.h>
+#include <citrus/atomic.h>
 #include <stddef.h>
 
 void rt_init(struct rq* rq)

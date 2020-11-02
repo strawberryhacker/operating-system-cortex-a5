@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="460" height="500" src="https://github.com/strawberryhacker/cinnamonOS/blob/master/doc/cover.png">
+  <img width="460" height="500" src="https://github.com/strawberryhacker/citrusOS/blob/master/doc/cover.png">
 </p>
 
 ## Summary
@@ -27,8 +27,8 @@ Then you must install the second stage bootloader; c-boot, which will load the o
 This will generate a binary called **boot.bin** in the build/ folder. Place this file in the **root** directory of a FAT formatted SD card and plug it into the board. The next step is to download and build the kernel. 
 
 ```
-> git clone https://github.com/strawberryhacker/cinnamon
-> cd cinnamon
+> git clone https://github.com/strawberryhacker/citrus
+> cd citrus
 > make CONFIG=sama5d2x_config upload
 ```
 

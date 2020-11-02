@@ -1,17 +1,17 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/elf.h>
-#include <cinnamon/print.h>
-#include <cinnamon/thread.h>
-#include <cinnamon/mm.h>
-#include <cinnamon/atomic.h>
-#include <cinnamon/page_alloc.h>
-#include <cinnamon/mem.h>
-#include <cinnamon/sched.h>
-#include <cinnamon/pt_entry.h>
-#include <cinnamon/align.h>
-#include <cinnamon/cache.h>
-#include <cinnamon/panic.h>
+#include <citrus/elf.h>
+#include <citrus/print.h>
+#include <citrus/thread.h>
+#include <citrus/mm.h>
+#include <citrus/atomic.h>
+#include <citrus/page_alloc.h>
+#include <citrus/mem.h>
+#include <citrus/sched.h>
+#include <citrus/pt_entry.h>
+#include <citrus/align.h>
+#include <citrus/cache.h>
+#include <citrus/panic.h>
     #include <stddef.h>
 
 /// ELF type

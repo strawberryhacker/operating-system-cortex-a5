@@ -1,19 +1,19 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/thread.h>
-#include <cinnamon/print.h>
-#include <cinnamon/kmalloc.h>
-#include <cinnamon/page_alloc.h>
-#include <cinnamon/align.h>
-#include <cinnamon/mm.h>
-#include <cinnamon/pt_entry.h>
-#include <cinnamon/process.h>
-#include <cinnamon/cache.h>
-#include <cinnamon/sched.h>
-#include <cinnamon/atomic.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/interrupt.h>
-#include <cinnamon/syscall.h>
+#include <citrus/thread.h>
+#include <citrus/print.h>
+#include <citrus/kmalloc.h>
+#include <citrus/page_alloc.h>
+#include <citrus/align.h>
+#include <citrus/mm.h>
+#include <citrus/pt_entry.h>
+#include <citrus/process.h>
+#include <citrus/cache.h>
+#include <citrus/sched.h>
+#include <citrus/atomic.h>
+#include <citrus/panic.h>
+#include <citrus/interrupt.h>
+#include <citrus/syscall.h>
 
 /// Initial CPSR values for kernel / user threads. The mode is set, interrupts
 /// are unmasked and the status bits are cleared

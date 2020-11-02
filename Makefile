@@ -2,7 +2,7 @@
 
 TOP         = $(shell pwd)
 BUILDDIR    = $(TOP)/build
-TARGET_NAME = cinnamon
+TARGET_NAME = citrus
 MAKEFLAGS   = -j6
 COM_PORT    = /dev/ttyS4
 
@@ -48,6 +48,8 @@ include $(TOP)/mm/Makefile
 include $(TOP)/benchmark/Makefile
 include $(TOP)/kernel/Makefile
 include $(TOP)/fs/Makefile
+include $(TOP)/app/Makefile
+include $(TOP)/graphics/Makefile
 
 # Check that the linker script is provided
 ifneq ($(MAKECMDGOALS),clean)
@@ -105,7 +107,7 @@ install: all
 
 app:
 	@cd $(TOP)/application && $(MAKE) -s clean && $(MAKE) -s
-	@python3 $(TOP)/tools/app_load.py -c $(COM_PORT) -f $(TOP)/application/build/cinnamon.elf
+	@python3 $(TOP)/tools/app_load.py -c $(COM_PORT) -f $(TOP)/application/build/citrus.elf
 
 debug: install
 	$(GDB) -f $(BUILDDIR)/$(TARGET_NAME).elf -x debug/debug.gdb

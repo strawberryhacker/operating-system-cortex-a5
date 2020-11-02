@@ -1,17 +1,17 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/types.h>
-#include <cinnamon/thread.h>
-#include <cinnamon/page_alloc.h>
-#include <cinnamon/mm.h>
-#include <cinnamon/kmalloc.h>
-#include <cinnamon/align.h>
-#include <cinnamon/list.h>
-#include <cinnamon/page_alloc.h>
-#include <cinnamon/pt_entry.h>
-#include <cinnamon/mem.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/cache.h>
+#include <citrus/types.h>
+#include <citrus/thread.h>
+#include <citrus/page_alloc.h>
+#include <citrus/mm.h>
+#include <citrus/kmalloc.h>
+#include <citrus/align.h>
+#include <citrus/list.h>
+#include <citrus/page_alloc.h>
+#include <citrus/pt_entry.h>
+#include <citrus/mem.h>
+#include <citrus/panic.h>
+#include <citrus/cache.h>
 
 /// This sets up the new process memory space and 
 struct page* process_mm_init(struct thread* thread, u32 stack_size)

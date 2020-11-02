@@ -1,6 +1,6 @@
 /* Copyright (C) strawberryhacker */
 
-#include <cinnamon/gpio.h>
+#include <citrus/gpio.h>
 
 static inline void gpio_mask(const struct gpio* gpio)
 {

@@ -1,13 +1,13 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/fat.h>
-#include <cinnamon/kmalloc.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/mem.h>
-#include <cinnamon/string.h>
-#include <cinnamon/disk.h>
-#include <cinnamon/fs.h>
-#include <cinnamon/page_alloc.h>
+#include <citrus/fat.h>
+#include <citrus/kmalloc.h>
+#include <citrus/panic.h>
+#include <citrus/mem.h>
+#include <citrus/string.h>
+#include <citrus/disk.h>
+#include <citrus/fs.h>
+#include <citrus/page_alloc.h>
 
 /// This file implements the Microsoft® FAT32 file system. The implementation
 /// supports the LFN extension as well as the known 8.3 file name. 

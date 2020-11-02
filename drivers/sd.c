@@ -1,11 +1,11 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/sd.h>
-#include <cinnamon/print.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/mem.h>
-#include <cinnamon/disk.h>
-#include <cinnamon/kmalloc.h>
+#include <citrus/sd.h>
+#include <citrus/print.h>
+#include <citrus/panic.h>
+#include <citrus/mem.h>
+#include <citrus/disk.h>
+#include <citrus/kmalloc.h>
 #include <stddef.h>
 
 /// 178 card registers

@@ -1,8 +1,8 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/print.h>
-#include <cinnamon/types.h>
-#include <cinnamon/sched.h>
+#include <citrus/print.h>
+#include <citrus/types.h>
+#include <citrus/sched.h>
 #include <regmap.h>
 
 /// Performs a software reboot. This is called to avoid a manual hardware reset

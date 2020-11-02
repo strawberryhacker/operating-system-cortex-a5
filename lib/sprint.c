@@ -1,6 +1,6 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/sprint.h>
+#include <citrus/sprint.h>
 #include <regmap.h>
 #include <stddef.h>
 

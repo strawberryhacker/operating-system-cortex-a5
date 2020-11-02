@@ -1,12 +1,12 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/disk.h>
-#include <cinnamon/print.h>
-#include <cinnamon/string.h>
-#include <cinnamon/mem.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/kmalloc.h>
-#include <cinnamon/fat.h>
+#include <citrus/disk.h>
+#include <citrus/print.h>
+#include <citrus/string.h>
+#include <citrus/mem.h>
+#include <citrus/panic.h>
+#include <citrus/kmalloc.h>
+#include <citrus/fat.h>
 
 static const char* disk_names[] = {
     "sd",

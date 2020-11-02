@@ -1,8 +1,8 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/boot_alloc.h>
-#include <cinnamon/align.h>
-#include <cinnamon/panic.h>
+#include <citrus/boot_alloc.h>
+#include <citrus/align.h>
+#include <citrus/panic.h>
 
 static u32 boot_alloc_en = 0;
 

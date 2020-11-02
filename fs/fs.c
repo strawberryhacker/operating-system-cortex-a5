@@ -1,11 +1,11 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/fs.h>
-#include <cinnamon/fat.h>
-#include <cinnamon/kmalloc.h>
-#include <cinnamon/disk.h>
-#include <cinnamon/string.h>
-#include <cinnamon/panic.h>
+#include <citrus/fs.h>
+#include <citrus/fat.h>
+#include <citrus/kmalloc.h>
+#include <citrus/disk.h>
+#include <citrus/string.h>
+#include <citrus/panic.h>
 
 /// Takes in a double pointer to a path and modifies it to point to the 
 /// local path after stripping the partition name. This returns the partition

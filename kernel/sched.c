@@ -1,16 +1,16 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/sched.h>
-#include <cinnamon/print.h>
-#include <cinnamon/pit.h>
-#include <cinnamon/apic.h>
-#include <cinnamon/list.h>
-#include <cinnamon/thread.h>
-#include <cinnamon/apic.h>
-#include <cinnamon/interrupt.h>
-#include <cinnamon/atomic.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/cpu_timer.h>
+#include <citrus/sched.h>
+#include <citrus/print.h>
+#include <citrus/pit.h>
+#include <citrus/apic.h>
+#include <citrus/list.h>
+#include <citrus/thread.h>
+#include <citrus/apic.h>
+#include <citrus/interrupt.h>
+#include <citrus/atomic.h>
+#include <citrus/panic.h>
+#include <citrus/cpu_timer.h>
 #include <regmap.h>
 
 #define PIT_IRQ 3

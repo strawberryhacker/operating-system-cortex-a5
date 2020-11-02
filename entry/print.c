@@ -1,7 +1,7 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/print.h>
-#include <cinnamon/sprint.h>
+#include <citrus/print.h>
+#include <citrus/sprint.h>
 #include <regmap.h>
 
 static char buffer[128];

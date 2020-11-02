@@ -1,6 +1,6 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/matrix.h>
+#include <citrus/matrix.h>
 
 // Defines the PID numbers of the peripherals connected to the H64MX matrix 
 static const u8 h64mx_table[] =

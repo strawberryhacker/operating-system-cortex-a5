@@ -1,6 +1,6 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/pit.h>
+#include <citrus/pit.h>
 #include <regmap.h>
 
 void pit_init(u8 irq_en, u32 period)

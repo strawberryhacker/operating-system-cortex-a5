@@ -1,9 +1,9 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/types.h>
-#include <cinnamon/sched.h>
-#include <cinnamon/print.h>
-#include <cinnamon/thread.h>
+#include <citrus/types.h>
+#include <citrus/sched.h>
+#include <citrus/print.h>
+#include <citrus/thread.h>
 #include <stddef.h>
 
 void idle_init(struct rq* rq)

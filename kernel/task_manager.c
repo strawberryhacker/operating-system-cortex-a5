@@ -1,11 +1,11 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/task_manager.h>
-#include <cinnamon/thread.h>
-#include <cinnamon/sched.h>
-#include <cinnamon/syscall.h>
-#include <cinnamon/mm.h>
-#include <cinnamon/cache.h>
+#include <citrus/task_manager.h>
+#include <citrus/thread.h>
+#include <citrus/sched.h>
+#include <citrus/syscall.h>
+#include <citrus/mm.h>
+#include <citrus/cache.h>
 
 void print_thread_header(void)
 {

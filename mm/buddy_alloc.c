@@ -1,12 +1,12 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/buddy_alloc.h>
-#include <cinnamon/print.h>
-#include <cinnamon/mem.h>
-#include <cinnamon/kmalloc.h>
-#include <cinnamon/align.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/atomic.h>
+#include <citrus/buddy_alloc.h>
+#include <citrus/print.h>
+#include <citrus/mem.h>
+#include <citrus/kmalloc.h>
+#include <citrus/align.h>
+#include <citrus/panic.h>
+#include <citrus/atomic.h>
 
 static inline u32 get_order_map_words(u32 order, u32 max_orders)
 {

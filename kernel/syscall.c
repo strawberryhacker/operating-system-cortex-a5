@@ -1,11 +1,11 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/types.h>
-#include <cinnamon/print.h>
-#include <cinnamon/sched.h>
-#include <cinnamon/thread.h>
-#include <cinnamon/page_alloc.h>
-#include <cinnamon/mm.h>
+#include <citrus/types.h>
+#include <citrus/print.h>
+#include <citrus/sched.h>
+#include <citrus/thread.h>
+#include <citrus/page_alloc.h>
+#include <citrus/mm.h>
 
 /// Called by the SVC vector. The AAPCS stackframe are preserved before this call.
 /// The LR at the 5th position in the stack frame will contain the return value

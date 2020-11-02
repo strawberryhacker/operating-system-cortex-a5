@@ -1,7 +1,7 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/cpu_timer.h>
-#include <cinnamon/clock.h>
+#include <citrus/cpu_timer.h>
+#include <citrus/clock.h>
 #include <regmap.h>
 
 void cpu_timer_init(void)

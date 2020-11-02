@@ -96,7 +96,7 @@ class flasher:
             sys.exit()
 
     def load_elf(self):
-        print("Connecting to cinnamon...")
+        print("Connecting to citrus...")
         f = open(self.file, "rb")
         kernel_binary = f.read()
         self.serial_open()

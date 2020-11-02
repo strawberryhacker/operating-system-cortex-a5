@@ -1,29 +1,31 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/types.h>
-#include <cinnamon/sprint.h>
-#include <cinnamon/apic.h>
-#include <cinnamon/print.h>
-#include <cinnamon/buddy_alloc.h>
-#include <cinnamon/cache.h>
-#include <cinnamon/mm.h>
-#include <cinnamon/benchmark.h>
-#include <cinnamon/thread.h>
-#include <cinnamon/sched.h>
-#include <cinnamon/page_alloc.h>
-#include <cinnamon/pt_entry.h>
-#include <cinnamon/syscall.h>
-#include <cinnamon/interrupt.h>
-#include <cinnamon/atomic.h>
-#include <cinnamon/kmalloc.h>
-#include <cinnamon/loader.h>
-#include <cinnamon/panic.h>
-#include <cinnamon/elf.h>
-#include <cinnamon/gpio.h>
-#include <cinnamon/mmc.h>
-#include <cinnamon/task_manager.h>
-#include <cinnamon/disk.h>
-#include <cinnamon/dma.h>
+#include <citrus/types.h>
+#include <citrus/sprint.h>
+#include <citrus/apic.h>
+#include <citrus/print.h>
+#include <citrus/buddy_alloc.h>
+#include <citrus/cache.h>
+#include <citrus/mm.h>
+#include <citrus/benchmark.h>
+#include <citrus/thread.h>
+#include <citrus/sched.h>
+#include <citrus/page_alloc.h>
+#include <citrus/pt_entry.h>
+#include <citrus/syscall.h>
+#include <citrus/interrupt.h>
+#include <citrus/atomic.h>
+#include <citrus/kmalloc.h>
+#include <citrus/loader.h>
+#include <citrus/panic.h>
+#include <citrus/elf.h>
+#include <citrus/gpio.h>
+#include <citrus/mmc.h>
+#include <citrus/task_manager.h>
+#include <citrus/disk.h>
+#include <citrus/dma.h>
+
+#include <app/led_strip.h>
 
 #include <regmap.h>
 #include <stdarg.h>
@@ -58,7 +60,7 @@ void kernel_init(void)
 /// This will handle driver initialization
 void driver_init(void)
 {
-    mmc_init();
+    //mmc_init();
     //dma_init();
 }
 
@@ -68,15 +70,13 @@ void main(void)
     // Initialize the kernel system
     early_init();
     kernel_init();
-
-    irq_enable();
-    while (1);
     driver_init();
 
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
-    //task_manager_init();
+    task_manager_init();
+    led_strip_init();
 
     sched_start();
 } 

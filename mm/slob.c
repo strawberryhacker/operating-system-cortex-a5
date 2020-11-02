@@ -1,10 +1,10 @@
 /// Copyright (C) strawberryhacker 
 
-#include <cinnamon/slob.h>
-#include <cinnamon/print.h>
-#include <cinnamon/mm.h>
-#include <cinnamon/atomic.h>
-#include <cinnamon/panic.h>
+#include <citrus/slob.h>
+#include <citrus/print.h>
+#include <citrus/mm.h>
+#include <citrus/atomic.h>
+#include <citrus/panic.h>
 #include <stddef.h>
 
 /// Gets the total number of bytes free

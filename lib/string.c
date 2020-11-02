@@ -1,6 +1,6 @@
 /// Copyright (C) strawberryhacker
 
-#include <cinnamon/string.h>
+#include <citrus/string.h>
 
 /// This will copy name to the destimation buffer. The size specifies the 
 /// dest buffer size, and this functions will add the NULL character at the end
