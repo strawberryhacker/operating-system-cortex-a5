@@ -1,10 +1,11 @@
+<br/><br/>
 <p align="center">
-  <img width="460" height="500" src="https://github.com/strawberryhacker/citrusOS/blob/master/doc/citrus.png">
+  <img width="460"  src="https://github.com/strawberryhacker/citrusOS/blob/master/doc/citrus.png">
 </p>
 
 ## Summary
 
-Cinnamon is a bare metal lightweight operation system designed for the Cortex®-A series. Every thing will be completely bare metal - no libraries - literally.
+Citrus is a bare metal lightweight operation system designed for the Cortex®-A series. Every thing will be completely bare metal - no libraries - literally.
 
 ## Building
 
@@ -29,7 +30,7 @@ This will generate a binary called **boot.bin** in the build/ folder. Place this
 ```
 > git clone https://github.com/strawberryhacker/citrus
 > cd citrus
-> make CONFIG=sama5d2x_config upload
+> make install
 ```
 
 This will load the kernel image to main memory over serial and start it. Support for loading the kernel from an SD card will be added to c-boot later. 
