@@ -7,6 +7,10 @@
 
 Citrus is a bare metal lightweight operation system designed for the Cortex®-A series. Every thing will be completely bare metal - no libraries - literally.
 
+## Making an application
+
+Coming soon
+
 ## Building
 
 Some packages is required in order to build the operating system. I recomend using Ubuntu, either native or in WSL. The build-essentials package is used for running make, and the gcc-arm-none-eabi is the compiler toolchain used for building and debugging the operating system.
