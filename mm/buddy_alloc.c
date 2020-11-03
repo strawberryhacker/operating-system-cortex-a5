@@ -149,7 +149,7 @@ struct page* buddy_alloc_pages(u32 order, struct mm_zone* zone)
 
     if (curr_order >= buddy->max_orders) {
         __atomic_leave(atomic);
-        //panic("Failed\n");
+        panic("Failed\n");
         return NULL;
     }
     
@@ -195,7 +195,7 @@ alloc_ok:
     // Update the size from the allocation 
     new_page->order = order;
     buddy->used += (1 << order) * 4096;
-
+    print("A: %d ", buddy->used / 4096);
     __atomic_leave(atomic);
     return new_page;    
 }
@@ -206,6 +206,7 @@ void buddy_free_pages(struct page* page, struct mm_zone* zone)
 {
     u32 atomic = __atomic_enter();
     u32 order = page->order;
+    u32 free_order = page->order;
 
     struct buddy_struct* buddy = (struct buddy_struct *)zone->alloc;
     struct buddy_order* curr_order = &buddy->orders[order];
@@ -235,10 +236,15 @@ void buddy_free_pages(struct page* page, struct mm_zone* zone)
     page = zone->start + index;
     list_add_first(&page->node, &buddy->orders[order].free_list);
 
+    print("F: %d ", buddy->used / 4096);
     if (buddy->used < (1 << order) * 4096) {
+        print("Order => %d\n", order);
+        print("Used => %d\n", (1 << order) * 4096);
+        print("Buddy used => %d\n", buddy->used);
         panic("Buddy error\n");
     }
-    buddy->used -= (1 << order) * 4096;
+    buddy->used -= (1 << free_order) * 4096;
+    
 
     __atomic_leave(atomic);
 }

@@ -24,6 +24,7 @@
 #include <citrus/task_manager.h>
 #include <citrus/disk.h>
 #include <citrus/dma.h>
+#include <graphics/engine.h>
 
 #include <app/led_strip.h>
 
@@ -60,9 +61,11 @@ void kernel_init(void)
 /// This will handle driver initialization
 void driver_init(void)
 {
-    mmc_init();
+    //mmc_init();
     //dma_init();
 }
+
+struct engine e;
 
 /// Called by entry.s after low level initialization finishes
 void main(void)
@@ -76,6 +79,8 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
     //task_manager_init();
+    
+    // Check this....
 
     sched_start();
 } 

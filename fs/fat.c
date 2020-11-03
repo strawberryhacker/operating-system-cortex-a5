@@ -1439,7 +1439,7 @@ void fat_test(struct disk* disk)
         buffer += 512;
     } while (ret_cnt == 512);
 
-    elf_init(elf_buffer, ret_cnt);
+    //elf_init(elf_buffer, ret_cnt);
 
     print("Done\n");
 }

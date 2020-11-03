@@ -114,7 +114,7 @@ struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size,
     alloc_size = align_up_val(alloc_size, 8);
     struct thread* thread = kzmalloc(alloc_size);
 
-    print("Creating kernel thread: %p\n", thread);
+    //print("Creating kernel thread: %p\n", thread);
     init_thread_struct(thread);    
 
     // Set the name of the thread
@@ -209,7 +209,7 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_size,
     const char* name, void* args, u32 flags)
 {
     struct thread* thread = kzmalloc(sizeof(struct thread));
-    print("Creating a user thread: %p\n", thread);
+    //print("Creating a user thread: %p\n", thread);
 
     init_thread_struct(thread);
 
@@ -234,7 +234,7 @@ struct thread* create_process(u32 (*func)(void *), u32 stack_size,
     const char* name, void* args, u32 flags)
 {
     struct thread* thread = kzmalloc(sizeof(struct thread));
-    print("Creating a user process: %p\n", thread);
+    //print("Creating a user process: %p\n", thread);
 
     init_thread_struct(thread);
 

@@ -104,6 +104,8 @@ static void loader_interrupt(void)
 {
     // Receive data
     u8 data = UART4->RHR;
+
+    if (UART4->SR )
     
     if (loader_state == LOADER_IDLE) {
         // Exteral reboot
@@ -195,6 +197,7 @@ static void loader_interrupt(void)
 void loader_init(void)
 {
     loader_state = LOADER_IDLE;
+    
 
     // Initialize the timeout timer to generate a overflow after 1000 ms
     timer_init(648000, timeout_interrupt);
