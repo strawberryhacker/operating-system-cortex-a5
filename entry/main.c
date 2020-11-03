@@ -65,7 +65,7 @@ void driver_init(void)
     //dma_init();
 }
 
-struct engine e;
+volatile float a = 345.234235;
 
 /// Called by entry.s after low level initialization finishes
 void main(void)
@@ -81,6 +81,11 @@ void main(void)
     //task_manager_init();
     
     // Check this....
+
+    while (1) {
+        volatile float b = a * 5;
+        a *= 0.345;
+    }
 
     sched_start();
 } 

@@ -7,3 +7,4 @@ obj-y += /arch/irq.o
 obj-y += /arch/cache.o
 obj-y += /arch/fault.o
 obj-y += /arch/sched.o
+obj-y += /arch/fpu.o

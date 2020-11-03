@@ -18,17 +18,22 @@ GDB     = arm-none-eabi-gdb
 
 # Set the compiler flags
 CFLAGS   += -x c -O1 -g3 -fdata-sections -mlong-calls -Wall
-CFLAGS   += -std=gnu99 -mcpu=cortex-a5 -c -ffunction-sections
+CFLAGS   += -std=gnu99 -c -ffunction-sections -march=armv7-a
 
 # Supress warnings
 CFLAGS   += -Wno-unused-function -Wno-unused-variable
 CFLAGS   += -ffreestanding
 
 LDFLAGS  += -Wl,--start-group -Wl,--end-group
-LDFLAGS  += -Wl,--gc-sections -mcpu=cortex-a5
+LDFLAGS  += -Wl,--gc-sections -march=armv7-a
 LDFLAGS  += -Wl,-Map="$(BUILDDIR)/$(TARGET_NAME).map"
 
-ASMFLAGS += -mcpu=cortex-a5 -g3
+ASMFLAGS += -march=armv7-a -g3
+
+# FPU support 
+CFLAGS += -mfpu=vfpv4-d16 -mfloat-abi=hard -marm
+LDFLAGS += -mfpu=vfpv4-d16 -mfloat-abi=hard -marm
+ASMFLAGS += -mfpu=vfpv4-d16 -mfloat-abi=hard
 
 # ---------------------------------------------------------------------------
 # Include symbols and variables 
