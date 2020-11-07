@@ -6,6 +6,9 @@
 #include <citrus/apic.h>
 #include <citrus/clock.h>
 #include <citrus/mm.h>
+#include <citrus/thread.h>
+#include <citrus/cache.h>
+#include <citrus/syscall.h>
 #include <regmap.h>
 
 #define UART1_DMA_CH 37
@@ -13,13 +16,27 @@
 /// Intialized the DMA hardware making it operational
 static void dma_init_hardware(struct dma_reg* dma)
 {
-
+    
 }
 
 /// Common DMA interrupt handler
-static void dma_common_interrupt(struct dma_reg* reg)
+static void dma_common_interrupt(struct dma_reg* dma)
 {
+
     print("DMA interrupt\n");
+    
+    // Get the first interrupting DMA channel
+    u8 ch;
+    u32 reg = dma->GIS;
+    for (ch = 0; ch < 16; ch++) {
+        if (reg & (1 << ch)) {
+            break;
+        }
+    }
+
+    print("Channel %d\n", ch);
+
+    print("Status => %08b\n", dma->channel[ch].CIS);
 
     while (1);
 }
@@ -36,14 +53,14 @@ static void dma1_interrupt(void)
     dma_common_interrupt(DMA1);
 }
 
-volatile char buffer[] = "I love DMA";
+volatile char buffer[] = "I love DMA\n";
 
 /// Initializes both system DMAs
-void dma_init(void)
+u32 dma_init(void* args)
 {
-    print("DMA starting reg => %p\n", &DMA0->channel[9].CDS_MSP);
-
     // Initialize the clocks
+    clk_pck_enable(6);
+    clk_pck_enable(7);
 
     // Initialize the APIC controler
     apic_add_handler(6, dma0_interrupt);
@@ -61,19 +78,29 @@ void dma_init(void)
         .data           = DMA_DATA_U8,
         .dest_am        = DMA_AM_FIXED,
         .src_am         = DMA_AM_INC,
-        .non_secure     = 1,
+        .non_secure     = 0,
         .memset_enable  = 0,
-        .id             = UART1_DMA_CH,
-        .dest_interface = 0,
+        .dest_interface = 1,
         .src_interface  = 0,
         .type           = DMA_TYPE_MEM_PER,
         .trigger        = DMA_TRIGGER_HW,
         .ublock_cnt     = 1,
-        .ublock_len     = 11,
+        .ublock_len     = 300,
+        .id             = UART1_DMA_CH,
         .src_addr       = va_to_pa((void *)buffer),
         .dest_addr      = (void *)&UART1->THR
     };
+    
+    dcache_clean();
     dma_submit_request(&req);
+
+    while (1) {
+        //print("DMA %032b\n", DMA0->channel[0].CIS);
+        //print("DMA %032b\n\n", DMA0->GS);
+        syscall_thread_sleep(500);
+    }
+
+    return 1;
 }
 
 /// Returns a free DMA channel number and the corresponding hardware
@@ -135,9 +162,6 @@ static void dma_fill_microblock_transfer(struct dma_reg* dma, u8 ch,
     // Write the channel configuration
     dma->channel[ch].CC = reg;
 
-    dma->channel[ch].CSUS = 0;
-    dma->channel[ch].CDS_MSP = 0;
-
     // Clear linked list registers
     dma->channel[ch].CNDC = 0;
     dma->channel[ch].CDS_MSP = 0;
@@ -145,12 +169,11 @@ static void dma_fill_microblock_transfer(struct dma_reg* dma, u8 ch,
     dma->channel[ch].CDUS = 0;
 
     // Enable end of block interrupt
-    dma->channel[ch].CIE = DMA_EOB | 0xFF;
+    dma->channel[ch].CIE = DMA_EOB | DMA_ERROR;
     dma->GIE = (1 << ch);
     
     // Enable the channel
     dma->GE = (1 << ch);
-    dma->GSWR = (1 << ch);
 }
 
 u8 dma_submit_request(struct dma_req* req)
@@ -167,4 +190,9 @@ u8 dma_submit_request(struct dma_req* req)
 
     dma_fill_microblock_transfer(dma, ch, req);
     return 1;
+}
+
+void dma_test_init(void)
+{
+    create_kernel_thread(dma_init, 500, "dmathread", NULL, SCHED_RT);
 }

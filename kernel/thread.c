@@ -38,7 +38,7 @@ void thread_exit(u32 status_code)
     // TODO kill the thread
     print("Quitting  PID: %d with status %d\n", t->pid, status_code);
     while (1) {
-        syscall_thread_sleep(10000000);
+        syscall_thread_sleep(10000);
     }
 
     // REMEMBER TO CHANGE THE RQ->LAZY_FPU POINTER IF THE THREAD HAS A LAZY

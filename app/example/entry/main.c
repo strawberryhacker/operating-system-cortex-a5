@@ -17,7 +17,7 @@ void thread(void *args)
 {
     while (1) {
         print("ELF child thread\n");
-        syscall_thread_sleep(1000000);
+        syscall_thread_sleep(1000);
     }
 }
 
@@ -26,6 +26,6 @@ u32 entry(void* args)
     syscall_create_thread(thread, 500, "elf_child", NULL, 0);
     while (1) {
         print("Hello from ELF binary\n");
-        syscall_thread_sleep(500000);
+        syscall_thread_sleep(500);
     }
 }

@@ -318,13 +318,13 @@ void sched_enable(u32 i)
 
 /// This will put the current running thread into the sleep queue for a number of 
 /// microseconds
-void sched_thread_sleep(u32 us)
+void sched_thread_sleep(u32 ms)
 {
     // Get the current thread
     struct thread* curr = get_curr_thread();
     u64 tick = get_kernel_tick();
     
-    curr->tick_to_wake = tick + (u64)us;
+    curr->tick_to_wake = tick + (u64)(ms * 1000);
     curr->class->dequeue(curr, &rq);
     add_sleep_list(curr, &rq);
     

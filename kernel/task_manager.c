@@ -47,7 +47,7 @@ extern struct rq rq;
 u32 task_manager(void* args)
 {
     while (1) {
-        syscall_thread_sleep(1000000);
+        syscall_thread_sleep(1000);
 
         // Print the task manager header
         u32 p = (100 * rq.idle_rq.idle->window_runtime) / rq.time.window;

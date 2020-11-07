@@ -80,7 +80,7 @@ void sched_init(void);
 void sched_start(void);
 
 /// Put the current runing thread to sleep for a number of us
-void sched_thread_sleep(u32 us);
+void sched_thread_sleep(u32 ms);
 
 
 u32 sched_disable(void);

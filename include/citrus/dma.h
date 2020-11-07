@@ -129,7 +129,12 @@ struct dma_req {
 #define DMA_WRITE_BUS_ERROR   (1 << 5)
 #define DMA_REQ_OVERLOW_ERROR (1 << 6)
 
-void dma_init(void);
+#define DMA_ERROR (DMA_READ_BUS_ERROR | DMA_WRITE_BUS_ERROR | \
+    DMA_REQ_OVERLOW_ERROR)
+
+u32 dma_init(void* args);
+
+void dma_test_init(void);
 
 u8 dma_submit_request(struct dma_req* req);
 
