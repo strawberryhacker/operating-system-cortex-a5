@@ -89,6 +89,8 @@ struct dma_desc3 {
 /// DMA channel
 struct dma_channel {
     struct dma_reg* hw;
+    u8 ch;
+    u8 free;
     u8 lock;
 };
 
@@ -132,10 +134,16 @@ struct dma_req {
 #define DMA_ERROR (DMA_READ_BUS_ERROR | DMA_WRITE_BUS_ERROR | \
     DMA_REQ_OVERLOW_ERROR)
 
-u32 dma_init(void* args);
+void dma_init(void);
 
-void dma_test_init(void);
+struct dma_channel* alloc_dma_channel(void);
+void free_dma_channel(struct dma_channel* ch);
 
-u8 dma_submit_request(struct dma_req* req);
+u8 dma_submit_request(struct dma_req* req, struct dma_channel* ch);
+
+void dma_flush_channel(struct dma_channel* ch);
+
+void dma_stop(struct dma_channel* ch);
+u32 dma_get_microblock_size(struct dma_channel* ch);
 
 #endif

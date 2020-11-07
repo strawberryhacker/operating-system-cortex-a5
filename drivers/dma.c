@@ -9,9 +9,14 @@
 #include <citrus/thread.h>
 #include <citrus/cache.h>
 #include <citrus/syscall.h>
+#include <citrus/atomic.h>
 #include <regmap.h>
 
 #define UART1_DMA_CH 37
+#define DMA_CHANNELS 16
+
+/// List of all the available DMA channels in the system
+static struct dma_channel dma_channels[DMA_CHANNELS * 2];
 
 /// Intialized the DMA hardware making it operational
 static void dma_init_hardware(struct dma_reg* dma)
@@ -53,10 +58,8 @@ static void dma1_interrupt(void)
     dma_common_interrupt(DMA1);
 }
 
-volatile char buffer[] = "I love DMA\n";
-
 /// Initializes both system DMAs
-u32 dma_init(void* args)
+void dma_init(void)
 {
     // Initialize the clocks
     clk_pck_enable(6);
@@ -72,55 +75,17 @@ u32 dma_init(void* args)
     dma_init_hardware(DMA0);
     dma_init_hardware(DMA1);
 
-    struct dma_req req = {
-        .burst          = DMA_BURST_1,
-        .chunk          = DMA_CHUNK_1,
-        .data           = DMA_DATA_U8,
-        .dest_am        = DMA_AM_FIXED,
-        .src_am         = DMA_AM_INC,
-        .non_secure     = 0,
-        .memset_enable  = 0,
-        .dest_interface = 1,
-        .src_interface  = 0,
-        .type           = DMA_TYPE_MEM_PER,
-        .trigger        = DMA_TRIGGER_HW,
-        .ublock_cnt     = 1,
-        .ublock_len     = 300,
-        .id             = UART1_DMA_CH,
-        .src_addr       = va_to_pa((void *)buffer),
-        .dest_addr      = (void *)&UART1->THR
-    };
-    
-    dcache_clean();
-    dma_submit_request(&req);
-
-    while (1) {
-        //print("DMA %032b\n", DMA0->channel[0].CIS);
-        //print("DMA %032b\n\n", DMA0->GS);
-        syscall_thread_sleep(500);
+    // Setup the DMA channels
+    for (u8 i = 0; i < DMA_CHANNELS; i++) {
+        dma_channels[i].hw = DMA0;
+        dma_channels[i].ch = i;
+        dma_channels[i].free = 1;
     }
-
-    return 1;
-}
-
-/// Returns a free DMA channel number and the corresponding hardware
-static inline u8 dma_get_ch_hw_pair(struct dma_reg** dma, u8* ch)
-{
-    for (u8 i = 0; i < 16; i++) {
-        if ((DMA0->GS & (1 << i)) == 0) {
-            *ch = i;
-            *dma = DMA0;
-            return 1;
-        }
+    for (u8 i = 0; i < DMA_CHANNELS; i++) {
+        dma_channels[i + DMA_CHANNELS].hw = DMA0;
+        dma_channels[i + DMA_CHANNELS].ch = i;
+        dma_channels[i + DMA_CHANNELS].free = 1;
     }
-    for (u8 i = 0; i < 16; i++) {
-        if ((DMA1->GS & (1 << i)) == 0) {
-            *ch = i;
-            *dma = DMA1;
-            return 1;
-        }
-    }
-    return 0;
 }
 
 static void dma_fill_microblock_transfer(struct dma_reg* dma, u8 ch, 
@@ -176,23 +141,58 @@ static void dma_fill_microblock_transfer(struct dma_reg* dma, u8 ch,
     dma->GE = (1 << ch);
 }
 
-u8 dma_submit_request(struct dma_req* req)
+/// Allocates a DMA channel
+struct dma_channel* alloc_dma_channel(void)
 {
-    u8 ch = 0;
-    struct dma_reg* dma;
+    u32 flags = __atomic_enter();
 
-    if (dma_get_ch_hw_pair(&dma, &ch) == 0) {
-        print("Error\n");
-        return 0;
+    // Get a both free and un-allocated channel
+    for (u32 i = 0; i < DMA_CHANNELS * 2; i++) {
+        struct dma_channel* ch = &dma_channels[i];
+        if (ch->free) {
+            ch->free = 0;
+            __atomic_leave(flags);
+            return ch;
+        }
     }
 
-    print("Free channel %d\n", ch);
+    __atomic_leave(flags);
+    return NULL;
+}
 
-    dma_fill_microblock_transfer(dma, ch, req);
+/// Frees a DMA channel
+void free_dma_channel(struct dma_channel* ch)
+{
+    // TODO stop any transfers on this channel
+    u32 flags = __atomic_enter();
+    ch->free = 1;
+    __atomic_leave(flags);
+}
+
+u8 dma_submit_request(struct dma_req* req, struct dma_channel* ch)
+{
+    dma_fill_microblock_transfer(ch->hw, ch->ch, req);
     return 1;
 }
 
-void dma_test_init(void)
+void dma_flush_channel(struct dma_channel* ch)
 {
-    create_kernel_thread(dma_init, 500, "dmathread", NULL, SCHED_RT);
+    u32 ch_num = ch->ch;
+    struct dma_reg* dma = ch->hw;
+
+    // Flush the channel
+    dma->GSWF = (1 << ch_num);
+
+    // Wait for the FIFO flush to complete
+    //while (!(dma->channel[ch_num].CIS & (1 << 3)));
+}
+
+void dma_stop(struct dma_channel* ch)
+{
+    ch->hw->GD = (1 << ch->ch);
+}
+
+u32 dma_get_microblock_size(struct dma_channel* ch)
+{
+    return ch->hw->channel[ch->ch].CUBC;
 }

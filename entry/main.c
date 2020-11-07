@@ -27,6 +27,7 @@
 #include <citrus/dma.h>
 #include <graphics/engine.h>
 #include <citrus/fpu.h>
+#include <citrus/dma_receive.h>
 
 #include <app/led_strip.h>
 
@@ -41,7 +42,7 @@ void early_init(void)
 
     // The loader is in control of the kernel download serial line and 
     // should be initialized first in order to access the bootloader. 
-    loader_init();
+    //loader_init();
 
     // Enable interrupt now to support reboot
     irq_enable();
@@ -67,7 +68,8 @@ void kernel_init(void)
 void driver_init(void)
 {
     //mmc_init();
-    //dma_init();
+    dma_init();
+    dma_receive_init();
 }
 
 /// Called by entry.s after low level initialization finishes
@@ -82,7 +84,6 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
     //task_manager_init();
-    dma_test_init();
 
     sched_start();
 } 
