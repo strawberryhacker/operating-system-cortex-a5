@@ -7,9 +7,9 @@
 
 struct pixel {
     u8 glob : 5;
-    u8 r;
-    u8 b;
-    u8 g;
+    u8 red;
+    u8 blue;
+    u8 green;
 };
 
 struct pixel p1;

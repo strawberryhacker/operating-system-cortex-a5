@@ -53,7 +53,7 @@ __undef_exception:
     mov r0, lr
     bl undef_exception
     ldmia sp!, {r0 - r3, r12, lr}
-    movs pc, lr
+    subs pc, lr, #4
 
 @ CPU tries to execute a instruction marked as aborted whithin the pipeline
 @
@@ -171,6 +171,11 @@ context_core:
     isb
 
     ldmia sp!, {r4 - r11}
+
+    @ Disable the FPU because we support lazy context switch
+    vmrs r0, fpexc
+    bic r0, r0, #(1 << 30)
+    vmsr fpexc, r0
 
 skip_context:
     ldmia sp!, {r1, lr}

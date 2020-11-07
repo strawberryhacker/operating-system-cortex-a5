@@ -8,9 +8,17 @@
 #include <citrus/clock.h>
 #include <citrus/interrupt.h>
 #include <citrus/spi.h>
+#include <graphics/engine.h>
 #include <citrus/syscall.h>
 
 struct pixel strip[16];
+
+void led_strip_loop(void)
+{
+
+}
+
+static struct engine e;
 
 /// Main LED strip thread
 u32 led_strip_thread(void* args)
@@ -26,10 +34,16 @@ u32 led_strip_thread(void* args)
     spi_init();
 
     for (u32 i = 0; i < 16; i++){
-        strip[i] = (struct pixel){.glob = 15, .g = 5, .b = 0, .r = 0 };
+        strip[i] = (struct pixel){.glob = 15, .green = 5, .blue = 0, .red = 0 };
     }
 
     led_strip_update(strip, 16);
+
+    engine_init(&e);
+
+    while (1) {
+        led_strip_loop();
+    }
     
     return 1;
 }
@@ -40,6 +54,7 @@ void led_strip_init(void)
     create_kernel_thread(led_strip_thread, 500, "ledstrip", NULL, SCHED_RT);
 }
 
+/// Updates the led strip
 void led_strip_update(struct pixel* pixels, u32 cnt)
 {
     for (u32 i = 0; i < 4; i++) {
@@ -48,9 +63,9 @@ void led_strip_update(struct pixel* pixels, u32 cnt)
 
     for (u32 i = 0; i < cnt; i++) {
         spi_out((0b111 << 5) | pixels->glob);
-        spi_out(pixels->b);
-        spi_out(pixels->g);
-        spi_out(pixels->r);
+        spi_out(pixels->blue);
+        spi_out(pixels->green);
+        spi_out(pixels->red);
     }
 
     for (u32 i = 0; i < 4; i++) {

@@ -17,6 +17,7 @@
 #include <citrus/atomic.h>
 #include <citrus/kmalloc.h>
 #include <citrus/loader.h>
+#include <citrus/list.h>
 #include <citrus/panic.h>
 #include <citrus/elf.h>
 #include <citrus/gpio.h>
@@ -25,6 +26,7 @@
 #include <citrus/disk.h>
 #include <citrus/dma.h>
 #include <graphics/engine.h>
+#include <citrus/fpu.h>
 
 #include <app/led_strip.h>
 
@@ -48,6 +50,9 @@ void early_init(void)
     // Enable the L1 cache
     icache_enable();
     dcache_enable();
+
+    // Enable access to FPU co-processors
+    fpu_init();
 }
 
 /// Initializes the kernel 
@@ -65,8 +70,6 @@ void driver_init(void)
     //dma_init();
 }
 
-volatile float a = 345.234235;
-
 /// Called by entry.s after low level initialization finishes
 void main(void)
 {
@@ -78,14 +81,7 @@ void main(void)
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
-    //task_manager_init();
-    
-    // Check this....
-
-    while (1) {
-        volatile float b = a * 5;
-        a *= 0.345;
-    }
+    task_manager_init();
 
     sched_start();
 } 

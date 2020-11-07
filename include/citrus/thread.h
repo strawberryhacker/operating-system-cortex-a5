@@ -22,6 +22,9 @@ struct thread {
     // Hold the setup for the process memory space (must be second)
     struct thread_mm* mm;
 
+    // FPU register stack
+    u32 fpu_stack[32];
+
     // =========================================================================
     // Do NOT modify anything above this line
     // =========================================================================

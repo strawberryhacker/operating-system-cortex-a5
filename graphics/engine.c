@@ -8,6 +8,7 @@
 #include <citrus/syscall.h>
 #include <citrus/panic.h>
 #include <app/led_strip.h>
+#include <graphics/pixel.h>
 
 void engine_draw(struct engine* e)
 {
@@ -18,5 +19,14 @@ void engine_init(struct engine* e)
 {
     e->pixel_cnt = 16;
     e->pixels = kmalloc(16 * sizeof(struct pixel));
-    e->draw = &engine_draw;
+    e->draw = engine_draw;
+
+    // Initialize the pixels
+    struct pixel* p = e->pixels;
+    for (u32 i = 0; i < e->pixel_cnt; i++) {
+        *p = (struct pixel){ .blue = 0, .red = 0, .green = 0, .glob = 15 };
+        p++;
+    }
+
+    e->draw(e);
 }

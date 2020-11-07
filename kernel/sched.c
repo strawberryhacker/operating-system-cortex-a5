@@ -164,6 +164,7 @@ void sched_init_rq(struct rq* rq)
 
     rq->curr = NULL;
     rq->next = NULL;
+    rq->lazy_fpu = NULL;
 
     rq->sched_enable = 1;
 
@@ -182,6 +183,18 @@ void sched_init_rq(struct rq* rq)
         class->init(rq);
         sched_classes[class_index++] = class;
     }
+}
+
+/// Set the current lazy FPU user
+void sched_set_lazy_fpu_user(struct thread* thread)
+{
+    rq.lazy_fpu = thread;
+}
+
+/// Gets the current lazy FPU user
+struct thread* sched_get_lazy_fpu_user(void)
+{
+    return rq.lazy_fpu;
 }
 
 /// This is the IDLE thread which is run when no other scheduling class can

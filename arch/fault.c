@@ -3,6 +3,7 @@
 #include <citrus/print.h>
 #include <citrus/types.h>
 #include <citrus/sched.h>
+#include <citrus/panic.h>
 #include <regmap.h>
 
 /// Performs a software reboot. This is called to avoid a manual hardware reset
@@ -67,12 +68,36 @@ void print_regs(void)
     print("pc : %p\n", reg);
 }
 
+/// Declaration of the FPU context switch assembly code
+void fpu_context_switch(void);
+
+/// Main exeptioon for the undefined exception - PC is wrong...
 void undef_exception(u32 pc)
-{
-    print("\nKernel fault: undefined exception\n");
-    print("[%p] PC\n", pc);
-    reboot();
-    while (1);
+{    
+    // Check wheather the undef exception was caused by a FPU access
+    u32 fpexc;
+    asm volatile ("vmrs %0, fpexc" : "=r"(fpexc) : : "memory");
+
+    if (fpexc & (1 << 29)) {
+        // DEX bit is set
+        panic("FPU DEX bit set");
+    }
+    if (fpexc & (1 << 30)) {
+        // FPU is already enabled - this is most likely a real UNDEF exeption
+        panic("FPU exception with FPU enabled");
+    }
+
+    // Try to enable the FPU
+    fpexc |= (1 << 30);
+    asm ("vmsr fpexc, %0" : : "r"(fpexc));
+    asm ("dsb");
+
+    // At this point the FPU is enabled. We have to unstack the VFP register for
+    // the current running thread since it is going to use the FPU. Because we
+    // are implementing a fully lazy FPU context we need to check if the 
+    // previous FPU user has any unstacked FPU register in the bank. If so we
+    // need to stack these before unstacking the next thread
+    fpu_context_switch();
 }
 
 void prefetch_exception(u32 pc)

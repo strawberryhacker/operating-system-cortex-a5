@@ -14,6 +14,7 @@
 #include <citrus/panic.h>
 #include <citrus/interrupt.h>
 #include <citrus/syscall.h>
+#include <citrus/mem.h>
 
 /// Initial CPSR values for kernel / user threads. The mode is set, interrupts
 /// are unmasked and the status bits are cleared
@@ -39,6 +40,9 @@ void thread_exit(u32 status_code)
     while (1) {
         syscall_thread_sleep(10000000);
     }
+
+    // REMEMBER TO CHANGE THE RQ->LAZY_FPU POINTER IF THE THREAD HAS A LAZY
+    // CONTEXT STILL IN THE CORE
 }
 
 /// Sets up the stack for any process. This takes in the arguments and the
@@ -82,7 +86,10 @@ static void init_thread_struct(struct thread* thread)
     // Initialize the list nodes
     list_node_init(&thread->node);
     list_node_init(&thread->thread_group);
-    list_node_init(&thread->thread_node);  
+    list_node_init(&thread->thread_node);
+
+    // Initialize the FPU context - 32 registers
+    mem_set(thread->fpu_stack, 0, 32 * 4);
 }
 
 /// Copies in the thread name into the thread control block. This adds NULL

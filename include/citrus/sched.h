@@ -27,15 +27,23 @@ struct time {
     volatile u32 window;
 };
 
-// Main CPU runqueue 
+/// Main CPU runqueue 
 struct rq {
-    /// Holds pointers to the current and next thread to run on the CPU. The 
-    /// `next` must be NULL if no context switch is required. If this field is 
-    /// non-zero any interrupt will trigger a context switch. The `curr` thread
-    /// is allways updated by the context switch routine
+    // Holds pointers to the current and next thread to run on the CPU. The 
+    // `next` must be NULL if no context switch is required. If this field is 
+    // non-zero any interrupt will trigger a context switch. The `curr` thread
+    // is allways updated by the context switch routine
 
     struct thread* next; // Must be first  
-    struct thread* curr; // Must be second 
+    struct thread* curr; // Must be second
+
+    // This points to either NULL or the current lazy FPU thread. This means 
+    // that the thread still has its VPU registers S0-S31 in the register bank
+    struct thread* lazy_fpu;
+
+    // =========================================================================
+    // Do NOT modify anything above this line
+    // =========================================================================
 
     // Private runqueue data structure for the scheduling classes 
     struct rt_rq rt_rq;
@@ -86,5 +94,9 @@ struct thread* get_curr_thread(void);
 
 /// Adds a thread to the global thread list
 void sched_add_thread(struct thread* thread);
+
+/// Functions fo lazy use of the FPU context
+void sched_set_lazy_fpu_user(struct thread* thread);
+struct thread* sched_get_lazy_fpu_user(void);
 
 #endif
