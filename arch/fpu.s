@@ -29,21 +29,27 @@ fpu_init:
 fpu_context_switch:
     stmdb sp!, {r4, lr}
     bl sched_get_lazy_fpu_user
-    movs r4, r0                     @ Store the current lazy FPU user in r4
+    mov r4, r0                      @ Store the current lazy FPU user in r4
+    bl get_curr_thread              @ Store the current thread in r0
 
-    @ 8 + 32 * 4 = 132 is the offset of the last FPU register. The register
-    @ 32 is used because of the stmdb instruction
-    addne r4, r4, #136              @ Get the FPU stack base
+    @ The thread with the lazy FPU context requires the FPU again so there is
+    @ no need to change the context
+    cmp r4, r0
+    beq skip_fpu_context
+
+    cmp r4, #0                      @ Check if the lazy FPU user is active
+    addne r4, r4, #136              @ Get the FPU stack top - offset 136
     vstmdbne r4!, {s0 - s31}        @ Stack the FPU registers
 
     @ Retrieve the next thread and unstack the VPF registers
-    bl get_curr_thread
     mov r4, r0                      @ Store the current thread in r4
     add r4, r4, #8
     vldmia r4!, {s0 - s31}
     
     @ We have to update the next lazy FPU user to be the current thread
     bl sched_set_lazy_fpu_user      @ r0 already hold the current thread
+
+skip_fpu_context:
     ldmia sp!, {r4, lr}
     bx lr
     

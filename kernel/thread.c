@@ -43,6 +43,8 @@ void thread_exit(u32 status_code)
 
     // REMEMBER TO CHANGE THE RQ->LAZY_FPU POINTER IF THE THREAD HAS A LAZY
     // CONTEXT STILL IN THE CORE
+    //
+    // The rq->lazy_fpu should be set to NULL when a thread is deleted.
 }
 
 /// Sets up the stack for any process. This takes in the arguments and the
