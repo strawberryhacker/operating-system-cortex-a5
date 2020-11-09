@@ -1390,7 +1390,7 @@ void fat_test(struct disk* disk)
     print("--- Running FAT test ---\n");
 
     // Open the root directory
-    struct file* dir = dir_open("/sda2/application/");
+    struct file* dir = dir_open("/sda2/application/build");
     if (!dir) 
     {
         print("Cannot open file\n");
@@ -1439,7 +1439,7 @@ void fat_test(struct disk* disk)
         buffer += 512;
     } while (ret_cnt == 512);
 
-    //elf_init(elf_buffer, ret_cnt);
+    elf_init(elf_buffer, ret_cnt);
 
     print("Done\n");
 }

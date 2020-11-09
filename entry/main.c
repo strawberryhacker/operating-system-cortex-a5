@@ -83,7 +83,8 @@ void main(void)
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
-    //task_manager_init();
-
+    task_manager_init();
+    print("Starting CitrusOS from SD card - wiiiiiiihuuuu\n");
+    
     sched_start();
 } 

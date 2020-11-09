@@ -68,7 +68,7 @@ struct sched_class {
     const struct sched_class* next;
 
     void (*enqueue)(struct thread* thread, struct rq* rq);
-    void (*dequeue)(struct thread* thread, struct rq* rq);
+        void (*dequeue)(struct thread* thread, struct rq* rq);
 
     // Called by the core scheduler 
     struct thread* (*pick_next)(struct rq* rq);
@@ -98,5 +98,7 @@ void sched_add_thread(struct thread* thread);
 /// Functions fo lazy use of the FPU context
 void sched_set_lazy_fpu_user(struct thread* thread);
 struct thread* sched_get_lazy_fpu_user(void);
+
+u8 sched_kill_thread(struct thread* thread);
 
 #endif

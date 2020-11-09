@@ -330,3 +330,13 @@ void sched_thread_sleep(u32 ms)
     
     core_sched(&rq, 1);
 }
+
+u8 sched_kill_thread(struct thread* thread)
+{
+    list_delete_node(&thread->thread_group);
+    list_delete_node(&thread->thread_node);
+
+    thread->class->dequeue(thread, &rq);
+
+    kfree(thread);
+}

@@ -91,11 +91,6 @@ void dma_init(void)
 static void dma_fill_microblock_transfer(struct dma_reg* dma, u8 ch, 
     struct dma_req* req)
 {
-    if (dma == DMA0) {
-        print("Ready for DMA0 transfer channel %d\n", ch);
-    } else if (dma == DMA1) {
-        print("Ready for DMA1 transfer channel %d\n", ch);
-    }
     // Clear interrupt pending status
     (void)dma->channel[ch].CIS;
 
@@ -151,6 +146,7 @@ struct dma_channel* alloc_dma_channel(void)
         struct dma_channel* ch = &dma_channels[i];
         if (ch->free) {
             ch->free = 0;
+            print("CHANNEL => %p\n", ch);
             __atomic_leave(flags);
             return ch;
         }

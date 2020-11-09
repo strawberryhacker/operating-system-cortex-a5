@@ -1,5 +1,7 @@
 # Copyright (C) strawberryhacker
 
+# Used for calculating registers offsets in IO space
+
 while True:
 	start_v = int(input("Start addr: "), 16)
 	stop_i  = int(input("Stop addr: "), 16)

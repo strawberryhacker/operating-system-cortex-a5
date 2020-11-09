@@ -1,3 +1,3 @@
 # Copyright (C) strawberryhacker
 
-obj-y += /graphics/engine.o
+obj-y += /gfx/engine.o

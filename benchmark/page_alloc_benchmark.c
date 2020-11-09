@@ -74,7 +74,7 @@ static u32 _free(void)
     if (free_page->order != free_page->page->order){
         panic("OK\n");
     }
-    free_pages(free_page->page, free_page->order);
+    free_pages(free_page->page);
     u32 cycles = get_cycles();
 
     used_size -= (1 << free_page->order);

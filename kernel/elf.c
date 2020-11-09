@@ -252,16 +252,7 @@ void elf_init(const u8* elf_data, u32 elf_size)
     // Copy the loadable data
     for (u32 i = 0; i < prog_header->filesz; i++) {
         *dest++ = *src++;
-    }
-
-    // Map in the memory
-    u32 flags = LV2_PT_SECTION |
-                LV2_PT_SECTION_FULL_ACC |
-                LV2_PT_SECTION_WRITE_THROUGH;
-
-    u32 domain = 15;
-
-    
+    }   
 
     // Create a process
     u32 irq = __atomic_enter();

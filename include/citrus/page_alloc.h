@@ -9,8 +9,7 @@ struct page;
 
 struct page* alloc_page(void);
 struct page* alloc_pages(u32 order);
-void free_page(struct page* page);
-void free_pages(struct page* page, u32 order);
+void free_pages(struct page* page);
 
 u32 bytes_to_order(u32 bytes);
 u32 pages_to_order(u32 pages);

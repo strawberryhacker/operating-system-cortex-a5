@@ -54,7 +54,7 @@ include $(TOP)/benchmark/Makefile
 include $(TOP)/kernel/Makefile
 include $(TOP)/fs/Makefile
 include $(TOP)/app/Makefile
-include $(TOP)/graphics/Makefile
+include $(TOP)/gfx/Makefile
 
 # Check that the linker script is provided
 ifneq ($(MAKECMDGOALS),clean)
@@ -70,7 +70,7 @@ CPFLAGS += -I.
 LDFLAGS += -T$(linker-script-y)
 
 .SECONDARY: $(BUILDOBJ)
-.PHONY: all elf install reinstall debug clean 
+.PHONY: all elf install reinstall debug clean app
 all: elf lss bin
 
 # Subtargets
@@ -108,11 +108,14 @@ $(BUILDDIR)/%.o: %.s
 # Connect to custom program loader for c-boot
 
 install: all
-	@python3 $(TOP)/tools/kernel_load.py -c $(COM_PORT) -f $(BUILDDIR)/$(TARGET_NAME).bin
+	@python3 $(TOP)/scripts/kernel_load_dep.py -c $(COM_PORT) -f $(BUILDDIR)/$(TARGET_NAME).bin
+
+i: all
+	@python3 $(TOP)/scripts/kernel_load.py $(COM_PORT) $(BUILDDIR)/$(TARGET_NAME).bin
 
 app:
-	@cd $(TOP)/application && $(MAKE) -s clean && $(MAKE) -s
-	@python3 $(TOP)/tools/app_load.py -c $(COM_PORT) -f $(TOP)/application/build/citrus.elf
+	@cd $(TOP)/app/example/ && $(MAKE) -s clean && $(MAKE) -s
+	@python3 $(TOP)/scripts/app_load.py $(COM_PORT) $(TOP)/app/example/build/app.elf
 
 debug: install
 	$(GDB) -f $(BUILDDIR)/$(TARGET_NAME).elf -x debug/debug.gdb

@@ -87,7 +87,7 @@ void undef_exception(u32 pc)
         panic("FPU exception with FPU enabled");
     }
 
-    // Try to enable the FPU
+    // Try to enable the FPU - since the FPU is off
     fpexc |= (1 << 30);
     asm ("vmsr fpexc, %0" : : "r"(fpexc));
     asm ("dsb");

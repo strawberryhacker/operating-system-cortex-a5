@@ -7,88 +7,205 @@
 #include <citrus/dma.h>
 #include <citrus/mm.h>
 #include <citrus/panic.h>
+#include <citrus/crc.h>
+#include <citrus/elf.h>
+#include <citrus/page_alloc.h>
+#include <citrus/mem.h>
 #include <regmap.h>
 #include <stdalign.h>
 
-#define DMA_BUFFER_SIZE 4096
+#define DMA_BUFFER_SIZE (4096 + 32 * 10)
+#define CRC_POLY 0x45
+#define PACKET_TAG 0xCA
 
-/// Must be aligned with a cache line in order to invalidate the serial buffer
-/// the right way
+#define CMD_DATA 0x00
+#define CMD_SIZE 0x01
+
+#define PACKET_ERROR 0x00 
+#define PACKET_OK    0x01
+
+static void uart4_interrupt(void);
+static u8 process_packet(const u8* data, u32 size);
+static u8 handle_packet(const u8* data, u32 size, u8 cmd);
+
+/// Packet header
+struct packet_header {
+    u8 tag;
+    u8 crc;
+    u8 cmd;
+    u8 header_size;
+    u32 data_size;
+};
+
+/// Intermediate buffer for the DMA
 static volatile u8 alignas(32) dma_buffer[DMA_BUFFER_SIZE];
 
-static struct dma_req dma_req;
-static struct dma_channel* dma_ch;
+/// Allocate a DMA channel
+static struct dma_channel* channel;
 
-void uart_interrupt(void)
-{
-    // Check if there is a timeout
-    if (UART4->SR & (1 << 8)) {
-        print("Timeout occured\n");
-
-        // Flush the rest of the DMA
-        print("Flushing the channel\n");
-        //dma_flush_channel(dma_ch);
-        dma_stop(dma_ch);
-
-        print("CUBS => %d\n", dma_get_microblock_size(dma_ch));
-        print("Received %d\n", DMA_BUFFER_SIZE - dma_get_microblock_size(dma_ch));
-
-        print("Invalidating the cache\n");
-        dcache_invalidate_range((u32)dma_buffer, 
-            (u32)(dma_buffer + DMA_BUFFER_SIZE));
-
-        print("Resp: %20s\n", (char *)dma_buffer);
-
-        while (1);
-    }
-}
-
-static void arm_dma(void)
-{
-    dma_submit_request(&dma_req, dma_ch);
-}
+/// Pre-allocate the DMA request
+static struct dma_req req;
 
 void dma_receive_init(void)
 {
-    // Setup the DMA request so it is fast to reconfigure the channel
-    dma_req = (struct dma_req){
+    print("DMA receive started\n");
+
+    /// Configure the DMA channel
+    req = (struct dma_req) {
         .burst          = DMA_BURST_16,
         .chunk          = DMA_CHUNK_1,
         .data           = DMA_DATA_U8,
+        .dest_addr      = va_to_pa((void *)dma_buffer),
         .dest_am        = DMA_AM_INC,
-        .src_am         = DMA_AM_FIXED,
-        .non_secure     = 0,
-        .memset_enable  = 0,
         .dest_interface = 0,
-        .src_interface  = 1,
-        .type           = DMA_TYPE_PER_MEM,
-        .trigger        = DMA_TRIGGER_HW,
-        .ublock_cnt     = 1,
-        .ublock_len     = DMA_BUFFER_SIZE,
-        .id             = 44,
         .src_addr       = (void *)&UART4->RHR,
-        .dest_addr      = va_to_pa((void *)dma_buffer)
+        .src_am         = DMA_AM_FIXED,
+        .src_interface  = 1,
+        .memset_enable  = 0,
+        .non_secure     = 0,
+        .transfer_done  = NULL,
+        .trigger        = DMA_TRIGGER_HW,
+        .type           = DMA_TYPE_PER_MEM,
+        .id             = 44,
+        .ublock_cnt     = 1,
+        .ublock_len     = DMA_BUFFER_SIZE
     };
 
-    // Modify the serial to only throw an exception at timeout
+    // Allocate a DMA channel. This will never be freed
+    channel = alloc_dma_channel();
+    if (channel == NULL) {
+        panic("Not enough channels");
+    }
+
+    // We are using the UART4 configuration from the bootloder. We are remapping
+    // the interrupt and only useing the timeout interrupt trigger
     UART4->IDR = 0xFFFF;
     UART4->IER = (1 << 8);
 
-    // IDLE condition is 5 characters
-    UART4->RTOR = 8 * 5;
+    // Setup the timeout interface
+    UART4->RTOR = 0xFF;
     UART4->CR = (1 << 11);
 
-    // Add the loader interrupt handler
-    apic_add_handler(28, uart_interrupt);
-    apic_set_priority(28, 2);
+    apic_add_handler(28, uart4_interrupt);
     apic_enable(28);
 
-    dma_ch = alloc_dma_channel();
-
-    if (dma_ch == NULL) {
-        panic("Error\n");
-    }
-
-    arm_dma();
+    dma_submit_request(&req, channel);
 }
 
+/// Sends a response back to the computer
+static void send_response(u8 resp)
+{
+    UART4->THR = resp;
+    while (!(UART4->SR & (1 << 1)));
+}
+
+/// Timeout interrupt for the UART4 channel
+static void uart4_interrupt(void)
+{   
+    if (UART4->SR & (1 << 8)) {
+        UART4->CR = (1 << 11);
+        
+        dma_flush_channel(channel);
+        dma_stop(channel);
+        u32 size = DMA_BUFFER_SIZE - dma_get_microblock_size(channel);
+
+        // Since the DMA has trasferred to physical memory we have to invalidate
+        // the memory
+        dcache_invalidate_range((u32)dma_buffer, (u32)(dma_buffer + DMA_BUFFER_SIZE));      
+
+        // Do somethong with the buffer
+        u32 status = process_packet((u8 *)dma_buffer, size);
+        dma_submit_request(&req, channel);
+
+        // Send the status. This has to be done after the DMA is re-armed
+        if (status) {
+            send_response(PACKET_OK);
+        } else {
+            send_response(PACKET_ERROR);
+        }
+    }
+}
+
+static u8 process_packet(const u8* data, u32 size)
+{
+    // The data should have a packet header
+    struct packet_header* header = (struct packet_header *)data;
+
+    // Check if the tag matches
+    if (header->tag != PACKET_TAG) {
+        return 0;
+    }
+
+    u32 header_data_size = mem_read_le32(&header->data_size);
+    if (header_data_size + header->header_size != size) {
+        print("%d + %d = %d\n", header_data_size, header->header_size, size);
+        print("Packet size error\n");
+        return 0;
+    }
+
+    // Verify the CRC
+    u8 crc = crc_calculate(data + header->header_size, 
+        header_data_size, CRC_POLY);
+    
+    if (crc != header->crc) {
+        print("CRC mismatch\n");
+        return 0;
+    }
+    
+    return handle_packet(data + header->header_size, header_data_size, 
+        header->cmd);
+}
+
+
+static volatile struct page* elf_page_buffer = NULL;
+static volatile u8* elf_buffer = NULL;
+static volatile u8* write_ptr = NULL;
+static volatile u32 elf_size = 0;
+
+static void clear_elf_buffers(void)
+{
+    if (elf_page_buffer != NULL) {
+        free_pages((struct page *)elf_page_buffer);
+    }
+    elf_buffer = NULL;
+    write_ptr = NULL;
+}
+
+static void alloc_elf_buffers(u32 size)
+{
+    clear_elf_buffers();
+
+    u32 order = bytes_to_order(size);
+    elf_page_buffer = alloc_pages(order);
+
+    if (elf_page_buffer != NULL) {
+        elf_buffer = page_to_va((struct page *)elf_page_buffer);
+        write_ptr = elf_buffer;
+        elf_size = size;
+    }
+}
+
+static u8 handle_packet(const u8* data, u32 size, u8 cmd)
+{
+    if (cmd == CMD_SIZE) {
+        if (size != 4) {
+            panic("Size packet is not 32-bytes");
+            return 0;
+        }
+        u32 s = mem_read_le32(data);
+        alloc_elf_buffers(s);
+
+    } else if (cmd == CMD_DATA) {
+        for (u32 i = 0; i < size; i++) {
+            *write_ptr++ = *data++;
+        }
+
+        if (size != 4096) {
+            // Last or zero-length packet
+            elf_init((u8 *)elf_buffer, elf_size);
+            clear_elf_buffers();
+        }
+    }
+
+    return 1;
+}

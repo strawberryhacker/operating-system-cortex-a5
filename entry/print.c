@@ -4,7 +4,7 @@
 #include <citrus/sprint.h>
 #include <regmap.h>
 
-static char buffer[128];
+static char buffer[1024];
 
 void print(const char* data, ...)
 {

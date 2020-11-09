@@ -195,7 +195,6 @@ alloc_ok:
     // Update the size from the allocation 
     new_page->order = order;
     buddy->used += (1 << order) * 4096;
-    print("A: %d ", buddy->used / 4096);
     __atomic_leave(atomic);
     return new_page;    
 }
@@ -227,6 +226,8 @@ void buddy_free_pages(struct page* page, struct mm_zone* zone)
         }
 
         u32 buddy_index = index ^ (1 << order);
+        struct list_node* n = &(zone->start + buddy_index)->node;
+
         list_delete_node(&(zone->start + buddy_index)->node);
 
         index &= ~((1 << (order + 1)) - 1);

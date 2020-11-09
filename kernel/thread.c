@@ -37,6 +37,21 @@ void thread_exit(u32 status_code)
 
     // TODO kill the thread
     print("Quitting  PID: %d with status %d\n", t->pid, status_code);
+
+    // Delete the thread
+    if (t->mm) {
+        if (t->process == t) {
+            print("Killing a process\n");
+        } else {
+            print("Killing a thread\n");
+
+            // Remove the thread from any lists
+
+            kfree(t);
+        }
+    }
+
+
     while (1) {
         syscall_thread_sleep(10000);
     }
@@ -45,6 +60,7 @@ void thread_exit(u32 status_code)
     // CONTEXT STILL IN THE CORE
     //
     // The rq->lazy_fpu should be set to NULL when a thread is deleted.
+
 }
 
 /// Sets up the stack for any process. This takes in the arguments and the
@@ -129,9 +145,6 @@ struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size,
     // Set the name of the thread
     thread_set_name(thread, name);
 
-    // Do not know if this is neseccary
-    dcache_clean_invalidate();
-
     // The stack goes after the thread control block and will be 8 byte aligned
     thread->stack_base = (u32 *)((u8 *)thread + sizeof(struct thread));
     thread->stack_base = align_up(thread->stack_base, 8);
@@ -145,8 +158,8 @@ struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size,
     thread_set_sched_class(thread, flags);
     sched_enqueue_thread(thread);
 
-    icache_invalidate();
     dcache_clean();
+    icache_invalidate();
 
     return thread;
 }
@@ -158,7 +171,7 @@ void kill_kernel_thread(struct thread* t)
 }
 
 /// Core function for creating a user thread. This assumes that a memory space 
-/// is created. It will allocate a new stack region and 
+/// is created. It will allocate a new stack region
 static inline void create_user_thread_core(struct thread* thread,
     u32 (*func)(void *), u32 stack_size,const char* name, void* args, u32 flags)
 {

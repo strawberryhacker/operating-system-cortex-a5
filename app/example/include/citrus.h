@@ -1,7 +1,7 @@
 /// Copyright (C) strawberryhacker
 
-#ifndef CINNAMON_H
-#define CINNAMON_H
+#ifndef CITRUS_H
+#define CITRUS_H
 
 #include <types.h>
 

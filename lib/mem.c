@@ -49,3 +49,16 @@ u32 mem_cmp(const void* src1, const void* src2, u32 size)
     }
     return 1;
 }
+
+u32 mem_read_le32(const void* data)
+{
+    const u8* ptr = (u8 *)data;
+
+    u32 number = 0;
+    number |= (*ptr++ << 0);
+    number |= (*ptr++ << 8);
+    number |= (*ptr++ << 16);
+    number |= (*ptr++ << 24);
+    
+    return number;
+}

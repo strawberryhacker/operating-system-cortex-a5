@@ -4,6 +4,10 @@
 .cpu cortex-a5
 .arm
 
+@ Enable access to the CP10 and CP11 coprocessors
+@
+@ void fpu_init(void)
+
 .global fpu_init
 .type fpu_init, %function
 fpu_init:
