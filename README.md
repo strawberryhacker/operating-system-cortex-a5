@@ -11,6 +11,10 @@ Citrus is a bare metal lightweight operation system designed for the Cortex®-A 
 
 Coming soon
 
+## Install
+
+Download and burn the disk image file and insert into the board. This will load the bootloader which will load the kernel. To enter debug mode, connect a jumper to PC20 and make the kernel using make install. 
+
 ## Building
 
 Some packages is required in order to build the operating system. I recomend using Ubuntu, either native or in WSL. The build-essentials package is used for running make, and the gcc-arm-none-eabi is the compiler toolchain used for building and debugging the operating system.
