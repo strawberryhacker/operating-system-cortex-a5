@@ -11,6 +11,7 @@
 #include <citrus/atomic.h>
 #include <citrus/panic.h>
 #include <citrus/cpu_timer.h>
+#include <citrus/kmalloc.h>
 #include <regmap.h>
 
 #define PIT_IRQ 3
@@ -339,4 +340,6 @@ u8 sched_kill_thread(struct thread* thread)
     thread->class->dequeue(thread, &rq);
 
     kfree(thread);
+
+    return 1;
 }
