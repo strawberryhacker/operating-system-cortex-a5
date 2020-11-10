@@ -36,6 +36,8 @@ def main():
     packet.send_packet(b'', packet.CMD_RESET)
 
     # We just send the file over
+    print("Going to bootloader")
     file.send_file(file_path)
+    print("Kernel download complete")
 
 main()

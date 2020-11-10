@@ -108,9 +108,6 @@ $(BUILDDIR)/%.o: %.s
 # Connect to custom program loader for c-boot
 
 install: all
-	@python3 $(TOP)/scripts/kernel_load_dep.py -c $(COM_PORT) -f $(BUILDDIR)/$(TARGET_NAME).bin
-
-i: all
 	@python3 $(TOP)/scripts/kernel_load.py $(COM_PORT) $(BUILDDIR)/$(TARGET_NAME).bin
 
 app:

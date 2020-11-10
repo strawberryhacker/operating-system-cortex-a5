@@ -146,7 +146,6 @@ struct dma_channel* alloc_dma_channel(void)
         struct dma_channel* ch = &dma_channels[i];
         if (ch->free) {
             ch->free = 0;
-            print("CHANNEL => %p\n", ch);
             __atomic_leave(flags);
             return ch;
         }

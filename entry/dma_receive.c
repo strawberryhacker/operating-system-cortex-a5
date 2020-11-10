@@ -20,6 +20,7 @@
 
 #define CMD_DATA 0x00
 #define CMD_SIZE 0x01
+#define CMD_RESET 0x02
 
 #define PACKET_ERROR 0x00 
 #define PACKET_OK    0x01
@@ -205,6 +206,11 @@ static u8 handle_packet(const u8* data, u32 size, u8 cmd)
             elf_init((u8 *)elf_buffer, elf_size);
             clear_elf_buffers();
         }
+    } else if (cmd == CMD_RESET) {
+        // Flush the serial buffer and go to the bootloader
+        while (!(UART1->SR & (1 << 9)));
+        RST->CR = 0xA5000000 | 1;
+        while (1);
     }
 
     return 1;

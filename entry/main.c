@@ -28,6 +28,7 @@
 #include <graphics/engine.h>
 #include <citrus/fpu.h>
 #include <citrus/dma_receive.h>
+#include <citrus/logo.h>
 
 #include <app/led_strip.h>
 
@@ -54,6 +55,8 @@ void early_init(void)
 
     // Enable access to FPU co-processors
     fpu_init();
+
+    print_logo();
 }
 
 /// Initializes the kernel 
@@ -84,7 +87,6 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
     task_manager_init();
-    print("Starting CitrusOS from SD card - wiiiiiiihuuuu\n");
-    
+
     sched_start();
 } 

@@ -59,14 +59,12 @@ class citrus_packet:
             # Wait for the response
             resp = self.serial.read(size = 1)
             if len(resp) == 0:
-                print("Serial timeout")
-                sys.exit()
+                return None
             if resp != self.RESP_ERROR:
                 return resp
             timeout -= 1
         
-        print("Retry timeout")
-        sys.exit()
+        return None
 
 # Class for sending files to the citrus operating system
 class citrus_file:
@@ -81,18 +79,18 @@ class citrus_file:
         # Set the loading bar size
         self.loading.set_total(size)
 
-        print("Size ", size)
-
         # Issue an allocate memory command
-        self.packet.send_packet(size_bytes, self.packet.CMD_SIZE)
+        if self.packet.send_packet(size_bytes, self.packet.CMD_SIZE) == None:
+            sys.exit()
 
         f = open(path, 'rb')
         while True:
             chunk = f.read(self.packet.CHUNK_SIZE)
 
             # Send the data
-            self.packet.send_packet(chunk, self.packet.CMD_DATA)
+            if self.packet.send_packet(chunk, self.packet.CMD_DATA) == None:
+                sys.exit()
             
-            self.loading.increment(self.packet.CHUNK_SIZE)
+            self.loading.increment(len(chunk))
             if len(chunk) < self.packet.CHUNK_SIZE:
                 break
