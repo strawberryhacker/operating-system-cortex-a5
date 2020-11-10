@@ -237,15 +237,10 @@ void buddy_free_pages(struct page* page, struct mm_zone* zone)
     page = zone->start + index;
     list_add_first(&page->node, &buddy->orders[order].free_list);
 
-    print("F: %d ", buddy->used / 4096);
-    if (buddy->used < (1 << order) * 4096) {
-        print("Order => %d\n", order);
-        print("Used => %d\n", (1 << order) * 4096);
-        print("Buddy used => %d\n", buddy->used);
+    if (buddy->used < (1 << free_order) * 4096) {
         panic("Buddy error\n");
     }
     buddy->used -= (1 << free_order) * 4096;
-    
 
     __atomic_leave(atomic);
 }

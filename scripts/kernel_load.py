@@ -22,7 +22,7 @@ def main():
     # Just open a new COM port
     try:
         s = serial.Serial(port=com_port, \
-            baudrate=576000, timeout=1)
+            baudrate=921600, timeout=1)
 
     except serial.SerialException as e:
         print("Cannot open COM port - ", e)
@@ -33,10 +33,10 @@ def main():
     loading_bar_simple.set_message("Downloading")
     file = citrus_file(packet, loading_bar_simple)
     
+    print("Going to bootloader")
     packet.send_packet(b'', packet.CMD_RESET)
 
     # We just send the file over
-    print("Going to bootloader")
     file.send_file(file_path)
     print("Kernel download complete")
 

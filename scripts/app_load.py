@@ -2,6 +2,7 @@
 
 import os
 import sys
+import serial
 from citrus import citrus_packet
 from citrus import citrus_file
 from loading import loading_simple
@@ -17,7 +18,16 @@ def main():
     com_port = sys.argv[1]
     file_path = sys.argv[2]
 
-    packet = citrus_packet(com_port)
+    # Just open a new COM port
+    try:
+        s = serial.Serial(port=com_port, \
+            baudrate=921600, timeout=1)
+
+    except serial.SerialException as e:
+        print("Cannot open COM port - ", e)
+        sys.exit()
+
+    packet = citrus_packet(s)
     loading_bar_simple = loading_simple()
     loading_bar_simple.set_message("Downloading")
     file = citrus_file(packet, loading_bar_simple)

@@ -86,7 +86,7 @@ void main(void)
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
-    task_manager_init();
+    //task_manager_init();
 
     sched_start();
 } 

@@ -47,10 +47,28 @@ static struct dma_channel* channel;
 /// Pre-allocate the DMA request
 static struct dma_req req;
 
+void flex_print_init(void)
+{
+    struct flexcom_reg* const hw = FLEX4;
+    hw->U_CR = (1 << 3) | (1 << 2) | (1 << 8);
+    hw->FLEX_MR = 1;
+    hw->U_MR = (3 << 6) | (4 << 9) | (0b11 << 20);
+
+    // Interrupt
+    hw->U_BRGR = 5 | (5 << 16);
+
+    hw->U_RTOR = 0;
+    hw->U_TTGR = 0;
+
+    hw->U_CR = (1 << 4) | (1 << 6);
+
+    FLEX4->U_RTOR = 80;
+    FLEX4->U_CR = (1 << 11);
+    FLEX4->U_IER = (1 << 8);
+}
+
 void dma_receive_init(void)
 {
-    print("DMA receive started\n");
-
     /// Configure the DMA channel
     req = (struct dma_req) {
         .burst          = DMA_BURST_16,
@@ -59,7 +77,7 @@ void dma_receive_init(void)
         .dest_addr      = va_to_pa((void *)dma_buffer),
         .dest_am        = DMA_AM_INC,
         .dest_interface = 0,
-        .src_addr       = (void *)&UART4->RHR,
+        .src_addr       = (void *)&FLEX4->U_RHR,
         .src_am         = DMA_AM_FIXED,
         .src_interface  = 1,
         .memset_enable  = 0,
@@ -67,7 +85,7 @@ void dma_receive_init(void)
         .transfer_done  = NULL,
         .trigger        = DMA_TRIGGER_HW,
         .type           = DMA_TYPE_PER_MEM,
-        .id             = 44,
+        .id             = 20,
         .ublock_cnt     = 1,
         .ublock_len     = DMA_BUFFER_SIZE
     };
@@ -77,18 +95,10 @@ void dma_receive_init(void)
     if (channel == NULL) {
         panic("Not enough channels");
     }
+    flex_print_init();
 
-    // We are using the UART4 configuration from the bootloder. We are remapping
-    // the interrupt and only useing the timeout interrupt trigger
-    UART4->IDR = 0xFFFF;
-    UART4->IER = (1 << 8);
-
-    // Setup the timeout interface
-    UART4->RTOR = 0xFF;
-    UART4->CR = (1 << 11);
-
-    apic_add_handler(28, uart4_interrupt);
-    apic_enable(28);
+    apic_add_handler(23, uart4_interrupt);
+    apic_enable(23);
 
     dma_submit_request(&req, channel);
 }
@@ -96,16 +106,15 @@ void dma_receive_init(void)
 /// Sends a response back to the computer
 static void send_response(u8 resp)
 {
-    UART4->THR = resp;
-    while (!(UART4->SR & (1 << 1)));
+    while (!(FLEX4->U_SR & (1 << 1)));
+    FLEX4->U_THR = resp;
 }
 
 /// Timeout interrupt for the UART4 channel
 static void uart4_interrupt(void)
 {   
-    if (UART4->SR & (1 << 8)) {
-        UART4->CR = (1 << 11);
-        
+    if (FLEX4->U_SR & (1 << 8)) {
+        FLEX4->U_CR = (1 << 11);
         dma_flush_channel(channel);
         dma_stop(channel);
         u32 size = DMA_BUFFER_SIZE - dma_get_microblock_size(channel);
@@ -166,7 +175,7 @@ static volatile u32 elf_size = 0;
 static void clear_elf_buffers(void)
 {
     if (elf_page_buffer != NULL) {
-        free_pages((struct page *)elf_page_buffer);
+        //free_pages((struct page *)elf_page_buffer);
     }
     elf_buffer = NULL;
     write_ptr = NULL;

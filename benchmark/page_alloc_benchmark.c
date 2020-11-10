@@ -70,17 +70,17 @@ static u32 _free(void)
 
     struct page_bb* free_page = &benchmark[free_index];
 
-    start_cycle_counter();
     if (free_page->order != free_page->page->order){
         panic("OK\n");
     }
+    start_cycle_counter();
     free_pages(free_page->page);
     u32 cycles = get_cycles();
 
     used_size -= (1 << free_page->order);
 
-    free_page->order = -1;
     print("F => cycles %5d used %5d size %d\n", cycles, used_size, (1 << free_page->order));
+    free_page->order = -1;
     return 1;
 }
 

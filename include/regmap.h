@@ -519,4 +519,31 @@ struct spi_reg {
 #define SPI0 ((struct spi_reg *)0xF8000000)
 #define SPI1 ((struct spi_reg *)0xFC000000)
 
+/// Flexcom registers only implemention UART mode
+struct flexcom_reg {
+    _rw u32 FLEX_MR;
+    __r u32 RESERVED0[3];
+    __r u32 FLEX_RHR;
+    __r u32 RESERVED1[3];
+    _rw u32 FLEX_THR;
+    _rw u32 RESERVED2[119];
+    __w u32 U_CR;
+    _rw u32 U_MR;
+    __w u32 U_IER;
+    __w u32 U_IDR;
+    __r u32 U_IMR;
+    __r u32 U_SR;
+    __r u32 U_RHR;
+    __w u32 U_THR;
+    _rw u32 U_BRGR;
+    _rw u32 U_RTOR;
+    _rw u32 U_TTGR;
+};
+
+#define FLEX0 ((struct flexcom_reg *)0xF8034000)
+#define FLEX1 ((struct flexcom_reg *)0xF8038000)
+#define FLEX2 ((struct flexcom_reg *)0xFC010000)
+#define FLEX3 ((struct flexcom_reg *)0xFC014000)
+#define FLEX4 ((struct flexcom_reg *)0xFC018000)
+
 #endif

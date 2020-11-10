@@ -15,15 +15,15 @@ void print(const char* data)
 
 void thread(void *args)
 {
-    //print("ELF child thread\n");
+    print("YYYYYYYYYYYYYYYY\n");
     syscall_thread_sleep(5000);
 }
 
 u32 entry(void* args)
 {
-    syscall_create_thread(thread, 500, "elf_child", NULL, 0);
+    //syscall_create_thread(thread, 500, "elf_child", NULL, 0);
     while (1) {
-        //print("Hello from ELF binary\n");
-        syscall_thread_sleep(500);
+        print("This is a test thread\n");
+        syscall_thread_sleep(100);
     }
 }
