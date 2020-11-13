@@ -1,6 +1,25 @@
 /// Copyright (C) strawberryhacker 
 
 #include <citrus/mem.h>
+#include <citrus/print.h>
+
+/// Function for dumping a memory segment to the serial console
+void mem_dump(const void* mem, u32 size, u32 col, u8 hex)
+{
+    const u8* src = (const u8 *)mem;
+    
+    for (u32 i = 0; size--;) {
+        if (hex) {
+            print("%02x ", src[i]);
+        } else {
+            print("%c", src[i]);
+        }
+
+        if ((++i % col) == 0) {
+            print("\n");
+        }
+    }
+}
 
 void mem_set(void* ptr, u8 fill, u32 size)
 {
@@ -61,4 +80,46 @@ u32 mem_read_le32(const void* data)
     number |= (*ptr++ << 24);
     
     return number;
+}
+
+u16 read_le16(const void* ptr)
+{
+    const u8* src = (const u8 *)ptr;
+    u16 val = 0;
+    
+    val |= src[0] << 0;
+    val |= src[1] << 8;
+
+    return val;
+}
+
+
+u32 read_le32(const void* ptr)
+{
+    const u8* src = (const u8 *)ptr;
+    u32 val = 0;
+
+    val |= src[0] << 0;
+    val |= src[1] << 8;
+    val |= src[2] << 16;
+    val |= src[3] << 24;
+
+    return val;
+}
+
+u64 read_le64(const void* ptr)
+{
+    const u8* src = (const u8 *)ptr;
+    u64 val = 0;
+
+    val |= (u64)src[0] << 0;
+    val |= (u64)src[1] << 8;
+    val |= (u64)src[2] << 16;
+    val |= (u64)src[3] << 24;
+    val |= (u64)src[4] << 32;
+    val |= (u64)src[5] << 40;
+    val |= (u64)src[6] << 48;
+    val |= (u64)src[7] << 56;
+
+    return val;
 }

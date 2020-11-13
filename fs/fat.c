@@ -1,5 +1,7 @@
 /// Copyright (C) strawberryhacker
 
+/// Implementation of the FAT32 file system including LFN support
+
 #include <citrus/fat.h>
 #include <citrus/kmalloc.h>
 #include <citrus/panic.h>
@@ -9,20 +11,8 @@
 #include <citrus/fs.h>
 #include <citrus/page_alloc.h>
 
-/// This file implements the Microsoft® FAT32 file system. The implementation
-/// supports the LFN extension as well as the known 8.3 file name. 
-///
-/// Each function in this API takes in a partition. This should have a pointer
-/// to its parent disk whitch again should provide the disk read / write API. If
-/// the disk or parition in not correcly configured this interface might fail.
-/// The used should provide a custom inteface which implements the functions
-/// using absolute path. This interface should parse the first part of the file
-/// path to obtain the disk and partition and call this API with the target 
-/// partition and the file path with the disk spcified stripped
-///
-/// This file is for internal use by the operating system
-
 /// Prints the FAT status code to the serial console
+/// REMOVE
 static void fat_status(u8 status)
 {
     if (status == FAT_OK) {
@@ -51,16 +41,13 @@ static void fat_status(u8 status)
 
 /// This checks the FAT header signature at the end of the BPB page. It returns
 /// 1 if the signature is right, 0 is not
-static inline u8 check_fat_signature(const u8* bpb)
+static inline u8 fat_signature_ok(const u8* bpb)
 {
-    if (bpb[510] == 0x55 && bpb[511] == 0xAA) {
-        return 1;
-    } else {
-        return 0;
-    }
+    return (bpb[510] == 0x55 && bpb[511] == 0xAA);
 }
 
 /// Dumps a memory region to the seiral console
+/// REMOVE
 static void memdump(const void* mem, u32 size, u32 col, u8 hex)
 {
     const u8* src = (const u8 *)mem;
@@ -79,35 +66,9 @@ static void memdump(const void* mem, u32 size, u32 col, u8 hex)
     }
 }
 
-/// Returns a little-endian half-word pointed to by ptr
-static u16 read_le16(const void* ptr)
-{
-    const u8* src = (const u8 *)ptr;
-    u16 val = 0;
-    
-    val |= src[0] << 0;
-    val |= src[1] << 8;
-
-    return val;
-}
-
-/// Read a little-endian word pointed to by ptr
-static u32 read_le32(const void* ptr)
-{
-    const u8* src = (const u8 *)ptr;
-    u32 val = 0;
-
-    val |= src[0] << 0;
-    val |= src[1] << 8;
-    val |= src[2] << 16;
-    val |= src[3] << 24;
-
-    return val;
-}
-
 /// Checks if the BPB given hold a valid FAT file system. Returns 1 if the BPB
 /// belongs to any FAT 12/16/32 file system
-static u8 is_fat(const u8* bpb)
+static u8 bpb_contain_valid_fat(const u8* bpb)
 {
     if (mem_cmp(bpb + BPB_16_FSTYPE, "FAT", 3)) {
         return 1;
@@ -118,16 +79,14 @@ static u8 is_fat(const u8* bpb)
     return 0;
 }
 
-/// Checks if the BPB belongs to a FAT32 files system. Returns 1 if it is a
-/// valid FAT32 file system
-static u8 bpb_is_fat32(const u8* bpb)
+/// Checks if the BPB contains a valid FAT32 files system
+static u8 bpb_contain_fat32(const u8* bpb)
 {
-    // Check if it is even a FAT file system
-    if (!is_fat(bpb)) {
+    if (!bpb_contain_valid_fat(bpb)) {
         return 0;
     }
 
-    // If there is any root clusters in the file system this is not FAT32
+    // If there is any root clusters in the file system, it is not a FAT32
     if (read_le16(bpb + BPB_ROOT_ENT_CNT) != 0) {
         return 0;
     }
@@ -140,7 +99,6 @@ static u8 bpb_is_fat32(const u8* bpb)
         fat_pages = read_le32(bpb + BPB_32_FAT_SIZE);
     }
 
-    // Number of total pages
     u32 tot_pages;
     if (read_le16(bpb + BPB_TOT_SECT_16)) {
         tot_pages = read_le16(bpb + BPB_TOT_SECT_16);
@@ -148,22 +106,25 @@ static u8 bpb_is_fat32(const u8* bpb)
         tot_pages = read_le32(bpb + BPB_TOT_SECT_32);
     }
 
-    // Number of data pages
     u32 data_pages = tot_pages - read_le16(bpb + BPB_RSVD_CNT) - 
         (fat_pages * bpb[BPB_NUM_FATS]);
 
+    // This hold the total number of data cluster in the volume
     data_pages /= bpb[BPB_CLUSTER_SIZE];
     
     return (data_pages >= 65525);
 }
 
-/// This converts a order to a bitmask. For example 3 would return 0b111. The
+/// This converts an order to a bitmask. For example 3 would return 0b111. The
 /// functions returns a 32 bit mask
-static u32 fat_order_to_mask(u32 order)
+static u32 fat_order_to_mask(u8 order)
 {
+    assert(order < 32);
+    
     u32 res = 0;
     for (u32 i = 0; i < order; i++) {
-        res |= (1 << i);
+        res <<= 1;
+        res |= 1;
     }
     return res;
 }
@@ -1367,12 +1328,12 @@ i8 fat_mount_partition(struct partition* part)
     }
 
     // Check the FAT header signature is right
-    if (!check_fat_signature(buf)) {
+    if (!fat_signature_ok(buf)) {
         return 0;
     }
 
     // Check if this is a FAT32 file system
-    if (!bpb_is_fat32(buf)) {
+    if (!bpb_contain_fat32(buf)) {
         return 0;
     }
 
