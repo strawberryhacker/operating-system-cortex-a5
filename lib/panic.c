@@ -2,7 +2,7 @@
 
 #include <citrus/panic.h>
 #include <citrus/print.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 void assert_handler(const char* file, u32 line, u32 statement)
 {

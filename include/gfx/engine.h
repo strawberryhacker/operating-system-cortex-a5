@@ -5,7 +5,7 @@
 
 #include <citrus/types.h>
 #include <citrus/list.h>
-#include <graphics/pixel.h>
+#include <gfx/pixel.h>
 
 struct engine {
     

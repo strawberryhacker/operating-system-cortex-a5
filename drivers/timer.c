@@ -3,7 +3,7 @@
 #include <citrus/timer.h>
 #include <citrus/apic.h>
 #include <citrus/clock.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 void timer_init(u32 top, void (*tick_handler)(void))
 {

@@ -4,7 +4,7 @@
 #define MMC_H
 
 #include <citrus/types.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 enum sd_version {
     SD_VERSION_1_XX,

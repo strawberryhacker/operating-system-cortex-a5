@@ -8,7 +8,7 @@
 #include <citrus/clock.h>
 #include <citrus/interrupt.h>
 #include <citrus/spi.h>
-#include <graphics/engine.h>
+#include <gfx/engine.h>
 #include <citrus/syscall.h>
 
 struct pixel strip[16];

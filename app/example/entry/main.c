@@ -2,7 +2,7 @@
 
 #include <citrus.h>
 #include <types.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 #include <stddef.h>
 
 void print(const char* data)

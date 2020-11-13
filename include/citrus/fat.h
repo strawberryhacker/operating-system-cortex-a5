@@ -196,25 +196,25 @@ struct file_info {
 
 void fat_test(struct disk* disk);
 
-u32 fat_mount_partition(struct partition* part);
+i8 fat_mount_partition(struct partition* part);
 
 void fat_file_init(struct file* file);
 
-u8 fat_dir_open(const struct partition* part, struct file* dir,
+i8 fat_dir_open(const struct partition* part, struct file* dir,
     const char* path, u32 size);
 
-u8 fat_dir_read(const struct partition* part, struct file* dir,
+i8 fat_dir_read(const struct partition* part, struct file* dir,
     struct file_info* info);
 
-u8 fat_file_open(const struct partition* part, struct file* file,
+i8 fat_file_open(const struct partition* part, struct file* file,
     const char* path, u32 size);
 
-u8 fat_file_read(const struct partition* part, struct file* file,
+i8 fat_file_read(const struct partition* part, struct file* file,
     u8* data, u32 req_cnt, u32* ret_cnt);
 
-u8 fat_get_label(const struct partition* part, struct file_info* info);
+i8 fat_get_label(const struct partition* part, struct file_info* info);
 
-u8 fat_get_next_entry(const struct partition* part, struct file* dir);
+i8 fat_get_next_entry(const struct partition* part, struct file* dir);
 
 void file_print(struct file_info* info);
 void file_header(void);

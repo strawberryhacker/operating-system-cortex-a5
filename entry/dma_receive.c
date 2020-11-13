@@ -11,7 +11,7 @@
 #include <citrus/elf.h>
 #include <citrus/page_alloc.h>
 #include <citrus/mem.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 #include <stdalign.h>
 
 #define DMA_BUFFER_SIZE (4096 + 32 * 10)

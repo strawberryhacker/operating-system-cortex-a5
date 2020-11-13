@@ -1,7 +1,7 @@
 /// Copyright (C) strawberryhacker 
 
 #include <citrus/sprint.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 #include <stddef.h>
 
 /// Simple sprintf implementation. Floating point not supported yet. For more 

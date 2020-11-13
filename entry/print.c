@@ -2,7 +2,7 @@
 
 #include <citrus/print.h>
 #include <citrus/sprint.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 static char buffer[1024];
 

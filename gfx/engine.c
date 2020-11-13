@@ -1,6 +1,6 @@
 /// Copyright (C) strawberryhacker
 
-#include <graphics/engine.h>
+#include <gfx/engine.h>
 
 #include <citrus/print.h>
 #include <citrus/kmalloc.h>
@@ -8,7 +8,7 @@
 #include <citrus/syscall.h>
 #include <citrus/panic.h>
 #include <app/led_strip.h>
-#include <graphics/pixel.h>
+#include <gfx/pixel.h>
 
 void engine_draw(struct engine* e)
 {

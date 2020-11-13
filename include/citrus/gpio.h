@@ -4,7 +4,7 @@
 #define GPIO_H
 
 #include <citrus/types.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 enum gpio_func {
     GPIO_FUNC_OFF,

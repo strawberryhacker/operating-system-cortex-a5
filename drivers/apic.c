@@ -2,7 +2,7 @@
 
 #include <citrus/apic.h>
 #include <citrus/matrix.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 #define PERIPH_CNT 72
 

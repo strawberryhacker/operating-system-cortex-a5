@@ -9,7 +9,7 @@
 #include <citrus/cache.h>
 #include <citrus/mm.h>
 #include <citrus/mem.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 #include <stddef.h>
 #include <stdalign.h>
 
@@ -210,19 +210,10 @@ struct lcd_dma_desc alignas(8) wdesc;
 
 void test(void)
 {
-    mem_set(framebuffer1, 0x00, 800 * 480 * 3);
-    struct rgb (*a)[800] = (struct rgb (*)[800])framebuffer1;
-    for (u32 i = 500; i < 700; i++) {
-        for (u32 j = 200; j < 400; j++) {
-            a[i][j] = (struct rgb){50, 50, 0};
-        }
-    }
-
     LCD->base_ctrl.IDR = 0xFF;
     desc.next = (u32)va_to_pa((void *)&desc);
     desc.addr = (u32)va_to_pa((void *)framebuffer);
     desc.ctrl = (1 << 0);
-    
     dcache_clean();
     LCD->base_dma.NEXT = (u32)va_to_pa((void *)&desc);
     LCD->base_dma.ADDR = (u32)va_to_pa((void *)framebuffer);
@@ -232,23 +223,4 @@ void test(void)
     LCD->BASECFG[1] = (10 << 4);
     LCD->BASECFG[4] = (1 << 8) | (1 << 9);
     LCD->base_ctrl.CHER = (0b11 << 0);   
-
-    
-    // Window
-    mem_set(window, 0x00, 300 * 200 * 3);
-    LCD->ov1_ctrl.IDR = 0xFF;
-    wdesc.next = (u32)va_to_pa((void *)&wdesc);
-    wdesc.addr = (u32)va_to_pa((void *)window);
-    wdesc.ctrl = (1 << 0);
-    dcache_clean();
-    LCD->ov1_dma.NEXT = (u32)va_to_pa((void *)&wdesc);
-    LCD->ov1_dma.ADDR = (u32)va_to_pa((void *)window);
-    LCD->ov1_dma.CTRL = (1 << 0);
-    // 16 data
-    LCD->OV1CFG[0] = (1 << 8) | (3 << 4);
-    LCD->OV1CFG[1] = (10 << 4);
-    LCD->OV1CFG[3] = (300 << 0) | (200 << 16);
-    LCD->OV1CFG[4] = (1 << 8) | (1 << 9);
-    LCD->ov1_ctrl.CHER = (0b11 << 0);   
-
 }

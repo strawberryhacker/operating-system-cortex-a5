@@ -10,7 +10,7 @@
 #include <citrus/cache.h>
 #include <citrus/syscall.h>
 #include <citrus/atomic.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 #define UART1_DMA_CH 37
 #define DMA_CHANNELS 16

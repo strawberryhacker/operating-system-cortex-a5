@@ -12,7 +12,7 @@
 #include <citrus/panic.h>
 #include <citrus/cpu_timer.h>
 #include <citrus/kmalloc.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 #define PIT_IRQ 3
 

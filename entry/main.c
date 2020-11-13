@@ -25,17 +25,18 @@
 #include <citrus/task_manager.h>
 #include <citrus/disk.h>
 #include <citrus/dma.h>
-#include <graphics/engine.h>
+#include <gfx/engine.h>
 #include <citrus/fpu.h>
 #include <citrus/dma_receive.h>
 #include <citrus/logo.h>
 #include <citrus/lcd.h>
 #include <citrus/fat.h>
 #include <citrus/fs.h>
+#include <gfx/font.h>
 
 #include <app/led_strip.h>
 
-#include <regmap.h>
+#include <citrus/regmap.h>
 #include <stdarg.h>
 #include <stdalign.h>
 
@@ -78,96 +79,6 @@ void driver_init(void)
     dma_receive_init();
 }
 
-/// Dumps a memory region to the seiral console
-static void memdump(const void* mem, u32 size, u32 col, u8 hex)
-{
-    const u8* src = (const u8 *)mem;
-    
-    for (u32 i = 0; size--;) {
-        if (hex) {
-            print("%02x ", src[i]);
-        } else {
-            print("%c", src[i]);
-        }
-
-        // New line after col columns
-        if ((++i % col) == 0) {
-            print("\n");
-        }
-    }
-}
-
-extern volatile struct rgb framebuffer[800*480];
-
-u32 test_thread(void* args)
-{
-    syscall_thread_sleep(1000);
-    print("Starting test thread\n");
-    struct file* dir = dir_open("/sda1");
-    if (!dir) 
-    {
-        print("Cannot open file\n");
-        return 0;
-    }
-
-    // Print the root directory
-    struct file_info* info = kmalloc(sizeof(struct file_info));
-    u8 status;
-    file_header();
-    while (1) {
-        status = dir_read(dir, info);
-        if (status != FAT_OK) {
-            break;
-        }
-        file_print(info);
-        fat_get_next_entry(dir->part, dir);
-    };
-
-    // Test file read
-    struct file* elf = 
-        file_open("/sda1/car-wallpaper.raw", FILE_ATTR_R);
-
-    if (elf == NULL) {
-        return 0;
-    }
-    print("OK\n");
-
-    u32 ret_cnt;
-    u8* buffer = (u8 *)framebuffer;
-    u8* b = kmalloc(3000);
-    do {
-        u8 status = file_read(elf, b, 3000, &ret_cnt);
-        if (status != FAT_OK) {
-            print("Error\n");
-            break;
-        }
-        for (u32 i = 0; i < ret_cnt; i += 3) {
-            u32 reg = ((b[i] >> 2) << 12) | ((b[i + 1] >> 2) << 6) |
-                ((b[i + 2] >> 2) << 0);
-            *buffer++ = (b[i + 2] >> 2) | (((b[i + 1] >> 2) & 0b11) << 6);
-            *buffer++ = (b[i + 1] >> 4) | (((b[i] >> 2) & 0b1111) << 4);
-            *buffer++ = (b[i] >> 6) & 0b11;
-        }
-        dcache_clean();
-    } while (ret_cnt == 3000);
-    test();
-
-    while (1) {
-        print("OK\n");
-        syscall_thread_sleep(50);
-        for (u32 i = 0; i < 270; i += 1) {
-            LCD->OV1CFG[2] = (i << 0) | (i << 16);
-            LCD->ov1_ctrl.CHER = 0b10;
-            syscall_thread_sleep(6);
-        }
-        for (i32 i = 271; i > 0; i -= 1) {
-            LCD->OV1CFG[2] = (i << 0) | (i << 16);
-            LCD->ov1_ctrl.CHER = 0b10;
-            syscall_thread_sleep(6);
-        }
-    }
-}
-
 /// Called by entry.s after low level initialization finishes
 void main(void)
 {
@@ -180,27 +91,6 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
     //task_manager_init();
-
-    // Test LCD display
-
-    struct lcd_info lcd_info = {
-        .height        = 480,
-        .width         = 800,
-        .framerate     = 60,
-        .v_back_porch  = 21,
-        .v_front_porch = 22,
-        .v_pulse_width = 2,
-        .h_back_porch  = 64,
-        .h_front_porch = 64,
-        .h_pulse_width = 128
-    };
-
-    lcd_init();
-   
-    lcd_on(&lcd_info);
-    
-
-    create_kernel_thread(test_thread, 1000, "filesystem", NULL, SCHED_RT);
 
     sched_start();
 } 

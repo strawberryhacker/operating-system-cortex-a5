@@ -2,7 +2,7 @@
 
 #include <citrus/spi.h>
 #include <citrus/print.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 void spi_init(void)
 {

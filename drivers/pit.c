@@ -1,7 +1,7 @@
 /// Copyright (C) strawberryhacker 
 
 #include <citrus/pit.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 void pit_init(u8 irq_en, u32 period)
 {

@@ -2,7 +2,7 @@
 
 #include <citrus/cpu_timer.h>
 #include <citrus/clock.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 void cpu_timer_init(void)
 {

@@ -4,7 +4,7 @@
 #include <citrus/types.h>
 #include <citrus/sched.h>
 #include <citrus/panic.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 /// Performs a software reboot. This is called to avoid a manual hardware reset
 /// when the CPU does not respond to the c-boot interrupt instruction

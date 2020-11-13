@@ -1,7 +1,7 @@
 /// Copyright (C) strawberryhacker
 
 #include <citrus/clock.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 /// Enables a peripheral clock by its PID
 void clk_pck_enable(u32 pid)

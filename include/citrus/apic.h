@@ -4,7 +4,7 @@
 #define APIC_H
 
 #include <citrus/types.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 
 
 void apic_protect(struct apic_reg* apic);

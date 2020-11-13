@@ -4,7 +4,7 @@
 #define LED_STRIP_H
 
 #include <citrus/types.h>
-#include <graphics/pixel.h>
+#include <gfx/pixel.h>
 
 void led_strip_init(void);
 

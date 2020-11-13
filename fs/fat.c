@@ -421,7 +421,7 @@ static inline u8 fat_jump_entries(const struct partition* part,
 /// Takes in a dir pointer and increment the pointer so that it is pointing to 
 /// the next valid entry in the directory. This is returns a FAT status code. 
 /// It might return some kind of FAT_ERROR, FAT_EOD or FAT_OK
-u8 fat_get_next_entry(const struct partition* part, struct file* dir)
+i8 fat_get_next_entry(const struct partition* part, struct file* dir)
 {
     // If the current one is a LFN jump past all LFN entries
     if (dir->cache[dir->page_offset + SFN_ATTR] == ATTR_LFN) {
@@ -1168,24 +1168,27 @@ static void fat_get_sfn_info(const u8* sfn, struct file_info* info)
 
 /// Takes in a directory object and opens the directory pointed to by path. The
 /// directory does not need to be closed after
-u8 fat_dir_open(const struct partition* part, struct file* dir,
+i8 fat_dir_open(const struct partition* part, struct file* dir,
     const char* path, u32 size)
 {
     // Start at the root directory
     u8 status = fat_file_set_root(part, dir);
     if (status != FAT_OK) {
+        print("HELLOOOOO\n");
         return status;
     }
     status = fat_follow_path(part, dir, path, size);
 
     // Check for errors
     if (status != FAT_OK) {
+        print("HELLOOOOO\n");
         return status;
     }
 
     // Check if the opened file is acctually a directory
     if ((dir->cache[dir->page_offset + SFN_ATTR] & ATTR_DIR) == 0) {
         if (dir_is_root(dir) == 0) {
+            print("HELLOOOOO\n");
             return FAT_BAD_PATH;
         }
     }
@@ -1193,7 +1196,7 @@ u8 fat_dir_open(const struct partition* part, struct file* dir,
 }
 
 /// Takes in a directory pointer and reads the directory entry
-u8 fat_dir_read(const struct partition* part, struct file* dir,
+i8 fat_dir_read(const struct partition* part, struct file* dir,
     struct file_info* info)
 {
     // Save the raw file pointer
@@ -1219,7 +1222,7 @@ u8 fat_dir_read(const struct partition* part, struct file* dir,
 }
 
 /// Gets the volume label
-u8 fat_get_label(const struct partition* part, struct file_info* info)
+i8 fat_get_label(const struct partition* part, struct file_info* info)
 {
     struct file* dir = kmalloc(sizeof(struct file));
     fat_file_init(dir);
@@ -1248,31 +1251,34 @@ u8 fat_get_label(const struct partition* part, struct file_info* info)
 
 /// Read a number of bytes from a file and returns the numbr of of bytes
 /// written
-u8 fat_file_open(const struct partition* part, struct file* file,
+i8 fat_file_open(const struct partition* part, struct file* file,
     const char* path, u32 size)
 {
     // Start at the root directory
     u8 status = fat_file_set_root(part, file);
     if (status != FAT_OK) {
+        print("HELLOOOOO\n");
         return status;
     }
     status = fat_follow_path(part, file, path, size);
 
     // Check for errors
     if (status != FAT_OK) {
+        print("HELLOOOOO\n");
         return status;
     }
 
     // Check if the opened file is acctually a directory
     if (file->cache[file->page_offset + SFN_ATTR] & ATTR_DIR) {
         if (dir_is_root(file) == 0) {
+            print("HELLOOOOO\n");
             return FAT_BAD_PATH;
         }
     }
     return FAT_OK;
 }
 
-u8 fat_file_read(const struct partition* part, struct file* file,
+i8 fat_file_read(const struct partition* part, struct file* file,
     u8* data, u32 req_cnt, u32* ret_cnt)
 {
     // Check the parameters
@@ -1348,7 +1354,7 @@ void file_print(struct file_info* info)
 /// If it returns 1 the parition is fully mounted and can be accessed by the FAT
 /// API. If it returns 0 it is probably not a FAT32 file system or it contains a
 /// broken disk
-u32 fat_mount_partition(struct partition* part)
+i8 fat_mount_partition(struct partition* part)
 {
     u8* buf = kmalloc(512);
     const struct disk* disk = part->parent_disk;

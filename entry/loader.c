@@ -11,7 +11,7 @@
 #include <citrus/page_alloc.h>
 #include <citrus/align.h>
 #include <citrus/elf.h>
-#include <regmap.h>
+#include <citrus/regmap.h>
 #include <stddef.h>
 
 /// This loader is temorarily and communicates with the host computer over
