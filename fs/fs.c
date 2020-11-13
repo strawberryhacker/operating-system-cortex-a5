@@ -6,6 +6,7 @@
 #include <citrus/disk.h>
 #include <citrus/string.h>
 #include <citrus/panic.h>
+#include <citrus/error.h>
 
 /// Takes in a double pointer to a path and modifies it to point to the 
 /// local path after stripping the partition name. This returns the partition
@@ -42,13 +43,13 @@ struct file* dir_open(const char* path)
 
     // Allocate a new directory
     struct file* dir = kmalloc(sizeof(struct file));
-    fat_file_init(dir);
+    file_struct_init(dir);
 
     dir->part = part;
 
     // Try to open the relative path inside the partition
-    u8 status = fat_dir_open(part, dir, path, string_length(path));
-    if (status != FAT_OK) {
+    i8 err = fat_dir_open(part, dir, path, string_length(path));
+    if (err) {
         kfree(dir);
         return NULL;
     }
@@ -57,10 +58,10 @@ struct file* dir_open(const char* path)
 
 /// This functions reads the current directory pointed to by dir, and return
 /// its file info
-u8 dir_read(struct file* dir, struct file_info* info)
+i8 dir_read(struct file* dir, struct file_info* info)
 {
     if (!dir->part) {
-        return FAT_ERROR;
+        return -EDISK;
     }
     return fat_dir_read(dir->part, dir, info);
 }
@@ -77,23 +78,23 @@ struct file* file_open(const char* path, u8 attr)
     // Allocate a new file
     struct file* file = kmalloc(sizeof(struct file));
 
-    fat_file_init(file);
+    file_struct_init(file);
     file->part = part;
 
     // Try to open the file
-    u8 status = fat_file_open(part, file, path, string_length(path));
-    if (status != FAT_OK) {
+    i8 err = fat_file_open(part, file, path, string_length(path));
+    if (err) {
         kfree(file);
-        print("Status => %8b\n", status);
+        print("Status => %i\n", err);
         return NULL;
     }
-    print("Status\n");
+    
     return file;
 }
 
 /// This will read a number of bytes from a file pointed to by `file`. It will
 /// return the acctual number of bytes written
-u8 file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt)
+i8 file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt)
 {
     // This is used in this function
     assert(file->part);

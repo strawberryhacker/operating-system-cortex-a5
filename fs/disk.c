@@ -197,9 +197,9 @@ void disk_add(struct disk* disk, enum disk_type type)
         if (part->sect_count) {
 
             // Try to mount the partition
-            if(!fat_mount_partition(part)) {
+            i8 err = fat_mount_partition(part);
+            if(err)
                 continue;
-            }
 
             // Add the partition
             add_partition(part);

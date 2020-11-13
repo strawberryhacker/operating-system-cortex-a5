@@ -17,10 +17,10 @@ struct fs {
 struct file* file_open(const char* path, u8 attr);
 struct file* dir_open(const char* path);
 
-u8 file_close(struct file* file);
-u8 dir_close(struct file* dir);
+i8 file_close(struct file* file);
+i8 dir_close(struct file* dir);
 
-u8 dir_read(struct file* dir, struct file_info* info);
-u8 file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt);
+i8 dir_read(struct file* dir, struct file_info* info);
+i8 file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt);
 
 #endif

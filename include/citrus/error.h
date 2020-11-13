@@ -5,9 +5,16 @@
 
 #include <citrus/types.h>
 
-#define ENODIR 1
-#define EDISK  2
-#define ENOMEM 3
+
+
+/// File system error codes
+#define EDISK   2
 #define ENOFILE 4
+#define ENODIR  4
+#define EEOF    5
+#define EPATH   6
+
+/// Memory
+#define ENOMEM  7
 
 #endif

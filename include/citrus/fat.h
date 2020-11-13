@@ -114,17 +114,20 @@ struct fat {
     // Holds the virtual index of the root cluster
     u32 root_clust_num;
 
-    // Holds the global offsets
+    // Holds the global offset of the first data sector
     u32 root_glob_page;
+
+    // Holds the global offset of the first fat table sector
     u32 fat_glob_page;
+
+    // Start global page of the entire file system
     u32 glob_page;
+
+    // Hold the global page of the fsinfo structure
     u32 info_glob_page;
 
-    //Miscillanious stuff
+    // Number of FAT tables
     u8 fats;
-
-    // BPB file system label (not in use?)
-    char label[BPB_32_VOL_LABEL_SIZE];
 };
 
 /// Structure describing a file and a directory
@@ -198,7 +201,7 @@ void fat_test(struct disk* disk);
 
 i8 fat_mount_partition(struct partition* part);
 
-void fat_file_init(struct file* file);
+void file_struct_init(struct file* file);
 
 i8 fat_dir_open(const struct partition* part, struct file* dir,
     const char* path, u32 size);
@@ -214,7 +217,7 @@ i8 fat_file_read(const struct partition* part, struct file* file,
 
 i8 fat_get_label(const struct partition* part, struct file_info* info);
 
-i8 fat_get_next_entry(const struct partition* part, struct file* dir);
+i8 get_next_valid_entry(const struct partition* part, struct file* dir);
 
 void file_print(struct file_info* info);
 void file_header(void);
