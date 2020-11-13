@@ -421,7 +421,7 @@ static inline u8 fat_jump_entries(const struct partition* part,
 /// Takes in a dir pointer and increment the pointer so that it is pointing to 
 /// the next valid entry in the directory. This is returns a FAT status code. 
 /// It might return some kind of FAT_ERROR, FAT_EOD or FAT_OK
-static u8 fat_get_next_entry(const struct partition* part, struct file* dir)
+u8 fat_get_next_entry(const struct partition* part, struct file* dir)
 {
     // If the current one is a LFN jump past all LFN entries
     if (dir->cache[dir->page_offset + SFN_ATTR] == ATTR_LFN) {
@@ -1314,14 +1314,14 @@ u8 fat_file_read(const struct partition* part, struct file* file,
 #define DW 16
 #define TW 10
 
-static void file_header(void)
+void file_header(void)
 {
     print("%-*s %-*s %-*s Size [bytes]\n", NW, "Name", DW, "Date modified", TW,
         "Type");
     print("-------------------------------------------------------------\n");
 }
 
-static void file_print(struct file_info* info)
+void file_print(struct file_info* info)
 {
     // File name
     print("%-*s ", NW, info->name);
@@ -1387,8 +1387,10 @@ u32 fat_mount_partition(struct partition* part)
 /// Test function for testing the file syatem
 void fat_test(struct disk* disk)
 {
+    return;
     print("--- Running FAT test ---\n");
 
+    
     // Open the root directory
     struct file* dir = dir_open("/sda2/application/build");
     if (!dir) 

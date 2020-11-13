@@ -546,4 +546,81 @@ struct flexcom_reg {
 #define FLEX3 ((struct flexcom_reg *)0xFC014000)
 #define FLEX4 ((struct flexcom_reg *)0xFC018000)
 
+/// LCD control registers
+struct lcd_ctrl {
+    __w u32 CHER;
+    __w u32 CHDR;
+    __r u32 CHSR;
+    __w u32 IER;
+    __w u32 IDR;
+    __r u32 IMR;
+    __r u32 ISR;
+};
+
+struct lcd_dma {
+    _rw u32 HEAD;
+    _rw u32 ADDR;
+    _rw u32 CTRL;
+    _rw u32 NEXT;
+};
+
+/// LCD registers
+struct lcd_reg {
+    _rw u32 LCDCFG0;
+    _rw u32 LCDCFG1;
+    _rw u32 LCDCFG2;
+    _rw u32 LCDCFG3;
+    _rw u32 LCDCFG4;
+    _rw u32 LCDCFG5;
+    _rw u32 LCDCFG6;
+    __r u32 RESERVED0;
+    __w u32 LCDEN;
+    __w u32 LCDDIS;
+    __r u32 LCDSR;
+    __w u32 LCDIER;
+    __w u32 LCDIDR;
+    __r u32 LCDIMR;
+    __r u32 LCDISR;
+    __w u32 ATTR;
+
+    // Base layer
+    struct lcd_ctrl base_ctrl;
+    struct lcd_dma base_dma;
+    _rw u32 BASECFG[7];
+    __r u32 RESERVED1[46];
+
+    // Overlay 1
+    struct lcd_ctrl ov1_ctrl;
+    struct lcd_dma ov1_dma;
+    _rw u32 OV1CFG[10];
+    __r u32 RESERVED2[43];
+
+    // Overlay 2
+    struct lcd_ctrl ov2_ctrl;
+    struct lcd_dma ov2_dma;
+    _rw u32 OV2CFG[10];
+    __r u32 RESERVED3[43];
+
+    // High end overlay
+    struct lcd_ctrl heo_ctrl;
+    struct lcd_dma heo_dma;
+    struct lcd_dma heo_udma;
+    struct lcd_dma heo_vdma;
+    _rw u32 HEOCFG[42];
+    __r u32 RESERVED4[67];
+
+    // Post processing
+    struct lcd_ctrl pp_ctrl;
+    struct lcd_dma pp_dma;
+    _rw u32 PPCFG[6];
+    __r u32 RESERVED5[31];
+
+    _rw u32 BASECLUT[256];
+    _rw u32 OV1CLUT[256];
+    _rw u32 OV2CLUT[256];
+    _rw u32 HEOCLUT[256];
+};
+
+#define LCD ((struct lcd_reg *)0xF0000000)
+
 #endif

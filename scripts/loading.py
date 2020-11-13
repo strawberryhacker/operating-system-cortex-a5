@@ -17,9 +17,9 @@ class loading_simple:
         self.curr += inc
         if self.curr != self.total:
             percent = ("{:3d}").format(int(100 * (self.curr / float(self.total))))
-            print(self.message, f": {percent}%", end = "\r")
+            print(self.message + f": {percent}%", end = "\r")
         else:
-            print(self.message, ": Complete")
+            print(self.message + ": Complete")
 
 # Bar style loading bar
 class loading_bar:

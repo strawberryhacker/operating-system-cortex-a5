@@ -214,4 +214,9 @@ u8 fat_file_read(const struct partition* part, struct file* file,
 
 u8 fat_get_label(const struct partition* part, struct file_info* info);
 
+u8 fat_get_next_entry(const struct partition* part, struct file* dir);
+
+void file_print(struct file_info* info);
+void file_header(void);
+
 #endif

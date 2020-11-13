@@ -12,3 +12,4 @@ obj-y += /drivers/mmc.o
 obj-y += /drivers/sd.o
 obj-y += /drivers/dma.o
 obj-y += /drivers/spi.o
+obj-y += /drivers/lcd.o
