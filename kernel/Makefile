@@ -3,6 +3,8 @@
 obj-y += /kernel/thread.o
 obj-y += /kernel/sched.o
 obj-y += /kernel/rt.o
+obj-y += /kernel/fair.o
+obj-y += /kernel/back.o
 obj-y += /kernel/idle.o
 obj-y += /kernel/syscall.o
 obj-y += /kernel/process.o

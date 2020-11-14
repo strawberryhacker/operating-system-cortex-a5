@@ -19,10 +19,8 @@
 // Each CPU has a private runqueue
 struct rq rq;
 
-void core_sched(struct rq* rq, u32 reschedule);
-
 // Array for the scheduling classes
-#define CLASS_CNT 2
+#define CLASS_CNT 4
 
 const struct sched_class* sched_classes[CLASS_CNT];
 
@@ -72,6 +70,9 @@ void enqueue_sleeping_threads(struct rq* rq)
         rq->time.tick_to_wake = 0;
     }
 }
+
+// Core scheduler
+void core_sched(struct rq* rq, u32 reschedule);
 
 // Scheduler interrupt being called every ms
 void cpu_tick_handler(void)
@@ -183,6 +184,7 @@ void sched_init_rq(struct rq* rq)
         }
         class->init(rq);
         sched_classes[class_index++] = class;
+        print("Adding scheulder\n");
     }
 }
 

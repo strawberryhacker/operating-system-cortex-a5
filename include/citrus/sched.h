@@ -9,6 +9,14 @@ struct rt_rq {
     struct list_node queue;
 };
 
+struct fair_rq {
+    struct list_node queue;
+};
+
+struct back_rq {
+    struct list_node queue;
+};
+
 // Main idle runqueue 
 struct idle_rq {
     struct thread* idle;
@@ -47,6 +55,8 @@ struct rq {
 
     // Private runqueue data structure for the scheduling classes 
     struct rt_rq rt_rq;
+    struct fair_rq fair_rq;
+    struct back_rq back_rq;
     struct idle_rq idle_rq;
 
     // List all the threads in the system 
@@ -68,7 +78,7 @@ struct sched_class {
     const struct sched_class* next;
 
     void (*enqueue)(struct thread* thread, struct rq* rq);
-        void (*dequeue)(struct thread* thread, struct rq* rq);
+    void (*dequeue)(struct thread* thread, struct rq* rq);
 
     // Called by the core scheduler 
     struct thread* (*pick_next)(struct rq* rq);

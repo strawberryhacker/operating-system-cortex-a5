@@ -1,43 +1,29 @@
 /// Copyright (C) strawberryhacker 
 
 #include <citrus/types.h>
-#include <citrus/sprint.h>
 #include <citrus/apic.h>
 #include <citrus/print.h>
-#include <citrus/buddy_alloc.h>
-#include <citrus/cache.h>
-#include <citrus/mm.h>
-#include <citrus/benchmark.h>
 #include <citrus/thread.h>
-#include <citrus/sched.h>
-#include <citrus/page_alloc.h>
-#include <citrus/pt_entry.h>
 #include <citrus/syscall.h>
-#include <citrus/interrupt.h>
-#include <citrus/atomic.h>
 #include <citrus/kmalloc.h>
-#include <citrus/loader.h>
-#include <citrus/list.h>
 #include <citrus/panic.h>
-#include <citrus/elf.h>
 #include <citrus/gpio.h>
 #include <citrus/mmc.h>
+#include <citrus/interrupt.h>
 #include <citrus/task_manager.h>
 #include <citrus/disk.h>
 #include <citrus/dma.h>
-#include <gfx/engine.h>
 #include <citrus/fpu.h>
 #include <citrus/dma_receive.h>
+#include <citrus/sched.h>
+#include <citrus/cache.h>
 #include <citrus/logo.h>
 #include <citrus/lcd.h>
 #include <citrus/fat.h>
 #include <citrus/fs.h>
-#include <gfx/font.h>
 #include <citrus/error.h>
-
-#include <app/led_strip.h>
-
 #include <citrus/regmap.h>
+#include <gfx/font.h>
 #include <stdarg.h>
 #include <stdalign.h>
 
@@ -105,7 +91,7 @@ u32 test_thread(void* args)
 
     print("Opening file\n");
     struct file* file = 
-        file_open("/sda2/wallpapers/wallpaper-1.data", FILE_R);
+        file_open("/sda2/wallpapers/wallpaper-3.data", FILE_R);
 
     if (file == NULL) {
         print("Cannot open file\n");
@@ -144,7 +130,7 @@ void main(void)
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
-    //task_manager_init();
+    task_manager_init();
     struct lcd_info lcd_info = {
         .height        = 480,
         .width         = 800,
@@ -157,9 +143,9 @@ void main(void)
         .h_pulse_width = 128
     };
 
-    lcd_init();
-    lcd_on(&lcd_info);
-    create_kernel_thread(test_thread, 1000, "filesystem", NULL, SCHED_RT);
+    //lcd_init();
+    //lcd_on(&lcd_info);
+    //create_kernel_thread(test_thread, 1000, "filesystem", NULL, SCHED_RT);
 
     sched_start();
 } 

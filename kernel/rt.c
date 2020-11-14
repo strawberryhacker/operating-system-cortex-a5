@@ -47,9 +47,9 @@ struct thread* rt_pick_next(struct rq* rq)
     return list_get_entry(tmp, struct thread, node);
 }
 
-extern const struct sched_class idle_class;
+extern const struct sched_class fair_class;
 const struct sched_class rt_class = {
-        .next = &idle_class,
+        .next = &fair_class,
         .init = &rt_init,
         .enqueue = &rt_enqueue,
         .dequeue = &rt_dequeue,

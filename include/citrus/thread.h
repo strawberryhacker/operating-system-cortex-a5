@@ -10,8 +10,10 @@
 struct sched_class;
 
 /// Thread flags
-#define SCHED_RT   0b000
-#define SCHED_IDLE  0b001
+#define SCHED_RT    0b000
+#define SCHED_FAIR  0b001
+#define SCHED_BACK  0b010
+#define SCHED_IDLE  0b011
 
 #define THREAD_MAX_NAME 32
 

@@ -53,7 +53,6 @@ include $(TOP)/mm/Makefile
 include $(TOP)/benchmark/Makefile
 include $(TOP)/kernel/Makefile
 include $(TOP)/fs/Makefile
-include $(TOP)/app/Makefile
 include $(TOP)/gfx/Makefile
 
 # Check that the linker script is provided
