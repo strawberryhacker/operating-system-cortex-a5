@@ -115,7 +115,7 @@ app:
 	@python3 $(TOP)/scripts/app_load.py $(COM_PORT) $(TOP)/app/example/build/app.elf
 
 debug: install
-	$(GDB) -f $(BUILDDIR)/$(TARGET_NAME).elf -x debug/debug.gdb
+	$(GDB) -f $(BUILDDIR)/$(TARGET_NAME).elf -x scripts/debug.gdb
 
 clean:
 	@rm -r -f $(BUILDDIR)

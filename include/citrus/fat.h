@@ -116,6 +116,7 @@ struct fat {
 
     // Holds the global offset of the first data sector
     u32 root_glob_page;
+    u32 data_glob_page;
 
     // Holds the global offset of the first fat table sector
     u32 fat_glob_page;
@@ -138,8 +139,7 @@ struct file {
     // This holds the local offset whithin a page
     u32 page_offset;
 
-    // This hold the page offset whitin the data region of the FAT32 file system
-    u32 page;
+    u32 glob_page;
 
     // Size - only on files
     u32 size;
