@@ -107,11 +107,11 @@ void disk_find_partitions(struct disk* disk)
         }
 
         // Check if this is a valid partition
-        if (pte->sectors) {
+        if (read_le32(&pte->sectors)) {
 
             struct partition* part = &disk->partitions[i];
-            part->sect_count = pte->sectors;
-            part->start_lba = pte->lba;
+            part->sect_count = read_le32(&pte->sectors);
+            part->start_lba = read_le32(&pte->lba);
 
             part->disk = disk;
             part->part_number = i;
