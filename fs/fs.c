@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/fs.h>
 #include <citrus/fat.h>
@@ -8,9 +8,9 @@
 #include <citrus/panic.h>
 #include <citrus/error.h>
 
-/// Takes in a double pointer to a path and modifies it to point to the 
-/// local path after stripping the partition name. This returns the partition
-/// corresponding with the path or NULL
+// Takes in a double pointer to a path and modifies it to point to the 
+// local path after stripping the partition name. This returns the partition
+// corresponding with the path or NULL
 static struct partition* get_part_from_path(const char** path)
 {
     const char* src = *path;
@@ -31,8 +31,8 @@ static struct partition* get_part_from_path(const char** path)
     return name_to_partition(frag, cnt);
 }
 
-/// This functions opens a directory corresponding to the directory `path`. It
-/// returns a file object pointing to the first entry in that directory
+// This functions opens a directory corresponding to the directory `path`. It
+// returns a file object pointing to the first entry in that directory
 struct file* dir_open(const char* path)
 {
     // Get the correct partition
@@ -56,8 +56,8 @@ struct file* dir_open(const char* path)
     return dir;
 }
 
-/// This functions reads the current directory pointed to by dir, and return
-/// its file info
+// This functions reads the current directory pointed to by dir, and return
+// its file info
 i8 dir_read(struct file* dir, struct file_info* info)
 {
     if (!dir->part) {
@@ -66,7 +66,7 @@ i8 dir_read(struct file* dir, struct file_info* info)
     return fat_dir_read(dir->part, dir, info);
 }
 
-/// Opens a file. If takes in a global path and returns a file object
+// Opens a file. If takes in a global path and returns a file object
 struct file* file_open(const char* path, u8 attr)
 {
     // Get the partition from the file name
@@ -92,8 +92,8 @@ struct file* file_open(const char* path, u8 attr)
     return file;
 }
 
-/// This will read a number of bytes from a file pointed to by `file`. It will
-/// return the acctual number of bytes written
+// This will read a number of bytes from a file pointed to by `file`. It will
+// return the acctual number of bytes written
 i8 file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt)
 {
     // This is used in this function

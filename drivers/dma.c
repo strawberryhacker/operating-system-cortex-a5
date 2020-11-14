@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/dma.h>
 #include <citrus/panic.h>
@@ -15,16 +15,16 @@
 #define UART1_DMA_CH 37
 #define DMA_CHANNELS 16
 
-/// List of all the available DMA channels in the system
+// List of all the available DMA channels in the system
 static struct dma_channel dma_channels[DMA_CHANNELS * 2];
 
-/// Intialized the DMA hardware making it operational
+// Intialized the DMA hardware making it operational
 static void dma_init_hardware(struct dma_reg* dma)
 {
     
 }
 
-/// Common DMA interrupt handler
+// Common DMA interrupt handler
 static void dma_common_interrupt(struct dma_reg* dma)
 {
 
@@ -46,19 +46,19 @@ static void dma_common_interrupt(struct dma_reg* dma)
     while (1);
 }
 
-/// Main DMA0 interrupt handler
+// Main DMA0 interrupt handler
 static void dma0_interrupt(void)
 {
     dma_common_interrupt(DMA0);
 }
 
-/// Main DMA1 interrupt handler
+// Main DMA1 interrupt handler
 static void dma1_interrupt(void)
 {
     dma_common_interrupt(DMA1);
 }
 
-/// Initializes both system DMAs
+// Initializes both system DMAs
 void dma_init(void)
 {
     // Initialize the clocks
@@ -136,7 +136,7 @@ static void dma_fill_microblock_transfer(struct dma_reg* dma, u8 ch,
     dma->GE = (1 << ch);
 }
 
-/// Allocates a DMA channel
+// Allocates a DMA channel
 struct dma_channel* alloc_dma_channel(void)
 {
     u32 flags = __atomic_enter();
@@ -155,7 +155,7 @@ struct dma_channel* alloc_dma_channel(void)
     return NULL;
 }
 
-/// Frees a DMA channel
+// Frees a DMA channel
 void free_dma_channel(struct dma_channel* ch)
 {
     // TODO stop any transfers on this channel

@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <app/led_strip.h>
 
@@ -20,7 +20,7 @@ void led_strip_loop(void)
 
 static struct engine e;
 
-/// Main LED strip thread
+// Main LED strip thread
 u32 led_strip_thread(void* args)
 {
     print("LED strip thread started\n");
@@ -48,13 +48,13 @@ u32 led_strip_thread(void* args)
     return 1;
 }
 
-/// Created the LED strip thread
+// Created the LED strip thread
 void led_strip_init(void)
 {
     create_kernel_thread(led_strip_thread, 500, "ledstrip", NULL, SCHED_RT);
 }
 
-/// Updates the led strip
+// Updates the led strip
 void led_strip_update(struct pixel* pixels, u32 cnt)
 {
     for (u32 i = 0; i < 4; i++) {

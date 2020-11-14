@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/timer.h>
 #include <citrus/apic.h>

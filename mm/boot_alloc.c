@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/boot_alloc.h>
 #include <citrus/align.h>
@@ -6,20 +6,20 @@
 
 static u32 boot_alloc_en = 0;
 
-/// From the linker and defines where the boot alloctor can start allocating
+// From the linker and defines where the boot alloctor can start allocating
 extern u32 _kernel_e;
 
-/// This is pointing to the top of the current boot alloc space
+// This is pointing to the top of the current boot alloc space
 static u8* boot_alloc_ptr;
 
-/// Enables the early boot allocator
+// Enables the early boot allocator
 void boot_alloc_init(void)
 {
     boot_alloc_ptr = (u8 *)&_kernel_e;
     boot_alloc_en = 1;
 }
 
-/// Allocates memory from the boot allocator region at the end of the linker
+// Allocates memory from the boot allocator region at the end of the linker
 void* boot_alloc(u32 size, u32 align)
 {
     if (!boot_alloc_en) {
@@ -40,7 +40,7 @@ void boot_alloc_retire(void)
     boot_alloc_en = 0;
 }
 
-/// This should only be called after the boot_alloc_retire and will return the
+// This should only be called after the boot_alloc_retire and will return the
 // end of the boot_alloc region in virtual memory
 u32 boot_alloc_get_end_vaddr(void)
 {

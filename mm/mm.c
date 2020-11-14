@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker 
+// Copyright (C) strawberryhacker 
 
 #include <citrus/mm.h>
 #include <citrus/align.h>
@@ -12,31 +12,31 @@
 #include <citrus/thread.h>
 #include <citrus/panic.h>
 
-/// Hold the virtual end address of the kernel memory. Defined in the linker
+// Hold the virtual end address of the kernel memory. Defined in the linker
 extern u32 _kernel_e;
 
 #define MM_ZONE_CNT 2
 
-/// Allocate the memory zones
+// Allocate the memory zones
 struct mm_zone zones[MM_ZONE_CNT];
 
-/// Allocate the main memory manager object
+// Allocate the main memory manager object
 struct mm mm;
 
-/// Allocate one kernel SLOB allocator
+// Allocate one kernel SLOB allocator
 struct slob_struct slob_allocator;
 struct buddy_struct buddy_allocator;
 
-/// Holds the pointer to the base address of the page array
+// Holds the pointer to the base address of the page array
 struct page* page_array;
 
-/// Returns the kernel virtual address to the page array
+// Returns the kernel virtual address to the page array
 struct page* mm_get_page_array(void)
 {
     return page_array;
 }
 
-/// Set up the page array using the boot_allocator
+// Set up the page array using the boot_allocator
 static void mm_setup_page_array(void)
 {
     // We need to allocate one struct page for every physical page inthe system.
@@ -54,8 +54,8 @@ static void mm_setup_page_array(void)
     u32* ptr = align_up((void *)addr, 4);
 }
 
-/// Starts up the custom allocators; binary buddy alloc for pages and the SLOB
-/// list allocator for the kernel allocations
+// Starts up the custom allocators; binary buddy alloc for pages and the SLOB
+// list allocator for the kernel allocations
 void mm_allocators_init(void)
 {
     // Find the first page_structure which is available for allocation
@@ -89,8 +89,8 @@ void mm_allocators_init(void)
     assert(buddy_alloc_init(zones + 1));
 }
 
-/// Iterates trough all the zones and returns the number of used bytes by the
-/// allocators
+// Iterates trough all the zones and returns the number of used bytes by the
+// allocators
 u32 mm_get_total_used(void)
 {
     u32 used = 0;
@@ -105,8 +105,8 @@ u32 mm_get_total_used(void)
     return used;
 }
 
-/// Iterates trough all the zones and returns the number of total bytes
-/// available for allocation
+// Iterates trough all the zones and returns the number of total bytes
+// available for allocation
 u32 mm_get_total(void)
 {
     u32 total = 0;
@@ -128,7 +128,7 @@ static void mm_struct_init(struct mm* mm)
     list_init(&mm->slob_zones);
 }
 
-/// Early memory manager init routine
+// Early memory manager init routine
 static void mm_early_init(void)
 {
     boot_alloc_init();
@@ -137,8 +137,8 @@ static void mm_early_init(void)
     mm_struct_init(&mm);
 }
 
-/// This sets up the main allocator for use in the kernel space. The buddy
-/// allocator will be used for the ex_heap call to the applications.
+// This sets up the main allocator for use in the kernel space. The buddy
+// allocator will be used for the ex_heap call to the applications.
 void mm_init(void)
 {
     // Make sure the memory is setup correctly
@@ -149,15 +149,15 @@ void mm_init(void)
     mm_allocators_init();
 }
 
-/// Allocates a number of bytes for use by the kernel. This will return a 
-/// kernel virtual address
+// Allocates a number of bytes for use by the kernel. This will return a 
+// kernel virtual address
 void* kmalloc(u32 size)
 {
     return slob_alloc(size, zones);
 }
 
-/// Allocates a number of bytes for use by the kernel. This will return a 
-/// kernel virtual address pointer to zeroed memory
+// Allocates a number of bytes for use by the kernel. This will return a 
+// kernel virtual address pointer to zeroed memory
 void* kzmalloc(u32 size) 
 {
     u32* ptr = slob_alloc(size, zones);
@@ -165,35 +165,35 @@ void* kzmalloc(u32 size)
     return ptr;
 }
 
-/// Free a pointer allocated with the SLOB allocator
+// Free a pointer allocated with the SLOB allocator
 void kfree(void* ptr)
 {
     slob_free(ptr, zones);
 }
 
-/// Allocates a number of pages from the binary buddy using the given order.
-/// This will allocate 2 ** order number of pages. Returns a pointer to a
-/// virtual page structure
+// Allocates a number of pages from the binary buddy using the given order.
+// This will allocate 2 ** order number of pages. Returns a pointer to a
+// virtual page structure
 struct page* alloc_pages(u32 order)
 {
     return buddy_alloc_pages(order, zones + 1);
 }
 
-/// Allocates one page from the binary buddy. Returns a pointer to a virtual 
-/// page structure
+// Allocates one page from the binary buddy. Returns a pointer to a virtual 
+// page structure
 struct page* alloc_page(void)
 {
     return buddy_alloc_pages(0, zones + 1);
 }
 
-/// Frees one or more pages. The size is contains within internal structures
+// Frees one or more pages. The size is contains within internal structures
 void free_pages(struct page* page)
 {
     buddy_free_pages(page, zones + 1);
 }
 
-/// Converts a number of bytes to an allocation order for the binary buddy
-/// allocator
+// Converts a number of bytes to an allocation order for the binary buddy
+// allocator
 u32 bytes_to_order(u32 bytes)
 {
     u32 pages = (u32)align_up((void *)bytes, 4096) / 4096;
@@ -201,16 +201,16 @@ u32 bytes_to_order(u32 bytes)
     return __builtin_ctz(round_up_power_two(pages));
 }
 
-/// Converts a number of pages to an allocation order for the binary buddy
-/// allocator
+// Converts a number of pages to an allocation order for the binary buddy
+// allocator
 u32 pages_to_order(u32 pages)
 {
     return __builtin_ctz(round_up_power_two(pages));
 }
 
-/// Allocates a level 1 page table. Due the the kernel 2GB:2GB split this page
-/// table is 2048 bytes and not 4096. Thus it will only cover 2BG of address
-/// space. This returns a virtual page struct address
+// Allocates a level 1 page table. Due the the kernel 2GB:2GB split this page
+// table is 2048 bytes and not 4096. Thus it will only cover 2BG of address
+// space. This returns a virtual page struct address
 struct page* lv1_pt_alloc(void)
 {
     struct page* page = buddy_alloc_pages(1, zones + 1);
@@ -218,8 +218,8 @@ struct page* lv1_pt_alloc(void)
     return page;
 }
 
-/// Allocates a level 2 page table. This is 4096 bytes in size. This returns a
-/// virtual page struct address
+// Allocates a level 2 page table. This is 4096 bytes in size. This returns a
+// virtual page struct address
 struct page* lv2_pt_alloc(void)
 {
     struct page* page = buddy_alloc_pages(0, zones + 1);
@@ -227,14 +227,14 @@ struct page* lv2_pt_alloc(void)
     return page;
 }
 
-/// Converts a page address to a kernel virtual address
+// Converts a page address to a kernel virtual address
 void* page_to_va(struct page* page)
 {
     u32 index = page - page_array;
     return (void *)(KERNEL_START + (index * 4096));
 }
 
-/// Converts a page address to a phyiscal address
+// Converts a page address to a phyiscal address
 void* page_to_pa(struct page* page)
 {
     u32 index = page - page_array;
@@ -243,7 +243,7 @@ void* page_to_pa(struct page* page)
     return va_to_pa((void *)vaddr);
 }
 
-/// Converts a kernel virtual address to a virtual page address
+// Converts a kernel virtual address to a virtual page address
 struct page* va_to_page(void* page_addr)
 {
     if ((u32)page_addr & 0xFFF) {
@@ -254,7 +254,7 @@ struct page* va_to_page(void* page_addr)
     return page_array + page_index;
 }
 
-/// Converts a physical address to a virtual page address
+// Converts a physical address to a virtual page address
 struct page* pa_to_page(void* page_addr)
 {
     u32 vaddr = (u32)pa_to_va(page_addr);
@@ -266,17 +266,17 @@ struct page* pa_to_page(void* page_addr)
     return page_array + page_index;
 }
 
-/// Initializes the page used for secondary level page tables. One page contains
-/// three level 2 page tables. A pt2 structure is place in the first 1 KiB of
-/// the page. This will contain info about the status of the page tables
+// Initializes the page used for secondary level page tables. One page contains
+// three level 2 page tables. A pt2 structure is place in the first 1 KiB of
+// the page. This will contain info about the status of the page tables
 void lv2_pt_init(struct page* page)
 {
     struct pt2* pt = (struct pt2 *)page_to_va(page);
     pt->bitmap = 0xFFFFFFFF;
 }
 
-/// Initializes a thread_mm structure. This is allocated per process basis and
-/// contains info about the process memory map
+// Initializes a thread_mm structure. This is allocated per process basis and
+// contains info about the process memory map
 void mm_process_init(struct thread_mm* mm)
 {
     list_init(&mm->page_list);
@@ -294,8 +294,8 @@ void mm_process_init(struct thread_mm* mm)
     mm->heap_e = 0;
 }
 
-/// Returns the PTE entry value based on the physical address of the page and
-/// the page table attibutes
+// Returns the PTE entry value based on the physical address of the page and
+// the page table attibutes
 static inline u32 mm_get_pte(u32 phys_addr, const struct pte_attr* attr)
 {
     u32 pte = attr->access | attr->mem | PTE_MASK;
@@ -316,8 +316,8 @@ static inline u32 mm_get_pte(u32 phys_addr, const struct pte_attr* attr)
     return pte;
 }
 
-/// Returns the STE entry value based on the physical address of the section and
-/// the page table attibutes
+// Returns the STE entry value based on the physical address of the section and
+// the page table attibutes
 static inline u32 mm_get_ste_sect(u32 phys_addr, const struct ste_attr* attr)
 {
     u32 ste = attr->access | attr->mem | STE_SECTION_MASK |
@@ -339,17 +339,17 @@ static inline u32 mm_get_ste_sect(u32 phys_addr, const struct ste_attr* attr)
     return ste;
 }
 
-/// Returns the STE entry value for a level 2 page table pointer. It takes in 
-/// the physical address of the level 2 page table as well as the domain
+// Returns the STE entry value for a level 2 page table pointer. It takes in 
+// the physical address of the level 2 page table as well as the domain
 static inline u32 mm_get_ste_ptr(u32 phys_addr, u8 domain)
 {
     assert(domain < 16);
     return STE_PTR_BASE(phys_addr) | STE_PTR_DOMAIN(domain) | STE_PTR_MASK;
 }
 
-/// Maps in a level 2 page table in the memory space pointed to by ttbr. The
-/// phys_addr hold the physical address of the page table and the virt_address
-/// holds the virtual address of the target address
+// Maps in a level 2 page table in the memory space pointed to by ttbr. The
+// phys_addr hold the physical address of the page table and the virt_address
+// holds the virtual address of the target address
 static void mm_map_in_pt(u32* ttbr_virt, u32 phys_addr, u32 virt_addr, u8 domain)
 {
     // The virtual address must be aligned to a 1 MiB boundary
@@ -364,9 +364,9 @@ static void mm_map_in_pt(u32* ttbr_virt, u32 phys_addr, u32 virt_addr, u8 domain
     ttbr_virt[virt_addr >> 20] = ste;
 }
 
-/// Maps in a page into the memory space pointed to by ttbr. The phys_addr holds
-/// the the physical address of the page and the virt_addr holds the target 
-/// virtual address. This is unsafe because the level 2 page table has to exist
+// Maps in a page into the memory space pointed to by ttbr. The phys_addr holds
+// the the physical address of the page and the virt_addr holds the target 
+// virtual address. This is unsafe because the level 2 page table has to exist
 static void mm_map_in_page_unsafe(u32* ttbr_virt, u32 phys_addr, u32 virt_addr,
     struct pte_attr* attr)
 {
@@ -385,14 +385,14 @@ static void mm_map_in_page_unsafe(u32* ttbr_virt, u32 phys_addr, u32 virt_addr,
     pt2_virt[(virt_addr >> 12) & 0xFF] = mm_get_pte(phys_addr, attr);
 }
 
-/// Returns if the STE entry is empty (fault)
+// Returns if the STE entry is empty (fault)
 static inline u8 mm_is_ste_empty(u32 ste)
 {
     return ((ste & 0b11) == 0);
 }
 
-/// Check if the level 1 page table has a valid level 2 page page table mapping
-/// at virt_addr 
+// Check if the level 1 page table has a valid level 2 page page table mapping
+// at virt_addr 
 static inline u8 mm_has_ste_ptr_mapping(u32* ttbr_virt, u32 virt_addr)
 {
     u32 ste = ttbr_virt[virt_addr >> 20];
@@ -400,9 +400,9 @@ static inline u8 mm_has_ste_ptr_mapping(u32* ttbr_virt, u32 virt_addr)
     return (mm_is_ste_empty(ste)) ? 0 : 1;
 }
 
-/// Returns a new level 2 page table. This might require a page allocation 
-/// which will store the new page within the mm->pt2_ptr. This returns the 
-/// virtual address of the new level 2 page table
+// Returns a new level 2 page table. This might require a page allocation 
+// which will store the new page within the mm->pt2_ptr. This returns the 
+// virtual address of the new level 2 page table
 static u32* mm_get_l2_pt(struct thread_mm* mm)
 {
     assert(mm);
@@ -435,9 +435,9 @@ static u32* mm_get_l2_pt(struct thread_mm* mm)
     return (u32 *)((u8 *)page_to_va(pt2) + 1024);
 }
 
-/// Maps in a number of pages into the virtual address space specified by ttbr.
-/// This takes in the virtual address that the pages should be mapped to. It 
-/// returns 1 if success and 0 if an alocation failure has occured
+// Maps in a number of pages into the virtual address space specified by ttbr.
+// This takes in the virtual address that the pages should be mapped to. It 
+// returns 1 if success and 0 if an alocation failure has occured
 u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt, 
     u32 virt_addr, struct pte_attr* attr)
 {
@@ -473,8 +473,8 @@ u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt,
     return 1;
 }
 
-/// Extends the heap limit in a user process memory space. This will move the 
-/// heap break up.
+// Extends the heap limit in a user process memory space. This will move the 
+// heap break up.
 u32* set_break(u32 bytes)
 {
     struct thread_mm* mm = get_curr_mm_process();

@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/elf.h>
 #include <citrus/print.h>
@@ -14,7 +14,7 @@
 #include <citrus/panic.h>
     #include <stddef.h>
 
-/// ELF type
+// ELF type
 enum elf_type {
     ET_NONE,
     ET_REL,
@@ -31,7 +31,7 @@ static const char* elf_type_str[] = {
     "ET_CORE"
 };
 
-/// Section type
+// Section type
 enum sect_type {
     SHT_NULL,
     SHT_PROGBITS,
@@ -62,7 +62,7 @@ static const char* sect_type_str[] = {
     "SHT_DYNSYM"
 };
 
-/// Segment types
+// Segment types
 enum prog_type {
     PT_NULL,
     PT_LOAD,
@@ -85,8 +85,8 @@ static const char* prog_type_str[] = {
 
 static void print_mem(const u8* addr, u32 size, u32 col);
 
-/// Takes in an ELF file and returns the number of bytes for the binary. This 
-/// will ignore any NOLOAD sections in the ELF file
+// Takes in an ELF file and returns the number of bytes for the binary. This 
+// will ignore any NOLOAD sections in the ELF file
 u32 elf_get_binary_size(const u8* data, u32 size)
 {
     struct elf_header* header = (struct elf_header *)data;
@@ -111,9 +111,9 @@ u32 elf_get_binary_size(const u8* data, u32 size)
     return bin_size;
 }
 
-/// This does OBJCOPY on the given elf file and produces a runnable binary. The
-/// binary has to be able to contain the entrie binary. elf_get_binary_size 
-/// should be called first
+// This does OBJCOPY on the given elf file and produces a runnable binary. The
+// binary has to be able to contain the entrie binary. elf_get_binary_size 
+// should be called first
 void objcopy(const u8* elf, u32 elf_size, u8* binary)
 {
     u8* bin_ptr = binary;

@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/disk.h>
 #include <citrus/print.h>
@@ -21,19 +21,19 @@ void disk_init(void)
     list_init(&sys_disk.partitions);
 }
 
-/// Adds a disk to the system
+// Adds a disk to the system
 static inline void add_disk(struct disk* disk)
 {
     list_add_last(&disk->node, &sys_disk.disks);
 }
 
-/// Adds a partition to the system
+// Adds a partition to the system
 static inline void add_partition(struct partition* vol)
 {
     list_add_last(&vol->node, &sys_disk.partitions);
 }
 
-/// Print a list of all the disks in the system
+// Print a list of all the disks in the system
 void list_disks(void)
 {
     struct list_node* node;
@@ -44,7 +44,7 @@ void list_disks(void)
     }
 }
 
-/// Print a list of all the partitions in the system
+// Print a list of all the partitions in the system
 void list_partitions(void)
 {
     struct list_node* node;
@@ -55,7 +55,7 @@ void list_partitions(void)
     }
 }
 
-/// Sets the name on a partition based on the disk and the partition number
+// Sets the name on a partition based on the disk and the partition number
 static void partition_set_name(const struct disk* disk, struct partition* part,
     u8 index)
 {
@@ -76,8 +76,8 @@ static void partition_set_name(const struct disk* disk, struct partition* part,
     *dest = 0x00;
 }
 
-/// Read the disk MBR (sector 0) and find the disk partitions and add them to 
-/// the partitions. This will give all valid partitins a name
+// Read the disk MBR (sector 0) and find the disk partitions and add them to 
+// the partitions. This will give all valid partitins a name
 void disk_find_partitions(struct disk* disk)
 {
     mem_set(disk->partitions, 0, sizeof(disk->partitions));
@@ -123,7 +123,7 @@ void disk_find_partitions(struct disk* disk)
     kfree(buf);
 }
 
-/// This function will take in a disk and a disk type and give the disk a name
+// This function will take in a disk and a disk type and give the disk a name
 void disk_set_name(struct disk* disk, enum disk_type type)
 {
     // The name is determined from the disk type
@@ -149,7 +149,7 @@ void disk_set_name(struct disk* disk, enum disk_type type)
     *dest = 0x00;
 }
 
-/// Compares a partition string and a name
+// Compares a partition string and a name
 static u8 partition_name_cmp(const char* part_name, const char* name, u8 cnt)
 {
     cnt++;
@@ -161,7 +161,7 @@ static u8 partition_name_cmp(const char* part_name, const char* name, u8 cnt)
     return ((cnt == 0) && (*part_name == 0));
 }
 
-/// Returns the partition of the given name
+// Returns the partition of the given name
 struct partition* name_to_partition(const char* name, u8 cnt)
 {
     struct list_node* node;
@@ -175,7 +175,7 @@ struct partition* name_to_partition(const char* name, u8 cnt)
     return NULL;
 }
 
-/// Adds a new disk to the system
+// Adds a new disk to the system
 void disk_add(struct disk* disk, enum disk_type type)
 {
     // Find a letter

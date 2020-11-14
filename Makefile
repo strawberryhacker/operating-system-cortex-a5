@@ -100,7 +100,6 @@ $(BUILDDIR)/%.o: %.c
 	@$(CC) $(CFLAGS) $(CPFLAGS) -c $< -o $@
 
 $(BUILDDIR)/%.o: %.s
-	@echo $^
 	@mkdir -p $(dir $@)
 	@echo " >" $<
 	@$(ARM_ASM) $(ASMFLAGS) -c $< -o $@

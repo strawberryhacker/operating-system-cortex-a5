@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/types.h>
 #include <citrus/print.h>
@@ -7,11 +7,11 @@
 #include <citrus/page_alloc.h>
 #include <citrus/mm.h>
 
-/// Called by the SVC vector. The AAPCS stackframe are preserved before this call.
-/// The LR at the 5th position in the stack frame will contain the return value
-/// after the SVC vector. The SVC instruction is 4 bytes before the LR causing
-/// the SVC number to be placed at ofset -4 relative to the SVC LR due the
-/// little-endian memory ordering
+// Called by the SVC vector. The AAPCS stackframe are preserved before this call.
+// The LR at the 5th position in the stack frame will contain the return value
+// after the SVC vector. The SVC instruction is 4 bytes before the LR causing
+// the SVC number to be placed at ofset -4 relative to the SVC LR due the
+// little-endian memory ordering
 void supervisor_exception(u32* sp)
 {
     if (sp[0]) {

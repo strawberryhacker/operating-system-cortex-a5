@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/task_manager.h>
 #include <citrus/thread.h>
@@ -29,7 +29,7 @@ void print_cpu_usage(u8 cpu_usage)
     print(NORMAL "%*s %3d%%]\n", space, "", cpu_usage);
 }
 
-/// Prints the memory usage in the system
+// Prints the memory usage in the system
 void print_mem_usage(u32 total, u32 used)
 {
     u8 bars = (used / (total / 100)) / 5;

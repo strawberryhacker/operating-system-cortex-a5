@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker 
+// Copyright (C) strawberryhacker 
 
 #include <citrus/sched.h>
 #include <citrus/print.h>
@@ -16,18 +16,18 @@
 
 #define PIT_IRQ 3
 
-/// Each CPU has a private runqueue
+// Each CPU has a private runqueue
 struct rq rq;
 
 void core_sched(struct rq* rq, u32 reschedule);
 
-/// Array for the scheduling classes
+// Array for the scheduling classes
 #define CLASS_CNT 2
 
 const struct sched_class* sched_classes[CLASS_CNT];
 
-/// Returning the scheduling class based on the sched class number gotten from
-/// the thread flags
+// Returning the scheduling class based on the sched class number gotten from
+// the thread flags
 const struct sched_class* get_sched_class(u32 class_num)
 {
     if (class_num >= CLASS_CNT) {
@@ -36,7 +36,7 @@ const struct sched_class* get_sched_class(u32 class_num)
     return sched_classes[class_num];
 }
 
-/// Enqueus a thread into the running queue of a scheduling class
+// Enqueus a thread into the running queue of a scheduling class
 void sched_enqueue_thread(struct thread* thread)
 {
     if (thread->class == NULL) {
@@ -45,7 +45,7 @@ void sched_enqueue_thread(struct thread* thread)
     thread->class->enqueue(thread, &rq);
 }
 
-/// FIX THIS
+// FIX THIS
 void enqueue_sleeping_threads(struct rq* rq)
 {
     u64 tick = rq->time.tick;
@@ -73,7 +73,7 @@ void enqueue_sleeping_threads(struct rq* rq)
     }
 }
 
-/// Scheduler interrupt being called every ms
+// Scheduler interrupt being called every ms
 void cpu_tick_handler(void)
 {
     cpu_timer_clear_flags();
@@ -84,12 +84,12 @@ void cpu_tick_handler(void)
     core_sched(&rq, 0);
 }
 
-/// Scheduling classes
+// Scheduling classes
 extern const struct sched_class rt_class;
 extern const struct sched_class idle_class;
 
-/// Called by the scheduler interrupt and will return the next thread to run on 
-/// the CPU given the CPUs private runqueue structure
+// Called by the scheduler interrupt and will return the next thread to run on 
+// the CPU given the CPUs private runqueue structure
 static inline struct thread* core_pick_next(struct rq* rq)
 {
     const struct sched_class* class;
@@ -116,9 +116,9 @@ void sched_save_runtime(struct rq* rq)
     }
 }
 
-/// Core scheduler. This must be called inside either the IRQ interrupt or the
-/// SVC interrupt. These interrupts have special mechanisms for doing a context 
-/// switch
+// Core scheduler. This must be called inside either the IRQ interrupt or the
+// SVC interrupt. These interrupts have special mechanisms for doing a context 
+// switch
 void core_sched(struct rq* rq, u32 reschedule)
 {
     // If we have a early yield the value is NOT 1000
@@ -150,13 +150,13 @@ void core_sched(struct rq* rq, u32 reschedule)
     }
 }
 
-/// Adds a thread to the rq thread list
+// Adds a thread to the rq thread list
 void sched_add_thread(struct thread* thread)
 {
     list_add_first(&thread->thread_node, &rq.thread_list);
 }
 
-/// Initializes the main runqueue structure 
+// Initializes the main runqueue structure 
 void sched_init_rq(struct rq* rq)
 {
     // Initialize all the lists 
@@ -186,21 +186,21 @@ void sched_init_rq(struct rq* rq)
     }
 }
 
-/// Set the current lazy FPU user
+// Set the current lazy FPU user
 void sched_set_lazy_fpu_user(struct thread* thread)
 {
     rq.lazy_fpu = thread;
 }
 
-/// Gets the current lazy FPU user
+// Gets the current lazy FPU user
 struct thread* sched_get_lazy_fpu_user(void)
 {
     return rq.lazy_fpu;
 }
 
-/// This is the IDLE thread which is run when no other scheduling class can
-/// offer any new thread. This might not need to occupy a full timeslice but
-/// should probably wait for a signal
+// This is the IDLE thread which is run when no other scheduling class can
+// offer any new thread. This might not need to occupy a full timeslice but
+// should probably wait for a signal
 static u32 idle_func(void* args)
 {
     while (1) {
@@ -218,7 +218,7 @@ static void add_idle(struct rq* rq)
 
 static inline void reschedule(void);
 
-/// Early init routine for the scheduler 
+// Early init routine for the scheduler 
 static inline void sched_early_init(void)
 {
     print("Sched starting...\n");
@@ -227,7 +227,7 @@ static inline void sched_early_init(void)
     sched_init_rq(&rq);
 }
 
-/// Initialized the scheduler for the CPU
+// Initialized the scheduler for the CPU
 void sched_init(void)
 {
     sched_early_init();
@@ -244,22 +244,22 @@ void sched_init(void)
     cpu_timer_init();
 }
 
-/// Returns the main kernel tick value 
+// Returns the main kernel tick value 
 u64 get_kernel_tick(void)
 {
     return rq.time.tick;
 }
 
-/// Returns the current thread running on this CPU
+// Returns the current thread running on this CPU
 struct thread* get_curr_thread(void)
 {
     return rq.curr;
 }   
 
-/// Adds a thread to the sorted delay list for a given runqueue. The thread with
-/// the shortest time left to sleep will be placed in front of the queue. This
-/// will modify the threads node pointers; therefore the thread must NOT exist in
-/// any list at this point
+// Adds a thread to the sorted delay list for a given runqueue. The thread with
+// the shortest time left to sleep will be placed in front of the queue. This
+// will modify the threads node pointers; therefore the thread must NOT exist in
+// any list at this point
 void add_sleep_list(struct thread* thread, struct rq* rq)
 {
     u64 curr_tick = thread->tick_to_wake;
@@ -284,7 +284,7 @@ void add_sleep_list(struct thread* thread, struct rq* rq)
     list_add_last(&thread->node, &rq->sleep_list);
 }
 
-/// Force a reschedule by writing directly to the APIC
+// Force a reschedule by writing directly to the APIC
 static inline void reschedule(void)
 {
     apic_force(PIT_IRQ);
@@ -303,8 +303,8 @@ void print_queue(struct list_node* queue)
     print("\n");
 }
 
-/// Functions for temporarily stopping the scheduler from executing. The timers 
-/// and interrupts will still run
+// Functions for temporarily stopping the scheduler from executing. The timers 
+// and interrupts will still run
 u32 sched_disable(void)
 {
     u32 i = rq.sched_enable;
@@ -317,8 +317,8 @@ void sched_enable(u32 i)
     rq.sched_enable = i;
 }
 
-/// This will put the current running thread into the sleep queue for a number of 
-/// microseconds
+// This will put the current running thread into the sleep queue for a number of 
+// microseconds
 void sched_thread_sleep(u32 ms)
 {
     // Get the current thread

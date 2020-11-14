@@ -1,9 +1,9 @@
-/// Copyright (C) strawberryhacker 
+// Copyright (C) strawberryhacker 
 
 #include <citrus/mem.h>
 #include <citrus/print.h>
 
-/// Function for dumping a memory segment to the serial console
+// Function for dumping a memory segment to the serial console
 void mem_dump(const void* mem, u32 size, u32 col, u8 hex)
 {
     const u8* src = (const u8 *)mem;

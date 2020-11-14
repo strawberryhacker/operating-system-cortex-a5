@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker 
+// Copyright (C) strawberryhacker 
 
 #include <citrus/benchmark.h>
 #include <citrus/page_alloc.h>

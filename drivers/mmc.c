@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/mmc.h>
 #include <citrus/print.h>
@@ -10,9 +10,9 @@
 #include <citrus/kmalloc.h>
 #include <stddef.h>
 
-/// This code is configuring the MMC driver to work in SD / SDIO mode
+// This code is configuring the MMC driver to work in SD / SDIO mode
 
-/// Sets the bus width of the MMC hardware. Currently only 1 and 8 bit supported
+// Sets the bus width of the MMC hardware. Currently only 1 and 8 bit supported
 static void mmc_set_bus_width(struct sd_card* sd, u32 bus_width)
 {
     struct mmc_reg* mmc = sd->mmc;
@@ -26,7 +26,7 @@ static void mmc_set_bus_width(struct sd_card* sd, u32 bus_width)
     }
 }
 
-/// Enables the high-speed MMC mode
+// Enables the high-speed MMC mode
 static void mmc_set_high_speed(struct sd_card* sd, u32 high_speed)
 {
     struct mmc_reg* mmc = sd->mmc;
@@ -38,18 +38,18 @@ static void mmc_set_high_speed(struct sd_card* sd, u32 high_speed)
     }
 }
 
-/// The SD host has a register to choose the SDCLK clock frequency. SD host 
-/// version 1.00 and 2.00 embeds a 8 bit divider while the version 3.00
-/// increases this number to 10 bits. 
-///
-/// According to the SD card spesification the maximum speed during 
-/// configuration is 400kHz and the max operating frequency is 25 MHz in normal 
-/// speed mode and 50MHz is high speed mode.
-///
-/// The version 3.00 host controller supports arbritary prescaling given by the
-/// formula target_clock = base_clock / (DIV + 1). The capabilities register 
-/// shows wheather this clock mode is supported. A non-zero value in this
-/// register indicates this
+// The SD host has a register to choose the SDCLK clock frequency. SD host 
+// version 1.00 and 2.00 embeds a 8 bit divider while the version 3.00
+// increases this number to 10 bits. 
+//
+// According to the SD card spesification the maximum speed during 
+// configuration is 400kHz and the max operating frequency is 25 MHz in normal 
+// speed mode and 50MHz is high speed mode.
+//
+// The version 3.00 host controller supports arbritary prescaling given by the
+// formula target_clock = base_clock / (DIV + 1). The capabilities register 
+// shows wheather this clock mode is supported. A non-zero value in this
+// register indicates this
 static void mmc_set_frequency(struct sd_card* sd, u32 frequency)
 {
     struct mmc_reg* mmc = sd->mmc;
@@ -87,7 +87,7 @@ static void mmc_set_frequency(struct sd_card* sd, u32 frequency)
     mmc->CCR |= (1 << 2);
 }
 
-/// Set bus power 
+// Set bus power 
 static void mmc_set_bus_power(struct mmc_reg* mmc)
 {    
     // Get the supported bus power
@@ -101,7 +101,7 @@ static void mmc_init_hardware(struct mmc_reg* mmc)
     while (mmc->SRR & 1);
 }
 
-/// Enabled interrupt on card insert
+// Enabled interrupt on card insert
 static void mmc_card_detect_irq_enable(struct mmc_reg* mmc)
 {
     mmc->NISTER |= (1 << 6) | (1 << 7);
@@ -111,7 +111,7 @@ static void mmc_card_detect_irq_enable(struct mmc_reg* mmc)
     mmc->NISTR |= (1 << 6) | (1 << 7);
 }
 
-/// Creates a new SD card and initializes the SD card structure
+// Creates a new SD card and initializes the SD card structure
 static struct sd_card* mmc_create_sd_card(void)
 {
     struct sd_card* card = kzmalloc(sizeof(struct sd_card));
@@ -124,11 +124,11 @@ static struct sd_card* mmc_create_sd_card(void)
     return card;
 }
 
-/// SD protocol thread function that will enumerate and add a new card
+// SD protocol thread function that will enumerate and add a new card
 extern u32 sd_init_thread(void* sd_card);
 
-/// Handles the event of a SD insertion. This creates a new SD card object and 
-/// creates a new thread which will enumerate the newly attached SD card
+// Handles the event of a SD insertion. This creates a new SD card object and 
+// creates a new thread which will enumerate the newly attached SD card
 static void mmc_card_insert(struct mmc_reg* mmc)
 {
     // Check the card insertion in the present state. TODO debounce isssue
@@ -155,8 +155,8 @@ static void mmc_card_insert(struct mmc_reg* mmc)
     create_kernel_thread(sd_init_thread, 500, "sdinit", card, SCHED_RT);
 }
 
-/// Internal interrupt handler which will handle both requests from MMC0 and
-/// MMC1 and call the appropriate handlers
+// Internal interrupt handler which will handle both requests from MMC0 and
+// MMC1 and call the appropriate handlers
 static void _mmc_interrupt_handler(struct mmc_reg* mmc, u32 status)
 {
     if (status & (1 << 6)) {
@@ -170,7 +170,7 @@ static void _mmc_interrupt_handler(struct mmc_reg* mmc, u32 status)
     }
 }
 
-/// Main MMC interrupt for MMC0
+// Main MMC interrupt for MMC0
 void mmc0_interrupt(void)
 {
     // Read and clear the status bits
@@ -181,7 +181,7 @@ void mmc0_interrupt(void)
     _mmc_interrupt_handler(MMC0, status);
 }
 
-/// Main MMC interrupt for MMC1
+// Main MMC interrupt for MMC1
 void mmc1_interrupt(void)
 {
     // Read and clear the status bits
@@ -240,8 +240,8 @@ void mmc_init(void)
     mmc_card_detect_irq_enable(MMC1);
 }
 
-/// Internal structure for speeding up command 17 and command 18 transfers by
-/// use of the ADMA
+// Internal structure for speeding up command 17 and command 18 transfers by
+// use of the ADMA
 struct mmc_adma {
     u16 attr;
     u16 length;
@@ -259,8 +259,8 @@ static void mmc_wait_cmd_inhibit(struct mmc_reg* mmc)
     }
 }
 
-/// Returns the cmd register based on the cmd index, the response type and if 
-/// there is any data stage at all
+// Returns the cmd register based on the cmd index, the response type and if 
+// there is any data stage at all
 static u32 mmc_construct_cmd_reg(u32 cmd_index, u32 resp, struct mmc_data* data)
 {
     // Set the command index
@@ -292,7 +292,7 @@ static u32 mmc_construct_cmd_reg(u32 cmd_index, u32 resp, struct mmc_data* data)
     return cmd_reg;
 }
 
-/// Reads raw data after a SD command
+// Reads raw data after a SD command
 static u32 mmc_read_raw(struct mmc_reg* mmc, struct mmc_data* data)
 {
     if (data->dir == 1) {
@@ -350,7 +350,7 @@ static u32 mmc_read_raw(struct mmc_reg* mmc, struct mmc_data* data)
     return 1;
 }
 
-/// Performs a send command operation
+// Performs a send command operation
 u32 mmc_send_command(struct sd_card* sd, struct mmc_cmd* cmd, struct mmc_data* data)
 {
     struct mmc_reg* mmc = sd->mmc;

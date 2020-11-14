@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker 
+// Copyright (C) strawberryhacker 
 
 #include <citrus/pit.h>
 #include <citrus/regmap.h>

@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker 
+// Copyright (C) strawberryhacker 
 
 #include <citrus/print.h>
 #include <citrus/types.h>
@@ -6,8 +6,8 @@
 #include <citrus/panic.h>
 #include <citrus/regmap.h>
 
-/// Performs a software reboot. This is called to avoid a manual hardware reset
-/// when the CPU does not respond to the c-boot interrupt instruction
+// Performs a software reboot. This is called to avoid a manual hardware reset
+// when the CPU does not respond to the c-boot interrupt instruction
 void reboot(void)
 {
     // Flush the serial buffer 
@@ -68,10 +68,10 @@ void print_regs(void)
     print("pc : %p\n", reg);
 }
 
-/// Declaration of the FPU context switch assembly code
+// Declaration of the FPU context switch assembly code
 void fpu_context_switch(void);
 
-/// Main exeptioon for the undefined exception - PC is wrong...
+// Main exeptioon for the undefined exception - PC is wrong...
 void undef_exception(u32 pc)
 {    
     // Check wheather the undef exception was caused by a FPU access

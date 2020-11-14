@@ -1,6 +1,6 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
-/// Implementation of the FAT32 file system including LFN support
+// Implementation of the FAT32 file system including LFN support
 
 #include <citrus/fat.h>
 #include <citrus/kmalloc.h>
@@ -12,8 +12,8 @@
 #include <citrus/page_alloc.h>
 #include <citrus/error.h>
 
-/// Prints the FAT status code to the serial console
-/// REMOVE
+// Prints the FAT status code to the serial console
+// REMOVE
 static void fat_status(u8 status)
 {
     if (status == FAT_OK) {
@@ -40,17 +40,13 @@ static void fat_status(u8 status)
     }
 }
 
-
-/// This checks the FAT header signature at the end of the BPB page. It returns
-/// 1 if the signature is right, 0 is not
 static inline u8 fat_signature_ok(const u8* bpb)
 {
     return (bpb[510] == 0x55 && bpb[511] == 0xAA);
 }
 
-
-/// Dumps a memory region to the seiral console
-/// REMOVE
+// Dumps a memory region to the seiral console
+// REMOVE
 static void memdump(const void* mem, u32 size, u32 col, u8 hex)
 {
     const u8* src = (const u8 *)mem;
@@ -69,9 +65,6 @@ static void memdump(const void* mem, u32 size, u32 col, u8 hex)
     }
 }
 
-
-/// Checks if the BPB given hold a valid FAT file system. Returns 1 if the BPB
-/// belongs to any FAT 12/16/32 file system
 static u8 bpb_contain_valid_fat(const u8* bpb)
 {
     if (mem_cmp(bpb + BPB_16_FSTYPE, "FAT", 3)) {
@@ -83,11 +76,11 @@ static u8 bpb_contain_valid_fat(const u8* bpb)
     return 0;
 }
 
-
-/// Checks if the BPB contains a valid FAT32 files system
+// Checks if the BPB contains a valid FAT32 files system. This will fail in
+// case of a FAT12 or FAT16 file system
 static u8 bpb_contain_fat32(const u8* bpb)
 {
-    if (!bpb_contain_valid_fat(bpb)) {
+    if (bpb_contain_valid_fat(bpb) == 0) {
         return 0;
     }
 
@@ -96,22 +89,24 @@ static u8 bpb_contain_fat32(const u8* bpb)
         return 0;
     }
 
-    // Determite the FAT system type by counting the number of cluster
+    // Determite the FAT system type by counting the number of data clusters
     u32 fat_pages;
+    u32 tot_pages;
+    u32 data_pages;
+
     if (read_le16(bpb + BPB_FAT_SIZE_16)) {
         fat_pages = read_le16(bpb + BPB_FAT_SIZE_16);
     } else {
         fat_pages = read_le32(bpb + BPB_32_FAT_SIZE);
     }
 
-    u32 tot_pages;
     if (read_le16(bpb + BPB_TOT_SECT_16)) {
         tot_pages = read_le16(bpb + BPB_TOT_SECT_16);
     } else {
         tot_pages = read_le32(bpb + BPB_TOT_SECT_32);
     }
 
-    u32 data_pages = tot_pages - read_le16(bpb + BPB_RSVD_CNT) - 
+    data_pages = tot_pages - read_le16(bpb + BPB_RSVD_CNT) - 
         (fat_pages * bpb[BPB_NUM_FATS]);
 
     // This hold the total number of data cluster in the volume
@@ -120,9 +115,8 @@ static u8 bpb_contain_fat32(const u8* bpb)
     return (data_pages >= 65525);
 }
 
-
-/// This converts an order to a bitmask. For example 3 would return 0b111. The
-/// functions returns a 32 bit mask
+// This converts an order to a bitmask. For example 3 would return 0b111. The
+// functions returns a 32 bit mask
 static u32 fat_order_to_mask(u8 order)
 {
     assert(order < 32);
@@ -136,9 +130,9 @@ static u32 fat_order_to_mask(u8 order)
 }
 
 
-/// Builds the FAT strucure. Cluster, sector and FAT table sizes are converted
-/// to bitmasks for fast modulo and floot division. This function assumes the 
-/// the presence of a FAT32 file system on the BPB
+// Builds the FAT strucure. Cluster, sector and FAT table sizes are converted
+// to bitmasks for fast modulo and floot division. This function assumes the 
+// the presence of a FAT32 file system on the BPB
 static void build_fat_struct(struct partition* part, struct fat* fat, u8* bpb)
 {
     u32 pages_bytes = read_le16(bpb + BPB_SECTOR_SIZE);
@@ -174,15 +168,15 @@ static void build_fat_struct(struct partition* part, struct fat* fat, u8* bpb)
 }
 
 
-/// Returns 1 if the directory entry is a LFN entry
+// Returns 1 if the directory entry is a LFN entry
 static inline u8 is_lfn(const u8* dir_entry)
 {
     return (dir_entry[LFN_ATTR] == ATTR_LFN);
 }
 
 
-/// Converts a file pointer to a page number. This will hold the page on the 
-/// disk where the file is pointing. This returns a disk global page
+// Converts a file pointer to a page number. This will hold the page on the 
+// disk where the file is pointing. This returns a disk global page
 static inline u32 file_get_glob_page(const struct partition* part, 
     const struct file* file)
 {
@@ -190,7 +184,7 @@ static inline u32 file_get_glob_page(const struct partition* part,
 }
 
 
-/// Caches the FAT table page pointed to by glob_page
+// Caches the FAT table page pointed to by glob_page
 static i8 cache_fat_page(const struct partition* part, struct file* file,
     u32 glob_page)
 {
@@ -210,7 +204,7 @@ static i8 cache_fat_page(const struct partition* part, struct file* file,
 }
 
 
-/// Returns the FAT status based on a cluster
+// Returns the FAT status based on a cluster
 static i8 get_fat_ent_status(u32 fat_entry)
 {
     // If not done; mask the entry
@@ -230,12 +224,12 @@ static i8 get_fat_ent_status(u32 fat_entry)
 }
 
 
-/// Takes in a pointer to a cluster number and follows the cluster chain `count`
-/// clusters. If successful it updates the cluster. 
-///
-/// Returns  EEOF if this is the last cluster in the chain
-/// Returns -EEOF if the last cluster has occured
-/// Returns -EDISK in case of disk error
+// Takes in a pointer to a cluster number and follows the cluster chain `count`
+// clusters. If successful it updates the cluster. 
+//
+// Returns  EEOF if this is the last cluster in the chain
+// Returns -EEOF if the last cluster has occured
+// Returns -EDISK in case of disk error
 static i8 follow_cluster_chain(const struct partition* part, struct file* file,
     u32* clust_ptr, u32 count)
 {
@@ -272,9 +266,9 @@ static i8 follow_cluster_chain(const struct partition* part, struct file* file,
 }
 
 
-/// Caches the current file pointer page into the file structure cache
-///
-/// Returns EDISK in case of disk error
+// Caches the current file pointer page into the file structure cache
+//
+// Returns EDISK in case of disk error
 static i8 fat_cache(const struct partition* part, struct file* file)
 {
     u32 page = file_get_glob_page(part, file);
@@ -303,10 +297,10 @@ static i8 fat_cache(const struct partition* part, struct file* file)
 }
 
 
-/// Increments the file pointer by a number of bytes and caches the new page. 
-/// 
-/// Returns -EEOF if the EOF has been reached without being done
-/// Returns -EDISK in case of disk error
+// Increments the file pointer by a number of bytes and caches the new page. 
+// 
+// Returns -EEOF if the EOF has been reached without being done
+// Returns -EDISK in case of disk error
 static inline u8 fat_inc_file_ptr(const struct partition* part,
     struct file* file, u32 bytes)
 {
@@ -355,11 +349,11 @@ static inline u8 fat_inc_file_ptr(const struct partition* part,
 }
 
 
-/// Jumps a number of entries in a directory. This will increment the file
-/// pointer with a multiple of 32 bytes
-///
-/// Returns -EEOF if the EOF has been reached without being done
-/// Returns -EDISK in case of disk error
+// Jumps a number of entries in a directory. This will increment the file
+// pointer with a multiple of 32 bytes
+//
+// Returns -EEOF if the EOF has been reached without being done
+// Returns -EDISK in case of disk error
 static inline i8 jump_entries(const struct partition* part, struct file* dir,
     u32 entries) 
 {
@@ -367,12 +361,12 @@ static inline i8 jump_entries(const struct partition* part, struct file* dir,
 }
 
 
-/// Takes in a dir pointer and increments the pointer so that it is pointing to 
-/// the next valid entry in the directory
-///
-/// Returns  EEOF if entry is free and no subsequent entry are in use
-/// Returns -EDISK if a disk error
-/// Returns -EEOF in case of end of cluster chain
+// Takes in a dir pointer and increments the pointer so that it is pointing to 
+// the next valid entry in the directory
+//
+// Returns  EEOF if entry is free and no subsequent entry are in use
+// Returns -EDISK if a disk error
+// Returns -EEOF in case of end of cluster chain
 i8 get_next_valid_entry(const struct partition* part, struct file* dir)
 {
     i8 err;
@@ -407,12 +401,12 @@ i8 get_next_valid_entry(const struct partition* part, struct file* dir)
 }
 
 
-/// This takes in a file path and brakes it down into fragments. 
-///
-/// It takes in a full path starting with slash. It takes in the pointer to the
-/// previous fragment (or / in case of the first one). This will return a pointer
-/// to the next fragment if existing and return its size. It returns the length
-/// of the found fragment, or 0 in case of no fragment
+// This takes in a file path and brakes it down into fragments. 
+//
+// It takes in a full path starting with slash. It takes in the pointer to the
+// previous fragment (or / in case of the first one). This will return a pointer
+// to the next fragment if existing and return its size. It returns the length
+// of the found fragment, or 0 in case of no fragment
 static u32 get_next_path_frag(const char* path, u32 size, const char** frag)
 {
     const char* curr_frag = *frag;
@@ -442,8 +436,8 @@ static u32 get_next_path_frag(const char* path, u32 size, const char** frag)
 }
 
 
-/// Sets the file pointer to point to the start of a new cluster. Returns a FAT
-/// status code
+// Sets the file pointer to point to the start of a new cluster. Returns a FAT
+// status code
 static i8 set_cluster(const struct partition* part, struct file* file, u32 clust) 
 {
     const struct fat* fat = part->fs;
@@ -460,15 +454,15 @@ static i8 set_cluster(const struct partition* part, struct file* file, u32 clust
 }
 
 
-/// Initialized a new file object. This can be avoided by allocating from 
-/// kzmalloc
+// Initialized a new file object. This can be avoided by allocating from 
+// kzmalloc
 void file_struct_init(struct file* file)
 {
     mem_set(file, 0x00, sizeof(struct file));
 }
 
 
-/// Points the direcory object to the root directory
+// Points the direcory object to the root directory
 static i8 dir_set_root(const struct partition* part, struct file* dir)
 {
     dir->file_offset = 0;
@@ -478,7 +472,7 @@ static i8 dir_set_root(const struct partition* part, struct file* dir)
     return fat_cache(part, dir);
 }
 
-/// Returns if a dir object is the root directory
+// Returns if a dir object is the root directory
 static u8 dir_is_root(const struct file* dir)
 {
     return (dir->page == 0 && dir->page_offset == 0);
@@ -487,7 +481,7 @@ static u8 dir_is_root(const struct file* dir)
 
 #define LFN_INDEX_SIZE 3
 
-/// Index lookup for LFN name entries
+// Index lookup for LFN name entries
 struct {
     u8 size;
     u8 offset;
@@ -498,8 +492,8 @@ struct {
 };
 
 
-/// Remove this
-/// REMOVE
+// Remove this
+// REMOVE
 static void print_entry(const struct partition* part, struct file* dir)
 {
     print(GREEN);
@@ -527,7 +521,7 @@ static void print_entry(const struct partition* part, struct file* dir)
 }
 
 
-/// Converts a char to uppercase
+// Converts a char to uppercase
 static inline char fat_to_upper(char a)
 {
     if (a <= 'z' && a >= 'a') {
@@ -537,7 +531,7 @@ static inline char fat_to_upper(char a)
 }
 
 
-/// Converts a char to lowercase
+// Converts a char to lowercase
 static inline char fat_to_lower(char a)
 {
     if (a <= 'Z' && a >= 'A') {
@@ -547,7 +541,7 @@ static inline char fat_to_lower(char a)
 }
 
 
-/// Compare two chars case insensitive. Returns 1 if they are equal
+// Compare two chars case insensitive. Returns 1 if they are equal
 static inline u8 fat_cmp_char_unified(char a, char b)
 {
     a = fat_to_upper(a);
@@ -559,14 +553,14 @@ static inline u8 fat_cmp_char_unified(char a, char b)
 
 #define NUM_ILLEGAL_CHAR_SFN 16
 
-/// List of all the illegal characters in the SFN file name
+// List of all the illegal characters in the SFN file name
 const u8 illegal_sfn_chars[NUM_ILLEGAL_CHAR_SFN] = {
     0x22, 0x2A, 0x2B, 0x2C, 0x2E, 0x2F, 0x3A, 0x3B,
     0x3C, 0x3D, 0x3E, 0x3F, 0x5B, 0x5C, 0x5D, 0x7C 
 };
 
 
-/// Returns if the given SFN character is a legal SFN character
+// Returns if the given SFN character is a legal SFN character
 static u8 is_sfn_char_valid(char sfn_char)
 {
     // Check if the SFN char is valid
@@ -585,7 +579,7 @@ static u8 is_sfn_char_valid(char sfn_char)
 }
 
 
-/// Compares a SFN char agains the file name char and returns 1 if they match
+// Compares a SFN char agains the file name char and returns 1 if they match
 static inline u8 fat_sfn_cmp_char(char sfn_char, char file_char)
 {
     if (!is_sfn_char_valid(sfn_char)) {
@@ -603,9 +597,9 @@ static inline u8 fat_sfn_cmp_char(char sfn_char, char file_char)
 }
 
 
-/// Converts a SFN 8.3 name to a normal filename. The buffer should at least be
-/// 13 bytes long; 11 characters + 1 dot + NULL termination. This will
-/// add the NULL terminating character at the end
+// Converts a SFN 8.3 name to a normal filename. The buffer should at least be
+// 13 bytes long; 11 characters + 1 dot + NULL termination. This will
+// add the NULL terminating character at the end
 static void fat_sfn_to_file_name(const char* sfn, char* buffer)
 {
     u8 i;
@@ -646,7 +640,7 @@ static void fat_sfn_to_file_name(const char* sfn, char* buffer)
 }
 
 
-/// Converts a dot entry file name to a SFN 8.3 name
+// Converts a dot entry file name to a SFN 8.3 name
 static u8 fat_dot_file_name_to_sfn(const char* file_name, u32 len, u8* sfn)
 {
     // Either we have a . or a ..
@@ -669,7 +663,7 @@ static u8 fat_dot_file_name_to_sfn(const char* file_name, u32 len, u8* sfn)
 }
 
 
-/// Converts a filename to a SFN 8.3 name
+// Converts a filename to a SFN 8.3 name
 static u8 fat_file_name_to_sfn(const char* file_name, u32 len, u8* sfn)
 {
     // Check if the file name is a dot entry name. If it is we have to handle
@@ -738,7 +732,7 @@ static u8 fat_file_name_to_sfn(const char* file_name, u32 len, u8* sfn)
 }
 
 
-/// Compared a SFN entry 8.3 file name with a normal file name
+// Compared a SFN entry 8.3 file name with a normal file name
 static u8 fat_sfn_compare(const char* sfn, const char* file_name, u32 len)
 {
     u8 sfn_buffer[11];
@@ -756,8 +750,8 @@ static u8 fat_sfn_compare(const char* sfn, const char* file_name, u32 len)
 }
 
 
-/// Checks if the string `frag` with frag_length is present in the string
-/// `file_name` at the specified offset
+// Checks if the string `frag` with frag_length is present in the string
+// `file_name` at the specified offset
 static u8 fat_lfn_cmp_frag(const char* file_name, u32 len, const char* frag,
     u32 frag_len, u32 offset)
 {
@@ -785,7 +779,7 @@ static u8 fat_lfn_cmp_frag(const char* file_name, u32 len, const char* frag,
 }
 
 
-/// Gets the LFN CRC from the SFN 8.3 file name
+// Gets the LFN CRC from the SFN 8.3 file name
 static u8 fat_get_sfn_crc(const u8* sfn)
 {
    u8 crc = 0;
@@ -796,7 +790,7 @@ static u8 fat_get_sfn_crc(const u8* sfn)
 }
 
 
-/// Convert a LFN dir entry to a 13-byte ASCII representation
+// Convert a LFN dir entry to a 13-byte ASCII representation
 static u8 fat_get_lfn_name(const char* lfn, char* lfn_buffer)
 {
     u8 cnt = 0;
@@ -815,12 +809,12 @@ static u8 fat_get_lfn_name(const char* lfn, char* lfn_buffer)
 }
 
 
-/// Compares a directory entry agains a given file name. This will move the file
-/// pointer so that it points to the SFN entry of the current block. 
-///
-/// Returns  ENOFILE if the filename does not match
-/// Returns -EDISK if the search finds a disk error
-/// Returns  0 if match
+// Compares a directory entry agains a given file name. This will move the file
+// pointer so that it points to the SFN entry of the current block. 
+//
+// Returns  ENOFILE if the filename does not match
+// Returns -EDISK if the search finds a disk error
+// Returns  0 if match
 static i8 fat_compare_entry(const struct partition* part, struct file* dir, 
     const char* file_name, u32 len)
 {
@@ -889,11 +883,11 @@ static i8 fat_compare_entry(const struct partition* part, struct file* dir,
 }
 
 
-/// Takes inn a dir pointing to the first LFN entry. It returns the LFN name
-/// in `buffer` and returns the number of characters written in bytes.
-///
-/// Returns -EDISK in case of CRC mismatch or disk error
-/// Returns -EEOF if the EOF has been reached without being done
+// Takes inn a dir pointing to the first LFN entry. It returns the LFN name
+// in `buffer` and returns the number of characters written in bytes.
+//
+// Returns -EDISK in case of CRC mismatch or disk error
+// Returns -EEOF if the EOF has been reached without being done
 static i8 get_lfn_full_name(const struct partition* part, struct file* dir, 
     char* buffer, u8* bytes_written)
 {
@@ -940,12 +934,12 @@ static i8 get_lfn_full_name(const struct partition* part, struct file* dir,
 }
 
 
-/// This function will search for a directory entry in the specified directory.
-/// It will start the search from the current dir pointer.
-///
-/// Returns -EEOF in case of end of cluster chain
-/// Returns -EDISK
-/// Returns  EEOF if the directory is not found
+// This function will search for a directory entry in the specified directory.
+// It will start the search from the current dir pointer.
+//
+// Returns -EEOF in case of end of cluster chain
+// Returns -EDISK
+// Returns  EEOF if the directory is not found
 static i8 fat_dir_search(const struct partition* part, struct file* dir,
     const char* file_name, u32 len)
 {
@@ -967,8 +961,8 @@ static i8 fat_dir_search(const struct partition* part, struct file* dir,
 }
 
 
-/// This takes in a directory entry and return the cluster number which points
-/// to either the file or the directory
+// This takes in a directory entry and return the cluster number which points
+// to either the file or the directory
 static u32 fat_dir_ent_to_clust(const u8* dir_ent)
 {
     u32 cluster = 0;
@@ -980,13 +974,13 @@ static u32 fat_dir_ent_to_clust(const u8* dir_ent)
 }
 
 
-/// Takes in a pointer to a directory and a relative path. It will return the 
-/// file object to the resulting file or folder if existing. If the path is 
-/// wrong it returns a path error.
-///
-/// Returns -EEOF in case of end of cluster chain
-/// Returns -EDISK
-/// Returns  EEOF if the directory is not found
+// Takes in a pointer to a directory and a relative path. It will return the 
+// file object to the resulting file or folder if existing. If the path is 
+// wrong it returns a path error.
+//
+// Returns -EEOF in case of end of cluster chain
+// Returns -EDISK
+// Returns  EEOF if the directory is not found
 static i8 fat_follow_path(const struct partition* part, struct file* dir,
     const char* path, u32 size)
 {
@@ -1030,14 +1024,14 @@ static i8 fat_follow_path(const struct partition* part, struct file* dir,
 }
 
 
-/// This function will take in a pointer to a directory. If this is a SFN it 
-/// will remain unchanged. The buffer should be at least 256 bytes. 
-///
-/// If the dir point to a LFN entry is will parse the file name and move the dir
-/// pointer to the SFN entry following that. If the user want to save the file
-/// he can call the internal file save
-///
-/// Returns -EDISK in case of disk error
+// This function will take in a pointer to a directory. If this is a SFN it 
+// will remain unchanged. The buffer should be at least 256 bytes. 
+//
+// If the dir point to a LFN entry is will parse the file name and move the dir
+// pointer to the SFN entry following that. If the user want to save the file
+// he can call the internal file save
+//
+// Returns -EDISK in case of disk error
 static i8 fat_get_entry_name(const struct partition* part, struct file* dir,
     char* buffer)
 {
@@ -1069,7 +1063,7 @@ static i8 fat_get_entry_name(const struct partition* part, struct file* dir,
 }
 
 
-/// Iternal structure for position saving when reading directory entries
+// Iternal structure for position saving when reading directory entries
 struct file_ptr {
     u32 file_offset;
     u32 page_offset;
@@ -1077,7 +1071,7 @@ struct file_ptr {
 };
 
 
-/// Saves the internal position of a file into the lightweight file pointer
+// Saves the internal position of a file into the lightweight file pointer
 static void fat_file_save(const struct file* file, struct file_ptr* ptr)
 {
     ptr->file_offset = file->file_offset;
@@ -1086,9 +1080,9 @@ static void fat_file_save(const struct file* file, struct file_ptr* ptr)
 }
 
 
-/// Restores the internal position of a file from the lightweight file pointer
-///
-/// Returns -EDISK in case of disk error
+// Restores the internal position of a file from the lightweight file pointer
+//
+// Returns -EDISK in case of disk error
 static i8 fat_file_restore(const struct partition* part, struct file* file,
     struct file_ptr* ptr)
 {
@@ -1100,7 +1094,7 @@ static i8 fat_file_restore(const struct partition* part, struct file* file,
 }
 
 
-/// Update the file time structure from the 16-bit time variable in the SFN
+// Update the file time structure from the 16-bit time variable in the SFN
 static void fat_get_time(u16 time, struct file_time* time_ptr)
 {
     time_ptr->hour = time >> 11;
@@ -1109,7 +1103,7 @@ static void fat_get_time(u16 time, struct file_time* time_ptr)
 }
 
 
-/// Update the file data structure from the 16 bit data variable in the SFN
+// Update the file data structure from the 16 bit data variable in the SFN
 static void fat_get_date(u16 date, struct file_date* date_ptr)
 {
     date_ptr->year = 1980 + ((date >> 9) & 0b1111111);
@@ -1118,7 +1112,7 @@ static void fat_get_date(u16 date, struct file_date* date_ptr)
 }
 
 
-/// Takes in a pointer to a SFN entry and updates the file info structure
+// Takes in a pointer to a SFN entry and updates the file info structure
 static void fat_get_sfn_info(const u8* sfn, struct file_info* info)
 {
     info->attr = sfn[SFN_ATTR];
@@ -1135,12 +1129,12 @@ static void fat_get_sfn_info(const u8* sfn, struct file_info* info)
 }
 
 
-/// Public FAT32 file system API
-/// For kernel internal use only
-/// ----------------------------------------------------------------------------
+// Public FAT32 file system API
+// For kernel internal use only
+// ----------------------------------------------------------------------------
 
-/// Takes in a directory object and opens the directory pointed to by path. The
-/// directory does not need to be closed after
+// Takes in a directory object and opens the directory pointed to by path. The
+// directory does not need to be closed after
 i8 fat_dir_open(const struct partition* part, struct file* dir,
     const char* path, u32 size)
 {
@@ -1164,10 +1158,10 @@ i8 fat_dir_open(const struct partition* part, struct file* dir,
     return 0;
 }
 
-/// Takes in a directory pointer and reads the directory entry
-///
-/// Returns -EDISK in case of disk error
-/// Returns -EEOF if the EOF has been reached without being done
+// Takes in a directory pointer and reads the directory entry
+//
+// Returns -EDISK in case of disk error
+// Returns -EEOF if the EOF has been reached without being done
 i8 fat_dir_read(const struct partition* part, struct file* dir,
     struct file_info* info)
 {
@@ -1193,10 +1187,10 @@ i8 fat_dir_read(const struct partition* part, struct file* dir,
     return 0;
 }
 
-/// Gets the volume label
-///
-/// Returns -EDISK in case of disk error
-/// Returns -EEOF if the EOF has been reached without being done
+// Gets the volume label
+//
+// Returns -EDISK in case of disk error
+// Returns -EEOF if the EOF has been reached without being done
 i8 fat_get_label(const struct partition* part, struct file_info* info)
 {
     struct file* dir = kmalloc(sizeof(struct file));
@@ -1225,8 +1219,8 @@ i8 fat_get_label(const struct partition* part, struct file_info* info)
     return err;
 }
 
-/// Read a number of bytes from a file and returns the numbr of of bytes
-/// written
+// Read a number of bytes from a file and returns the numbr of of bytes
+// written
 i8 fat_file_open(const struct partition* part, struct file* file,
     const char* path, u32 size)
 {
@@ -1314,10 +1308,10 @@ void file_print(struct file_info* info)
     print("\n");
 }
 
-/// Called by the disk interface. This will take in a disk and try to mount it.
-/// If it returns 1 the parition is fully mounted and can be accessed by the FAT
-/// API. If it returns 0 it is probably not a FAT32 file system or it contains a
-/// broken disk
+// Called by the disk interface. This will take in a disk and try to mount it.
+// If it returns 1 the parition is fully mounted and can be accessed by the FAT
+// API. If it returns 0 it is probably not a FAT32 file system or it contains a
+// broken disk
 i8 fat_mount_partition(struct partition* part)
 {
     u8* buf = kmalloc(512);
@@ -1356,7 +1350,7 @@ i8 fat_mount_partition(struct partition* part)
 
 #include <citrus/elf.h>
 
-/// Test function for testing the file syatem
+// Test function for testing the file syatem
 void fat_test(struct disk* disk)
 {
     print("--- Running FAT test ---\n");

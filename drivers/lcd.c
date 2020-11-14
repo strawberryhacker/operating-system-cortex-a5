@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/lcd.h>
 #include <citrus/print.h>
@@ -83,7 +83,7 @@ static inline void wait_clock_domain_sync(void)
     while (LCD->LCDSR & (1 << 4));
 }
 
-/// This function must be given the right parameters.
+// This function must be given the right parameters.
 void lcd_on(struct lcd_info* info)
 {
     // 1. Configure LCD timing, signal polarity and clock period
@@ -156,7 +156,7 @@ void lcd_on(struct lcd_info* info)
     print("Pixel clock is running\n");
 }
 
-/// Powerdown sequence for the LCD display
+// Powerdown sequence for the LCD display
 void lcd_off(void)
 {
     // Turn off the backlight
@@ -190,7 +190,7 @@ void lcd_init(void)
     lcd_clock_init();
 }
 
-/// Sets the display backlight intensity
+// Sets the display backlight intensity
 void lcd_set_brightness(u8 brightness)
 {
     u32 reg = LCD->LCDCFG6;

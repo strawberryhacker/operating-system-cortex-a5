@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/thread.h>
 #include <citrus/print.h>
@@ -16,17 +16,17 @@
 #include <citrus/syscall.h>
 #include <citrus/mem.h>
 
-/// Initial CPSR values for kernel / user threads. The mode is set, interrupts
-/// are unmasked and the status bits are cleared
+// Initial CPSR values for kernel / user threads. The mode is set, interrupts
+// are unmasked and the status bits are cleared
 #define USER_THREAD_CPSR  0b10000
 #define KERNEL_THREAD_CPSR 0b11111
 
-/// The scheduling class occupies the three lowest bits in the thread attributes
+// The scheduling class occupies the three lowest bits in the thread attributes
 #define FLAG_CLASS_MSK 0b111
 #define FLAG_CLASS_POS 0
 
-/// Thread and process exit routine which is called when either a thread or a 
-/// process exits
+// Thread and process exit routine which is called when either a thread or a 
+// process exits
 void thread_exit(u32 status_code)
 {
     irq_disable();
@@ -63,8 +63,8 @@ void thread_exit(u32 status_code)
 
 }
 
-/// Sets up the stack for any process. This takes in the arguments and the
-/// return function as well as the CPSR for user / kernel threads
+// Sets up the stack for any process. This takes in the arguments and the
+// return function as well as the CPSR for user / kernel threads
 u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
 {
     sp--;
@@ -96,9 +96,9 @@ u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
     return sp;
 }
 
-/// Initializes the thread structure. The thread structure MUST be allocated
-/// using kzalloc. This way the mm field will be zero which is required for
-/// kernel threads whithin the context switch
+// Initializes the thread structure. The thread structure MUST be allocated
+// using kzalloc. This way the mm field will be zero which is required for
+// kernel threads whithin the context switch
 static void init_thread_struct(struct thread* thread)
 {
     // Initialize the list nodes
@@ -110,8 +110,8 @@ static void init_thread_struct(struct thread* thread)
     mem_set(thread->fpu_stack, 0, 32 * 4);
 }
 
-/// Copies in the thread name into the thread control block. This adds NULL
-/// termination such that the thread name can be easily printed
+// Copies in the thread name into the thread control block. This adds NULL
+// termination such that the thread name can be easily printed
 static void thread_set_name(struct thread* thread, const char* name)
 {
     u32 i;
@@ -123,14 +123,14 @@ static void thread_set_name(struct thread* thread, const char* name)
     *dest = '\0';
 }
 
-/// Sets the scheduler class in a thread given the thread flags
+// Sets the scheduler class in a thread given the thread flags
 static void thread_set_sched_class(struct thread* thread, u32 flags)
 {
     const struct sched_class* class = get_sched_class(flags & 0b111);
     thread->class = class;
 }
 
-/// Creates a lightweight kernel thread in the kernel memory space
+// Creates a lightweight kernel thread in the kernel memory space
 struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags)
 {
@@ -164,14 +164,14 @@ struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size,
     return thread;
 }
 
-/// TODO implement the kill kernel thread function
+// TODO implement the kill kernel thread function
 void kill_kernel_thread(struct thread* t)
 {
 
 }
 
-/// Core function for creating a user thread. This assumes that a memory space 
-/// is created. It will allocate a new stack region
+// Core function for creating a user thread. This assumes that a memory space 
+// is created. It will allocate a new stack region
 static inline void create_user_thread_core(struct thread* thread,
     u32 (*func)(void *), u32 stack_size,const char* name, void* args, u32 flags)
 {
@@ -226,7 +226,7 @@ static inline void create_user_thread_core(struct thread* thread,
     sched_enqueue_thread(thread);
 }
 
-/// Creates a user thread within the memory space of the parent process
+// Creates a user thread within the memory space of the parent process
 struct thread* create_thread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags)
 {
@@ -251,7 +251,7 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_size,
     return NULL;
 }
 
-/// Create new heavy process
+// Create new heavy process
 struct thread* create_process(u32 (*func)(void *), u32 stack_size,
     const char* name, void* args, u32 flags)
 {
@@ -274,7 +274,7 @@ struct thread* create_process(u32 (*func)(void *), u32 stack_size,
     return thread;
 }
 
-/// This functions maps in a number of code pages into the process memory space
+// This functions maps in a number of code pages into the process memory space
 void map_in_code(struct page* code_page, u32 pages, struct thread* thread)
 {
     thread->mm->data_s += pages * 4096;
@@ -296,8 +296,8 @@ void map_in_code(struct page* code_page, u32 pages, struct thread* thread)
     dcache_clean();
 }
 
-/// Adding a number of pages to a thread. This also updated the parent process
-/// memory makp, and adds the pages to the mm pages list
+// Adding a number of pages to a thread. This also updated the parent process
+// memory makp, and adds the pages to the mm pages list
 void curr_thread_add_pages(struct page* page, u32 pages)
 {
     struct thread* t = get_curr_thread();
@@ -308,8 +308,8 @@ void curr_thread_add_pages(struct page* page, u32 pages)
     mm_process_add_page(page, t->mm);
 }
 
-/// Returns the memory managment structure of the current (parent) process of 
-/// the current running thread
+// Returns the memory managment structure of the current (parent) process of 
+// the current running thread
 struct thread_mm* get_curr_mm_process(void)
 {
     struct thread* t = get_curr_thread();

@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker 
+// Copyright (C) strawberryhacker 
 
 #include <citrus/slob.h>
 #include <citrus/print.h>
@@ -7,28 +7,28 @@
 #include <citrus/panic.h>
 #include <stddef.h>
 
-/// Gets the total number of bytes free
+// Gets the total number of bytes free
 static u32 slob_get_free(struct mm_zone* zone)
 {
     struct slob_struct* slob = (struct slob_struct *)zone->alloc;
     return slob->stats.total - slob->stats.used;
 }
 
-/// Gets the total number of bytes used
+// Gets the total number of bytes used
 static u32 slob_get_used(struct mm_zone* zone)
 {
     struct slob_struct* slob = (struct slob_struct *)zone->alloc;
     return slob->stats.used;
 }
 
-/// Gets the total number of bytes in total
+// Gets the total number of bytes in total
 static u32 slob_get_total(struct mm_zone* zone)
 {
     struct slob_struct* slob = (struct slob_struct *)zone->alloc;
     return slob->stats.total;
 }
 
-/// Initailzie the zone structure used for the buddy allocator
+// Initailzie the zone structure used for the buddy allocator
 static void slob_init_zone(struct mm_zone* zone)
 {
     zone->get_used = slob_get_used;
@@ -36,7 +36,7 @@ static void slob_init_zone(struct mm_zone* zone)
     zone->get_free = slob_get_free;
 }
 
-/// Initialized the SLOB allocator. The zone must be setup correctly
+// Initialized the SLOB allocator. The zone must be setup correctly
 u8 slob_init(struct mm_zone* zone)
 {
     // Initiaize the zone
@@ -86,8 +86,8 @@ u8 slob_init(struct mm_zone* zone)
     return 1;
 }
 
-/// The `first` node is the node which is pointing to the first physical node in
-/// the memory. The `last` is the last node pointing to NULL.  
+// The `first` node is the node which is pointing to the first physical node in
+// the memory. The `last` is the last node pointing to NULL.  
 static u8 slob_insert_free(struct slob_node* first, struct slob_node* last,
     struct slob_node* node)
 {
@@ -131,7 +131,7 @@ static u8 slob_insert_free(struct slob_node* first, struct slob_node* last,
     return 1;
 }
 
-/// Extend the memory region covered by the SLOB allocator
+// Extend the memory region covered by the SLOB allocator
 void slob_extend(struct mm_zone* zone, u32 pages)
 {
     u32 atomic = __atomic_enter();
@@ -172,8 +172,8 @@ void slob_extend(struct mm_zone* zone, u32 pages)
     __atomic_leave(atomic);
 }
 
-/// Allocates a physically and virtually continous memory region. This is based 
-/// on the SLOB allocator (simple list of block)
+// Allocates a physically and virtually continous memory region. This is based 
+// on the SLOB allocator (simple list of block)
 void* slob_alloc(u32 size, struct mm_zone* zone)
 {
     if (size == 0) {
@@ -214,8 +214,8 @@ void* slob_alloc(u32 size, struct mm_zone* zone)
     // We have to check if the memory block is large enough to contain more data 
     u32 new_size = it->size - size;
     if (new_size >= SLOB_MIN_BLOCK) {
-        /// We have more space, and the space is large enough to contain at least
-        /// MM_MIN_BLOCK number of bytes
+        // We have more space, and the space is large enough to contain at least
+        // MM_MIN_BLOCK number of bytes
         struct slob_node* new = (struct slob_node *)((u32)it + size);
 
         // The kmalloc_insert_free requires the size field to be set 
@@ -236,7 +236,7 @@ void* slob_alloc(u32 size, struct mm_zone* zone)
     return (void *)((u32)it + sizeof(struct slob_node));
 }
 
-/// Frees a pointer allocated by slob_alloc
+// Frees a pointer allocated by slob_alloc
 void slob_free(void* ptr, struct mm_zone* zone)
 {
     u32 atomic = __atomic_enter();

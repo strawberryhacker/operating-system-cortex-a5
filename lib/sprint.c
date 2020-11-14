@@ -1,12 +1,12 @@
-/// Copyright (C) strawberryhacker 
+// Copyright (C) strawberryhacker 
 
 #include <citrus/sprint.h>
 #include <citrus/regmap.h>
 #include <stddef.h>
 
-/// Simple sprintf implementation. Floating point not supported yet. For more 
-/// information on how to use sprintf; have a look here:
-/// https://www.tutorialspoint.com/c_standard_library/c_function_sprintf.htm
+// Simple sprintf implementation. Floating point not supported yet. For more 
+// information on how to use sprintf; have a look here:
+// https://www.tutorialspoint.com/c_standard_library/c_function_sprintf.htm
 
 static inline u8 char_to_num(char c)
 {
@@ -210,7 +210,7 @@ u32 vsprint(char* buf, const char* data, va_list args)
     return buf - start;
 }
 
-/// General sprintf implentation
+// General sprintf implentation
 u32 sprint(char* buf, const char* data, ...)
 {
     va_list args;

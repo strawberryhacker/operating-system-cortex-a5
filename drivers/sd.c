@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/sd.h>
 #include <citrus/print.h>
@@ -8,11 +8,11 @@
 #include <citrus/kmalloc.h>
 #include <stddef.h>
 
-/// 178 card registers
+// 178 card registers
 
 #define SD_STATUS_ERROR (1 << 19)
 
-/// Issues the go to idle command
+// Issues the go to idle command
 static u32 sd_go_to_idle(struct sd_card* sd)
 {
     struct mmc_cmd* cmd = &sd->cmd;
@@ -64,8 +64,8 @@ static u32 sd_send_interface_condition(struct sd_card* sd)
     return 1;
 }
 
-/// Send CMD55 which indicates that the next command is an application spesific
-/// command
+// Send CMD55 which indicates that the next command is an application spesific
+// command
 static u32 sd_cmd55(struct sd_card* sd)
 {
     // The command 55 should not use the sd card cmd structure since it will be
@@ -86,9 +86,9 @@ static u32 sd_cmd55(struct sd_card* sd)
     return 1;
 }
 
-/// Send operating conditions. This is issued by the host after the completion
-/// of send interface condition. This will send the host capacity support and
-/// the card will return the OCR register
+// Send operating conditions. This is issued by the host after the completion
+// of send interface condition. This will send the host capacity support and
+// the card will return the OCR register
 static u32 sd_send_op_cond(struct sd_card* sd)
 {
     u32 arg = 0;
@@ -154,8 +154,8 @@ static u32 sd_send_op_cond(struct sd_card* sd)
     return 0;
 }
 
-/// Gets the CID register from the card. After a successful reception of this 
-/// command the card will enter the identification stage
+// Gets the CID register from the card. After a successful reception of this 
+// command the card will enter the identification stage
 static u32 sd_send_all_cid(struct sd_card* sd)
 {
     struct mmc_cmd* cmd = &sd->cmd;
@@ -177,9 +177,9 @@ static u32 sd_send_all_cid(struct sd_card* sd)
     return 1;
 }
 
-/// Send realative address command. The host sends command 3 in order to request
-/// the card to publish a RCA number. The host then sets the card relative 
-/// address
+// Send realative address command. The host sends command 3 in order to request
+// the card to publish a RCA number. The host then sets the card relative 
+// address
 static u32 sd_send_relative_addr(struct sd_card* sd)
 {
     struct mmc_cmd* cmd = &sd->cmd;
@@ -203,8 +203,8 @@ static u32 sd_send_relative_addr(struct sd_card* sd)
     return 1;
 }
 
-/// Read the card spesific data (the CSD register). The card will remain inn the
-/// same state after the reception of this command
+// Read the card spesific data (the CSD register). The card will remain inn the
+// same state after the reception of this command
 static u32 sd_get_csd(struct sd_card* sd)
 {
     struct mmc_cmd* cmd = &sd->cmd;
@@ -241,7 +241,7 @@ static u32 sd_get_csd(struct sd_card* sd)
     return 1;
 }
 
-/// Toggles a card between the transfer mode and the stand-by mode
+// Toggles a card between the transfer mode and the stand-by mode
 static u32 sd_select_deselect(struct sd_card* sd)
 {
     struct mmc_cmd* cmd = &sd->cmd;
@@ -260,7 +260,7 @@ static u32 sd_select_deselect(struct sd_card* sd)
     return 1;
 }
 
-/// Inverts the byte order in a word
+// Inverts the byte order in a word
 static void sd_invert_byte_order(u32* data)
 {
     u32 reg = *data;
@@ -274,7 +274,7 @@ static void sd_invert_byte_order(u32* data)
     *data = res;
 }
 
-/// Get the card CSR register and check whether it supports 4 bit bus mode
+// Get the card CSR register and check whether it supports 4 bit bus mode
 static u32 sd_get_scr(struct sd_card* sd)
 {
     struct mmc_cmd* cmd = &sd->cmd;
@@ -314,7 +314,7 @@ static u32 sd_get_scr(struct sd_card* sd)
     return 1;
 }
 
-/// Switch the bus mode
+// Switch the bus mode
 static u32 sd_set_bus_width(u32 bus_width, struct sd_card* sd) {
     assert(bus_width == 1 || bus_width == 4);
 
@@ -341,8 +341,8 @@ static u32 sd_set_bus_width(u32 bus_width, struct sd_card* sd) {
     return 1;
 }
 
-/// Checks high speed support. This requires the card to have a higher version
-/// than 1.0. Otherwise the CMD6 is not supported
+// Checks high speed support. This requires the card to have a higher version
+// than 1.0. Otherwise the CMD6 is not supported
 static u32 sd_check_high_speed(struct sd_card* sd)
 {
     struct mmc_cmd* cmd = &sd->cmd;
@@ -374,14 +374,14 @@ static u32 sd_check_high_speed(struct sd_card* sd)
     }
 }
 
-/// Initializes the SD card structure. This must be done before starting the 
-/// enumeration
+// Initializes the SD card structure. This must be done before starting the 
+// enumeration
 static void sd_init_struct(struct sd_card* sd)
 {
     sd->card_addr = 0;
 }
 
-/// Checks if a card is ready for receive new data
+// Checks if a card is ready for receive new data
 static u32 sd_check_chard_ready(struct sd_card* sd)
 {
     struct mmc_cmd* cmd = &sd->cmd;
@@ -409,7 +409,7 @@ static u32 sd_check_chard_ready(struct sd_card* sd)
     return 1;
 }
 
-/// Reads from the SD card 
+// Reads from the SD card 
 static inline u32 sd_read(struct sd_card* sd, u32 sect, u32 cnt, u8* buffer)
 {
     assert(buffer);
@@ -462,7 +462,7 @@ u32 sd_disk_read(const struct disk* disk, u32 sect, u32 cnt, u8* data)
     return sd_read(sd, sect, cnt, data);
 }
 
-/// Created a phyiscal disk from the specified SD card
+// Created a phyiscal disk from the specified SD card
 struct disk* sd_create_disk(struct sd_card* sd)
 {
     struct disk* disk = kzmalloc(sizeof(struct disk));
@@ -473,10 +473,10 @@ struct disk* sd_create_disk(struct sd_card* sd)
     return disk;
 }
 
-/// This thread is launced by the scheduler when a new SD has been inserted. 
-/// This will initialize and enumerate the SD card such that the SD card can 
-/// be accessed by the file system driver. After the initialization it will 
-/// make a disk object and mount the disk
+// This thread is launced by the scheduler when a new SD has been inserted. 
+// This will initialize and enumerate the SD card such that the SD card can 
+// be accessed by the file system driver. After the initialization it will 
+// make a disk object and mount the disk
 u32 sd_init_thread(void* sd_card)
 {
     // This thread is given a new SD card struct in the parameter list

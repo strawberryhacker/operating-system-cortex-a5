@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/dma_receive.h>
 #include <citrus/apic.h>
@@ -29,7 +29,7 @@ static void uart4_interrupt(void);
 static u8 process_packet(const u8* data, u32 size);
 static u8 handle_packet(const u8* data, u32 size, u8 cmd);
 
-/// Packet header
+// Packet header
 struct packet_header {
     u8 tag;
     u8 crc;
@@ -38,13 +38,13 @@ struct packet_header {
     u32 data_size;
 };
 
-/// Intermediate buffer for the DMA
+// Intermediate buffer for the DMA
 static volatile u8 alignas(32) dma_buffer[DMA_BUFFER_SIZE];
 
-/// Allocate a DMA channel
+// Allocate a DMA channel
 static struct dma_channel* channel;
 
-/// Pre-allocate the DMA request
+// Pre-allocate the DMA request
 static struct dma_req req;
 
 void flex_print_init(void)
@@ -69,7 +69,7 @@ void flex_print_init(void)
 
 void dma_receive_init(void)
 {
-    /// Configure the DMA channel
+    // Configure the DMA channel
     req = (struct dma_req) {
         .burst          = DMA_BURST_16,
         .chunk          = DMA_CHUNK_1,
@@ -103,14 +103,14 @@ void dma_receive_init(void)
     dma_submit_request(&req, channel);
 }
 
-/// Sends a response back to the computer
+// Sends a response back to the computer
 static void send_response(u8 resp)
 {
     while (!(FLEX4->U_SR & (1 << 1)));
     FLEX4->U_THR = resp;
 }
 
-/// Timeout interrupt for the UART4 channel
+// Timeout interrupt for the UART4 channel
 static void uart4_interrupt(void)
 {   
     if (FLEX4->U_SR & (1 << 8)) {

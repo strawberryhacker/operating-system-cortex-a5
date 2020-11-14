@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/loader.h>
 #include <citrus/types.h>
@@ -14,25 +14,25 @@
 #include <citrus/regmap.h>
 #include <stddef.h>
 
-/// This loader is temorarily and communicates with the host computer over
-/// serial. It is capable of receiving frames with a cmd field and up to 4k of
-/// data. The fram format is
-/// 
-///   [ start ]  [ cmd ]  [ size ]  [ data ]  [ crc ]  [ end ]
-///
-/// The crc field is a 8-bit CRC8 which is calculated over the folling fields;
-/// cmd, size and data
+// This loader is temorarily and communicates with the host computer over
+// serial. It is capable of receiving frames with a cmd field and up to 4k of
+// data. The fram format is
+// 
+//   [ start ]  [ cmd ]  [ size ]  [ data ]  [ crc ]  [ end ]
+//
+// The crc field is a 8-bit CRC8 which is calculated over the folling fields;
+// cmd, size and data
 
 #define START_TAG 0xAA
 #define END_TAG   0x55
 #define POLY      0xB2
 
-/// Private variables for the state machine
+// Private variables for the state machine
 static volatile struct packet packet;
 volatile enum loader_state loader_state;
 
-/// Sends a reponse back to the host computer. This should be 0 for failure and
-/// 1 for success
+// Sends a reponse back to the host computer. This should be 0 for failure and
+// 1 for success
 static void loader_send_resp(u8 resp)
 {
     // Send the byte
@@ -40,7 +40,7 @@ static void loader_send_resp(u8 resp)
     UART4->THR = resp;
 }
 
-/// Processes an ELF program
+// Processes an ELF program
 void run_elf(const u8* elf_buffer, u32 elf_size)
 {
     print("Gotten elf size => %d\n", elf_size);
@@ -52,9 +52,9 @@ static volatile u8* elf_ptr;
 static volatile u32 elf_order;
 static volatile u32 elf_size = 0;
 
-/// Called when a new packet has been received. This function must process the
-/// packet and send a response back when it is done. This response will trigger
-/// the transfer of the next packet
+// Called when a new packet has been received. This function must process the
+// packet and send a response back when it is done. This response will trigger
+// the transfer of the next packet
 static void loader_new_frame(volatile struct packet* p)
 {
     if (p->cmd == 2) {
@@ -82,9 +82,9 @@ static void loader_new_frame(volatile struct packet* p)
     loader_send_resp(1);
 }
 
-/// This is called when the serial line has been inactive for more than 1 second
-/// while in the middle of a frame. In this case the frame is discarded and the
-/// state maching is reset to the default state
+// This is called when the serial line has been inactive for more than 1 second
+// while in the middle of a frame. In this case the frame is discarded and the
+// state maching is reset to the default state
 static void timeout_interrupt(void)
 {
     irq_disable();
@@ -95,11 +95,11 @@ static void timeout_interrupt(void)
 
 }
 
-/// Used for parsing the frame size and controlling packet data overflow
+// Used for parsing the frame size and controlling packet data overflow
 static volatile u32 index;
 
-/// Main serial interrupt handler. This will handle all the commands from the
-/// host including frame commands and reboot commands
+// Main serial interrupt handler. This will handle all the commands from the
+// host including frame commands and reboot commands
 static void loader_interrupt(void)
 {
     // Receive data
@@ -193,7 +193,7 @@ static void loader_interrupt(void)
     }
 }
 
-/// Inializes the loader including timout timers and data structures
+// Inializes the loader including timout timers and data structures
 void loader_init(void)
 {
     loader_state = LOADER_IDLE;

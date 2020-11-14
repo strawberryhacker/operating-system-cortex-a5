@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker
+// Copyright (C) strawberryhacker
 
 #include <citrus/types.h>
 #include <citrus/thread.h>
@@ -13,7 +13,7 @@
 #include <citrus/panic.h>
 #include <citrus/cache.h>
 
-/// This sets up the new process memory space and 
+// This sets up the new process memory space and 
 struct page* process_mm_init(struct thread* thread, u32 stack_size)
 {
     // The init process has to dynamically allocte the mm struct
