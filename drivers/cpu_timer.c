@@ -8,7 +8,7 @@ void cpu_timer_init(void)
 {
     clk_pck_enable(36);
 
-    // Using PCLK @ 83 MHz divided by 8 yielding 648 kHz
+    // Using PCLK @ 83 MHz divided by 8 yielding 10375 kHz
     TIMER1->channel[0].CMR = (1 << 14) | 1;
     TIMER1->channel[0].RC = 10375;
     TIMER1->channel[0].IER = (1 << 4);
@@ -27,6 +27,11 @@ void cpu_timer_reset(void)
 u32 cpu_timer_get_value(void)
 {
     return TIMER1->channel[0].CV;
+}
+
+u32 cpu_timer_get_value_us(void)
+{
+    return (TIMER1->channel[0].CV * 1000) / 10375;
 }
 
 void cpu_timer_start(void)

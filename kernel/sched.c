@@ -14,55 +14,47 @@
 #include <citrus/kmalloc.h>
 #include <citrus/regmap.h>
 
-#define PIT_IRQ 3
-
 // Each CPU has a private runqueue
 struct rq rq;
 
 // Array for the scheduling classes
 #define CLASS_CNT 4
-
 const struct sched_class* sched_classes[CLASS_CNT];
 
 // Returning the scheduling class based on the sched class number gotten from
 // the thread flags
 const struct sched_class* get_sched_class(u32 class_num)
-{
-    if (class_num >= CLASS_CNT) {
-        panic("Update the thread flags to the number of schedulers");
-    }
+{   
+    assert(class_num < CLASS_CNT);
     return sched_classes[class_num];
 }
 
 // Enqueus a thread into the running queue of a scheduling class
 void sched_enqueue_thread(struct thread* thread)
 {
-    if (thread->class == NULL) {
-        panic("Thread does not have a class");
-    }
+    assert(thread->class);
     thread->class->enqueue(thread, &rq);
 }
 
-// FIX THIS
+// Checks the sleep queue and enqueues all thread with expired delay
 void enqueue_sleeping_threads(struct rq* rq)
 {
     u64 tick = rq->time.tick;
 
     struct list_node* list = &rq->sleep_list;
-
     while (list->next != list) {
         // Check if the thread tick to wake is bigger than the tick
         struct thread* t = list_get_entry(list->next, struct thread, node);
 
-        if (t->tick_to_wake <= tick) {
-            list_delete_first(list);
-            t->class->enqueue(t, rq);
-        } else {
+        if (t->tick_to_wake > tick) {
             break;
         }
+
+        list_delete_first(list);
+        t->class->enqueue(t, rq);
     }
 
-    // Fix the rq->tick_to_wake to it point to the next tick to wake if any
+    // Fix the rq->tick_to_wake to it point to the next tick to wake - if any
     if (list->next != list) {
         struct thread* t = list_get_entry(list->next, struct thread, node);
         rq->time.tick_to_wake = t->tick_to_wake;
@@ -94,16 +86,14 @@ extern const struct sched_class idle_class;
 static inline struct thread* core_pick_next(struct rq* rq)
 {
     const struct sched_class* class;
-    u32 i = 0;
+
     for (class = &rt_class; class; class = class->next) {
-        // Ask for a new thread in the scheduling class 
         struct thread* thread = class->pick_next(rq);
-        if (thread) {
+        if (thread)
             return thread;
-        }
     }
-    print("Core sched error\n");
-    while (1);
+    panic("Core scheduler hard fault");
+    return NULL;
 }
 
 void sched_save_runtime(struct rq* rq)
@@ -122,12 +112,12 @@ void sched_save_runtime(struct rq* rq)
 // switch
 void core_sched(struct rq* rq, u32 reschedule)
 {
-    // If we have a early yield the value is NOT 1000
     u32 runtime;
     if (reschedule) {
-        runtime = cpu_timer_get_value() / 11;
+        runtime = cpu_timer_get_value_us();
+        cpu_timer_reset();
     } else {
-        runtime = 1000;
+        runtime = SCHED_SLICE;
     }
 
     rq->time.tick += runtime;
@@ -135,20 +125,21 @@ void core_sched(struct rq* rq, u32 reschedule)
     rq->curr->curr_runtime += runtime;
 
     if (rq->time.tick_window > 1000 * 1000) {
+
         rq->time.window = rq->time.tick_window;
         rq->time.tick_window = 0;
-        // Its time to recalculate the runtimes
         sched_save_runtime(rq);
     }
 
-    if (rq->time.tick > rq->time.tick_to_wake && rq->time.tick_to_wake) {
+    // Enqueue expired delays
+    if (rq->time.tick > rq->time.tick_to_wake && rq->time.tick_to_wake)
         enqueue_sleeping_threads(rq);
-    }
 
     struct thread* new = core_pick_next(rq);
-    if (new != rq->curr) {
+
+    // The context switch will not happend if the thread is the same
+    if (new != rq->curr)
         rq->next = new;
-    }
 }
 
 // Adds a thread to the rq thread list
@@ -179,16 +170,12 @@ void sched_init_rq(struct rq* rq)
     const struct sched_class* class;
     u32 class_index = 0;
     for (class = &rt_class; class; class = class->next) {
-        if (class_index >= CLASS_CNT) {
-            panic("Class array is wrong");
-        }
         class->init(rq);
         sched_classes[class_index++] = class;
-        print("Adding scheulder\n");
     }
 }
 
-// Set the current lazy FPU user
+// Sets the current lazy FPU user
 void sched_set_lazy_fpu_user(struct thread* thread)
 {
     rq.lazy_fpu = thread;
@@ -203,28 +190,24 @@ struct thread* sched_get_lazy_fpu_user(void)
 // This is the IDLE thread which is run when no other scheduling class can
 // offer any new thread. This might not need to occupy a full timeslice but
 // should probably wait for a signal
+//
+// TODO this should yield on a external signal
 static u32 idle_func(void* args)
 {
-    while (1) {
-
-    }
-
+    while (1);
     return 1;
 }
 
+// Adds the IDLE thread to the system
 static void add_idle(struct rq* rq)
 {
     struct thread* idle_thread =
         create_kernel_thread(idle_func, 500, "idle", NULL, SCHED_IDLE);
 }
 
-static inline void reschedule(void);
-
 // Early init routine for the scheduler 
 static inline void sched_early_init(void)
 {
-    print("Sched starting...\n");
-
     // Initializes the CPU master runqueue 
     sched_init_rq(&rq);
 }
@@ -284,15 +267,6 @@ void add_sleep_list(struct thread* thread, struct rq* rq)
 
     // This is the longest delay 
     list_add_last(&thread->node, &rq->sleep_list);
-}
-
-// Force a reschedule by writing directly to the APIC
-static inline void reschedule(void)
-{
-    apic_force(PIT_IRQ);
-    asm volatile ("dmb" : : : "memory");
-    asm volatile ("dsb" : : : "memory");
-    asm volatile ("isb" : : : "memory");
 }
 
 void print_queue(struct list_node* queue)
