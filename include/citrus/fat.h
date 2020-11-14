@@ -114,18 +114,11 @@ struct fat {
     // Holds the virtual index of the root cluster
     u32 root_clust_num;
 
-    // Holds the global offset of the first data sector
-    u32 root_glob_page;
-    u32 data_glob_page;
-
-    // Holds the global offset of the first fat table sector
-    u32 fat_glob_page;
-
-    // Start global page of the entire file system
-    u32 glob_page;
-
-    // Hold the global page of the fsinfo structure
-    u32 info_glob_page;
+    // Global page numbers
+    u32 data_start;
+    u32 fat_start;
+    u32 bpb_start;
+    u32 info_start;
 
     // Number of FAT tables
     u8 fats;
@@ -135,23 +128,19 @@ struct fat {
 struct file {
     // Holds the offset whithin a file
     u32 file_offset;
+    u32 offset;
+    u32 page;
 
-    // This holds the local offset whithin a page
-    u32 page_offset;
-
-    u32 glob_page;
-
-    // Size - only on files
     u32 size;
 
     // Working buffer
     u8 cache[512];
-    u32 cache_glob_page;
+    u32 cache_page;
     u8 cache_dirty;
 
     // FAT cache for caching 128 FAT entries
     u32 fat_cache[128];
-    u32 fat_cache_glob_page;
+    u32 fat_cache_page;
     u8 fat_cache_dirty;
 
     // Buffer for LFN calculation
@@ -197,28 +186,23 @@ struct file_info {
 
 };
 
+// REMOVE
 void fat_test(struct disk* disk);
 
+// REMOVE
 i8 fat_mount_partition(struct partition* part);
 
 void file_struct_init(struct file* file);
 
-i8 fat_dir_open(const struct partition* part, struct file* dir,
-    const char* path, u32 size);
+// NOTE that the following functions take in the path relative to the partition.
+// These paths therefore start with `/dir/file.txt` relative to root
+i8 fat_dir_open(struct file* dir, const char* path, u32 size);
+i8 fat_dir_read(struct file* dir, struct file_info* info);
+i8 fat_file_open(struct file* file, const char* path, u32 size);
+i8 fat_file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt);
+i8 get_next_valid_entry(struct file* dir);
 
-i8 fat_dir_read(const struct partition* part, struct file* dir,
-    struct file_info* info);
-
-i8 fat_file_open(const struct partition* part, struct file* file,
-    const char* path, u32 size);
-
-i8 fat_file_read(const struct partition* part, struct file* file,
-    u8* data, u32 req_cnt, u32* ret_cnt);
-
-i8 fat_get_label(const struct partition* part, struct file_info* info);
-
-i8 get_next_valid_entry(const struct partition* part, struct file* dir);
-
+// REMOVE
 void file_print(struct file_info* info);
 void file_header(void);
 

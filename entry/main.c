@@ -84,7 +84,7 @@ extern volatile struct rgb framebuffer[800*480];
 
 u32 test_thread(void* args)
 {
-    syscall_thread_sleep(1000);
+    syscall_thread_sleep(500);
     print("Starting test thread\n");
 
     struct file_info* info = kmalloc(sizeof(struct file_info));
@@ -100,12 +100,12 @@ u32 test_thread(void* args)
         if (err)
             break;
         file_print(info);
-        get_next_valid_entry(dir->part, dir);
+        get_next_valid_entry(dir);
     };
 
     print("Opening file\n");
     struct file* file = 
-        file_open("/sda2/wallpapers/wallpaper-1.data", FILE_ATTR_R);
+        file_open("/sda2/wallpapers/wallpaper-1.data", FILE_R);
 
     if (file == NULL) {
         print("Cannot open file\n");

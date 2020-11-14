@@ -95,12 +95,8 @@ void lcd_on(struct lcd_info* info)
         info->height);
 
     u8 div = (166000000 * 2) / pixel_clock - 1;
-    
-    print("Pixel clock %d %d\n", pixel_clock, div);
 
     // Wait for clock domain sync
-
-    // PWM uses system clock
     wait_clock_domain_sync();
     LCD->LCDCFG0 = (div << 16) | (1 << 3) | (1 << 2) | (0xF << 8) | (1 << 13);
     
@@ -128,7 +124,7 @@ void lcd_on(struct lcd_info* info)
 
     // Set PWM mode
     wait_clock_domain_sync();
-    LCD->LCDCFG6 = (0b110 << 0) | (1 << 4) | (0xFF << 8);
+    LCD->LCDCFG6 = (0b110 << 0) | (1 << 4) | (0x10 << 8);
     
     // 2. Enable pixel clock LCDEN
     wait_clock_domain_sync();
@@ -152,8 +148,6 @@ void lcd_on(struct lcd_info* info)
     // Enable the PWM signal
     LCD->LCDEN = (1 << 3);
     while (!(LCD->LCDSR & (1 << 3)));
-
-    print("Pixel clock is running\n");
 }
 
 // Powerdown sequence for the LCD display
@@ -184,8 +178,6 @@ void lcd_off(void)
 
 void lcd_init(void)
 {
-    print("LCD starting\n");
-
     lcd_pin_init();
     lcd_clock_init();
 }

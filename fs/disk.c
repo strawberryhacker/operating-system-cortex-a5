@@ -6,6 +6,7 @@
 #include <citrus/mem.h>
 #include <citrus/panic.h>
 #include <citrus/kmalloc.h>
+#include <citrus/error.h>
 #include <citrus/fat.h>
 
 static const char* disk_names[] = {
@@ -51,7 +52,7 @@ void list_partitions(void)
     print("Partitions \n");
     list_iterate(node, &sys_disk.partitions) {
         struct partition* part = list_get_entry(node, struct partition, node);
-        print("> %s label %s\n", part->name, part->label);
+        print("> %s %s\n", part->name, part->label);
     }
 }
 
@@ -112,7 +113,7 @@ void disk_find_partitions(struct disk* disk)
             part->sect_count = pte->sectors;
             part->start_lba = pte->lba;
 
-            part->parent_disk = disk;
+            part->disk = disk;
             part->part_number = i;
 
             // Set the partition name
@@ -183,7 +184,6 @@ void disk_add(struct disk* disk, enum disk_type type)
 
     // Add the disk to the system
     add_disk(disk);
-    list_disks();
 
     // Find all the partitions on the MBR
     disk_find_partitions(disk);
@@ -198,23 +198,16 @@ void disk_add(struct disk* disk, enum disk_type type)
 
             // Try to mount the partition
             i8 err = fat_mount_partition(part);
+            if (err == -ENOMEM)
+                panic("No memory");
+
             if(err)
                 continue;
 
             // Add the partition
             add_partition(part);
-
-            // Get the volume label
-            if (fat_get_label(part, info) == FAT_OK) {
-                string_copy(info->name, part->label);
-            } else {
-                string_copy("No label", part->label);
-            }
+            string_copy("No label", part->label);
         }
     }
-
-    list_partitions();
-
-    fat_test(disk);
 }
 

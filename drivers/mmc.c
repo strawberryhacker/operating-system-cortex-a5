@@ -161,12 +161,11 @@ static void _mmc_interrupt_handler(struct mmc_reg* mmc, u32 status)
 {
     if (status & (1 << 6)) {
         // Card insertion
-        print("Card insertion\n");
         mmc_card_insert(mmc);
     }
 
     if (status & (1 << 7)) {
-        print("Card removal\n");
+        panic("Ejection not supported");
     }
 }
 

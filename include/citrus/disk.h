@@ -37,8 +37,7 @@ struct fat;
 /// size
 struct partition {
     const struct fat* fs;
-
-    const struct disk* parent_disk;
+    const struct disk* disk;
 
     // Names for the partition
     char name[DISK_NAME_LEN];
@@ -69,6 +68,9 @@ struct disk {
 
 void disk_init(void);
 void disk_add(struct disk* disk, enum disk_type type);
+
+// Prints all useable FAT32 file system partitions
+void list_partitions(void);
 
 struct partition* name_to_partition(const char* name, u8 cnt);
 

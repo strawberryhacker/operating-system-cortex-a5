@@ -37,18 +37,15 @@ struct file* dir_open(const char* path)
 {
     // Get the correct partition
     const struct partition* part = get_part_from_path(&path);
-    if (!part) {
+    if (!part)
         return NULL;
-    }
 
     // Allocate a new directory
-    struct file* dir = kmalloc(sizeof(struct file));
-    file_struct_init(dir);
-
+    struct file* dir = kzmalloc(sizeof(struct file));
     dir->part = part;
 
     // Try to open the relative path inside the partition
-    i8 err = fat_dir_open(part, dir, path, string_length(path));
+    i8 err = fat_dir_open(dir, path, string_length(path));
     if (err) {
         kfree(dir);
         return NULL;
@@ -60,10 +57,8 @@ struct file* dir_open(const char* path)
 // its file info
 i8 dir_read(struct file* dir, struct file_info* info)
 {
-    if (!dir->part) {
-        return -EDISK;
-    }
-    return fat_dir_read(dir->part, dir, info);
+    assert(dir->part);
+    return fat_dir_read(dir, info);
 }
 
 // Opens a file. If takes in a global path and returns a file object
@@ -71,21 +66,17 @@ struct file* file_open(const char* path, u8 attr)
 {
     // Get the partition from the file name
     const struct partition* part = get_part_from_path(&path);
-    if (part == NULL) {
+    if (part == NULL)
         return NULL;
-    }
 
     // Allocate a new file
-    struct file* file = kmalloc(sizeof(struct file));
-
-    file_struct_init(file);
+    struct file* file = kzmalloc(sizeof(struct file));
     file->part = part;
 
     // Try to open the file
-    i8 err = fat_file_open(part, file, path, string_length(path));
+    i8 err = fat_file_open(file, path, string_length(path));
     if (err) {
         kfree(file);
-        print("Status => %i\n", err);
         return NULL;
     }
     
@@ -96,10 +87,9 @@ struct file* file_open(const char* path, u8 attr)
 // return the acctual number of bytes written
 i8 file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt)
 {
-    // This is used in this function
     assert(file->part);
 
     // Read from a file
-    return fat_file_read(file->part, file, data, req_cnt, ret_cnt);
+    return fat_file_read(file, data, req_cnt, ret_cnt);
 }
 

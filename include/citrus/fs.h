@@ -11,8 +11,8 @@ struct fs {
 
 };
 
-#define FILE_ATTR_R  (1 << 0)
-#define FILE_ATTR_RW (1 << 1)
+#define FILE_R  (1 << 0)
+#define FILE_RW (1 << 1)
 
 struct file* file_open(const char* path, u8 attr);
 struct file* dir_open(const char* path);
