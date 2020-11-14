@@ -128,7 +128,9 @@ void core_sched(struct rq* rq, u32 reschedule)
 
         rq->time.window = rq->time.tick_window;
         rq->time.tick_window = 0;
+        print(RED);
         sched_save_runtime(rq);
+        print(NORMAL);
     }
 
     // Enqueue expired delays

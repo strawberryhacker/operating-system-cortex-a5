@@ -154,7 +154,7 @@ void main(void)
     //lcd_init();
     //lcd_on(&lcd_info);
     //create_kthread(test_thread, 1000, "filesystem", NULL, SCHED_RT);
-    create_process(mem_test, 1000, "memtest", NULL, SCHED_RT);
+    //create_process(mem_test, 1000, "memtest", NULL, SCHED_RT);
 
     sched_start();
 } 

@@ -9,6 +9,7 @@
 #include <citrus/mem.h>
 #include <citrus/sched.h>
 #include <citrus/pt_entry.h>
+#include <citrus/cache.h>
 #include <citrus/align.h>
 #include <citrus/cache.h>
 #include <citrus/panic.h>
@@ -192,28 +193,13 @@ void print_prog_header(struct elf_prog_header* ptr)
 
 void elf_init(const u8* elf_data, u32 elf_size)
 {
-    print("ELF parser\n");
-
     struct elf_header* elf_header = (struct elf_header *)elf_data;
 
-    // Print the magic number
-    print("Magic numbers:\n");
-    for (u32 i = 0; i < MAGIC_CHARS; i++) {
-        print("%02X ", elf_header->magic[i]);
-    }
-    print("\n");
-
     u32 elf_type = elf_header->type;
-    if (elf_type <= 4) {
-        print("Type: %s\n", elf_type_str[elf_type]);
-    }
-
-    print("Machine: %d\n", elf_header->machine);
-
     if (elf_header->version != 1) {
         print("Error\n");
     }
-
+    /*
     print("Entry addr: %08X\n", elf_header->entry);
     print("Phoff: %08X\n", elf_header->phoff);
     print("Shoff: %08X\n", elf_header->shoff);
@@ -224,40 +210,25 @@ void elf_init(const u8* elf_data, u32 elf_size)
     print("Section header size: %04X\n", elf_header->shentsize);
     print("Section header number: %04X\n", elf_header->shnum);
     print("Section header string index addr: %04X\n", elf_header->shstrndx);
+    */
 
     struct elf_prog_header* prog_header = 
         (struct elf_prog_header *)(elf_data + elf_header->phoff);
-    
-    // Print out the program header
-    for (u32 i = 0; i < elf_header->phnum; i++) {
-        print_prog_header(prog_header + i);
-    }
-
-    const u8* ptr = elf_data + prog_header->offset;
-    //print_mem(ptr, prog_header->memsz, 16);
 
     // Allocate and copy the loadable data
     u32 bin_pages = (u32)align_up((void *)prog_header->memsz, 4096) / 4096;
     u32 bin_order = pages_to_order(bin_pages);
     struct page* bin_page_ptr = alloc_pages(bin_order);
-
-
-    print("Allocated %d pages\n", (1 << bin_order));
-
+    print(RED "ALlocating page => %p VA %p\n" NORMAL, bin_page_ptr, page_to_va(bin_page_ptr));
     
-    u8* dest = page_to_va(bin_page_ptr);
-    print("Dest => %p\n", dest);
-    const u8* src = elf_data + prog_header->offset;
+    mem_copy(elf_data + prog_header->offset, page_to_va(bin_page_ptr),
+        prog_header->filesz);
 
-    // Copy the loadable data
-    for (u32 i = 0; i < prog_header->filesz; i++) {
-        *dest++ = *src++;
-    }   
 
     // Create a process
     u32 irq = __atomic_enter();
     struct thread* t = create_process((u32 (*)(void *))elf_header->entry, 500,
-        "ELF application", NULL, SCHED_RT);
+        "elf-app", NULL, SCHED_RT);
 
     struct pte_attr attr = {
         .access = PTE_ACCESS_FULL_ACC,
@@ -275,10 +246,9 @@ void elf_init(const u8* elf_data, u32 elf_size)
     asm volatile("dsb" : : :"memory");
     asm volatile("dmb" : : :"memory");
     asm volatile("isb" : : :"memory");
-    icache_invalidate();
     dcache_clean();
+    icache_invalidate();
 
-    print("Process created\n");
     
     /*
     // Check if the mapping is right

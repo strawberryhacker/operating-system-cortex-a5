@@ -7,9 +7,11 @@
 #include <citrus/mm.h>
 #include <citrus/cache.h>
 
+#define BARS 50
+
 void print_thread_header(void)
 {
-    print("%3s %-16s %5s 11s\n", "PID", "NAME", "CPU%", "MEM");
+    print("%3s %-16s %5s %11s\n", "PID", "NAME", "CPU%", "MEM");
 }
 
 void print_thread_stats(u32 pid, const char* name, u8 percent, u8 frac, u32 mem)
@@ -19,8 +21,8 @@ void print_thread_stats(u32 pid, const char* name, u8 percent, u8 frac, u32 mem)
 
 void print_cpu_usage(u8 cpu_usage)
 {
-    u8 bars = cpu_usage / 5;
-    u8 space = 20 - bars;
+    u8 bars = (BARS * cpu_usage) / 100;
+    u8 space = BARS - bars;
 
     print("CPU [" GREEN);
     for (u32 i = 0; i < bars; i++) {
@@ -32,8 +34,8 @@ void print_cpu_usage(u8 cpu_usage)
 // Prints the memory usage in the system
 void print_mem_usage(u32 total, u32 used)
 {
-    u8 bars = (used / (total / 100)) / 5;
-    u8 space = 20 - bars;
+    u8 bars = (used * BARS) / total;
+    u8 space = BARS - bars;
 
     print("MEM [" BLUE);
     for (u32 i = 0; i < bars; i++) {

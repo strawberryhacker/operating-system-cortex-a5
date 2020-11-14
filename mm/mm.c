@@ -10,6 +10,7 @@
 #include <citrus/panic.h>
 #include <citrus/sched.h>
 #include <citrus/thread.h>
+#include <citrus/cache.h>
 #include <citrus/panic.h>
 
 // Hold the virtual end address of the kernel memory. Defined in the linker
@@ -469,6 +470,9 @@ u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt,
         page++;
         virt_addr += 4096;
     }
+
+    dcache_clean();
+    icache_invalidate();
 
     return 1;
 }

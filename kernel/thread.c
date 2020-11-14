@@ -38,6 +38,8 @@ void thread_exit(u32 status_code)
     // TODO kill the thread
     print("Quitting  PID: %d with status %d\n", t->pid, status_code);
 
+    while (1);
+
     // Delete the thread
     if (t->mm) {
         if (t->process == t) {
@@ -207,8 +209,6 @@ static inline void create_user_thread_core(struct thread* thread,
 
     // Invalidate the stack region in the D-cache
     u32 start = (u32)page_to_va(stack_page_ptr);
-    //dcache_clean_invalidate_range(start, start + stack_page_cnt * 4096);
-    //dcache_clean();
 
     // Setup the stack using kernel logical addressing
     u32* sp_kern_virt = page_to_va(stack_page_ptr);
@@ -216,7 +216,10 @@ static inline void create_user_thread_core(struct thread* thread,
 
     u32* sp = sp_kern_virt + stack_page_cnt * 1024 - 1;
     sp = stack_setup(sp, func, args, USER_THREAD_CPSR);
-    thread->sp = sp_usr_virt + (sp - sp_kern_virt);    
+    thread->sp = sp_usr_virt + (sp - sp_kern_virt);
+
+    dcache_clean();
+    icache_invalidate();
 
     // Add the thread to the global thread list
     sched_add_thread(thread);
@@ -245,6 +248,7 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_words,
     create_user_thread_core(thread, func, stack_words, name, args, flags);
 
     dcache_clean();
+    icache_invalidate();
 
     return NULL;
 }
@@ -268,6 +272,7 @@ struct thread* create_process(u32 (*func)(void *), u32 stack_words,
     list_init(&thread->thread_group);
 
     dcache_clean();
+    icache_invalidate();
 
     return thread;
 }
@@ -290,8 +295,8 @@ void map_in_code(struct page* code_page, u32 pages, struct thread* thread)
     assert(status);
 
     mm_tlb_invalidate();
-    icache_invalidate();
     dcache_clean();
+    icache_invalidate();
 }
 
 // Adding a number of pages to a thread. This also updated the parent process

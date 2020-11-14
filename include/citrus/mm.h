@@ -182,11 +182,6 @@ u32* lv2_pt_find_in_page(struct page* page);
 /// linked list, so that we can kill a process and free the memory
 static inline void mm_process_add_page(struct page* page, struct thread_mm* mm)
 {
-    /*
-    print("Page: %p\n", page);
-    print("Page order: %d\n", page->order);
-    print("page list n: %p\n", page->node.next);
-    print("page list p: %p\n", page->node.prev);*/
     list_add_first(&page->node, &mm->page_list);
 }
 
