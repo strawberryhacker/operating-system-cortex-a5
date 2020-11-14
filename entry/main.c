@@ -105,7 +105,7 @@ u32 test_thread(void* args)
 
     print("Opening file\n");
     struct file* file = 
-        file_open("/sda2/wallpapers/white-wallpaper.data", FILE_ATTR_R);
+        file_open("/sda2/wallpapers/wallpaper-1.data", FILE_ATTR_R);
 
     if (file == NULL) {
         print("Cannot open file\n");
@@ -113,6 +113,7 @@ u32 test_thread(void* args)
     }
 
     u32 ret_cnt;
+    
     u8* buffer = (u8 *)framebuffer;
     u8* b = kmalloc(3000);
     do {

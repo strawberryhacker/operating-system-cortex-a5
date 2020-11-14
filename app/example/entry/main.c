@@ -26,4 +26,8 @@ u32 entry(void* args)
         print("This is a test thread\n");
         syscall_thread_sleep(100);
     }
+    return 5;
+
+    mov r0, #5
+    bx lr
 }

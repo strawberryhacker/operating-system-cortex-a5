@@ -76,7 +76,7 @@ u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
     *sp-- = 0x01010101;        // r1    
     *sp-- = (u32)args;         // args  
 
-    *sp-- = (u32)thread_exit;  // r12   
+    *sp-- = (u32)thread_exit;  // r12 - LR
 
     // To optimize the context switch time the context switch is closly embedded
     // into the IRQ routine. The IRQ padds the stack pointer in order to
