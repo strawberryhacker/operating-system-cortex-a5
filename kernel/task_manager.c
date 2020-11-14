@@ -9,12 +9,12 @@
 
 void print_thread_header(void)
 {
-    print("%3s %-16s %5s %8s\n", "PID", "NAME", "CPU%", "MEM");
+    print("%3s %-16s %5s 11s\n", "PID", "NAME", "CPU%", "MEM");
 }
 
 void print_thread_stats(u32 pid, const char* name, u8 percent, u8 frac, u32 mem)
 {
-    print("%3d %-16s %2d.%02d %8d\n", pid, name, percent, frac, mem);
+    print("%3d %-16s %2d.%02d %8d KB\n", pid, name, percent, frac, mem);
 }
 
 void print_cpu_usage(u8 cpu_usage)

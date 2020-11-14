@@ -13,7 +13,10 @@ void assert_handler(const char* file, u32 line, u32 statement)
 
 void panic_handler(const char* file, u32 line, const char* reason)
 {
-    print("Panic! at line %d in file ", line);
+    // Unrecoverable fault
+    asm volatile ("cpsid ifa");
+
+    print("\nPanic! at line %d in file ", line);
     print(file);
     print("\nReason: ");
     print(reason);

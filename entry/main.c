@@ -119,6 +119,14 @@ u32 test_thread(void* args)
     return 1;
 }
 
+u32 mem_test(void* arg)
+{
+    while (1) {
+        syscall_thread_sleep(5);
+        syscall_sbrk(10000);
+    }
+}
+
 /// Called by entry.s after low level initialization finishes
 void main(void)
 {
@@ -145,7 +153,8 @@ void main(void)
 
     //lcd_init();
     //lcd_on(&lcd_info);
-    //create_kernel_thread(test_thread, 1000, "filesystem", NULL, SCHED_RT);
+    //create_kthread(test_thread, 1000, "filesystem", NULL, SCHED_RT);
+    create_process(mem_test, 1000, "memtest", NULL, SCHED_RT);
 
     sched_start();
 } 

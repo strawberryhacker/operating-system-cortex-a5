@@ -149,7 +149,7 @@ struct page* buddy_alloc_pages(u32 order, struct mm_zone* zone)
 
     if (curr_order >= buddy->max_orders) {
         __atomic_leave(atomic);
-        panic("Failed\n");
+        panic("Buddy allocator out of memory");
         return NULL;
     }
     
