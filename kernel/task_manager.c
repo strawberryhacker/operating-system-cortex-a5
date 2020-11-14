@@ -76,5 +76,5 @@ u32 task_manager(void* args)
 
 void task_manager_init(void)
 {
-    create_kernel_thread(task_manager, 500, "taskmgmt", "HELLO", SCHED_RT);
+    create_kthread(task_manager, 500, "taskmgmt", "HELLO", SCHED_RT);
 }

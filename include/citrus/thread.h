@@ -28,10 +28,9 @@ struct thread {
     u32 fpu_stack[32];
 
     // =========================================================================
-    // Do NOT modify anything above this line
+    // Do NOT modify anything above this line !!!
     // =========================================================================
 
-    
     u32 page_cnt;
 
     // Base address for the stack
@@ -59,17 +58,18 @@ struct thread {
     struct thread* process;
     struct list_node thread_group;
 
-    /// Contains all the threads in the system
+    /// Reference the thread in the global thread list
     struct list_node thread_node;
 
 };
 
-struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size, 
+struct thread* create_kthread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags);
 
 struct thread* create_process(u32 (*func)(void *), u32 stack_size,
     const char* name, void* args, u32 flags);
 
+// Do not use except in a process syscall
 struct thread* create_thread(u32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags);
 

@@ -6,6 +6,8 @@
 #include <citrus/mem.h>
 #include <citrus/disk.h>
 #include <citrus/kmalloc.h>
+#include <citrus/interrupt.h>
+#include <citrus/atomic.h>
 #include <stddef.h>
 
 // 178 card registers

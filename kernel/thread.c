@@ -25,12 +25,12 @@
 #define FLAG_CLASS_MSK 0b111
 #define FLAG_CLASS_POS 0
 
+volatile u8 p = 0;
+
 // Thread and process exit routine which is called when either a thread or a 
 // process exits
 void thread_exit(u32 status_code)
 {
-    irq_disable();
-
     u32 flags = __atomic_enter();
     struct thread* t = get_curr_thread();
     __atomic_leave(flags);
@@ -51,9 +51,8 @@ void thread_exit(u32 status_code)
         }
     }
 
-
     while (1) {
-        syscall_thread_sleep(10000);
+        //syscall_thread_sleep(1);
     }
 
     // REMEMBER TO CHANGE THE RQ->LAZY_FPU POINTER IF THE THREAD HAS A LAZY
@@ -131,15 +130,14 @@ static void thread_set_sched_class(struct thread* thread, u32 flags)
 }
 
 // Creates a lightweight kernel thread in the kernel memory space
-struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size, 
+struct thread* create_kthread(u32 (*func)(void *), u32 stack_words, 
     const char* name, void* args, u32 flags)
 {
-    // Allocate a new TCB + stack
-    u32 alloc_size = sizeof(struct thread) + stack_size * 4;
+    // Allocate a new thread struct + stack in the same allocation
+    u32 alloc_size = sizeof(struct thread) + stack_words * 4;
     alloc_size = align_up_val(alloc_size, 8);
     struct thread* thread = kzmalloc(alloc_size);
 
-    //print("Creating kernel thread: %p\n", thread);
     init_thread_struct(thread);    
 
     // Set the name of the thread
@@ -150,7 +148,7 @@ struct thread* create_kernel_thread(u32 (*func)(void *), u32 stack_size,
     thread->stack_base = align_up(thread->stack_base, 8);
 
     // Update the stack pointer address
-    thread->sp = thread->stack_base + stack_size - 1;
+    thread->sp = thread->stack_base + stack_words - 1;
     thread->sp = stack_setup(thread->sp, func, args, KERNEL_THREAD_CPSR);
 
     // Add the thread to the global thread list
@@ -173,7 +171,7 @@ void kill_kernel_thread(struct thread* t)
 // Core function for creating a user thread. This assumes that a memory space 
 // is created. It will allocate a new stack region
 static inline void create_user_thread_core(struct thread* thread,
-    u32 (*func)(void *), u32 stack_size,const char* name, void* args, u32 flags)
+    u32 (*func)(void *), u32 stack_words,const char* name, void* args, u32 flags)
 {
     assert(thread->mm != NULL);
 
@@ -182,7 +180,7 @@ static inline void create_user_thread_core(struct thread* thread,
 
     // Map in the stack region. This will allocate a number of pages and map
     // them into the stack region in the process memory map
-    u32 stack_page_cnt = (u32)align_up((void *)stack_size, 4096) / 4096;
+    u32 stack_page_cnt = (u32)align_up((void *)stack_words, 4096) / 4096;
     u32 stack_order = pages_to_order(stack_page_cnt);
     stack_page_cnt = (1 << stack_order);
     
@@ -227,7 +225,7 @@ static inline void create_user_thread_core(struct thread* thread,
 }
 
 // Creates a user thread within the memory space of the parent process
-struct thread* create_thread(u32 (*func)(void *), u32 stack_size, 
+struct thread* create_thread(u32 (*func)(void *), u32 stack_words, 
     const char* name, void* args, u32 flags)
 {
     struct thread* thread = kzmalloc(sizeof(struct thread));
@@ -244,7 +242,7 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_size,
     list_add_first(&thread->thread_group, &parent->thread_group);
 
     // Create the thread
-    create_user_thread_core(thread, func, stack_size, name, args, flags);
+    create_user_thread_core(thread, func, stack_words, name, args, flags);
 
     dcache_clean();
 
@@ -252,7 +250,7 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_size,
 }
 
 // Create new heavy process
-struct thread* create_process(u32 (*func)(void *), u32 stack_size,
+struct thread* create_process(u32 (*func)(void *), u32 stack_words,
     const char* name, void* args, u32 flags)
 {
     struct thread* thread = kzmalloc(sizeof(struct thread));
@@ -261,8 +259,8 @@ struct thread* create_process(u32 (*func)(void *), u32 stack_size,
     init_thread_struct(thread);
 
     // Make a new memory space
-    process_mm_init(thread, stack_size);
-    create_user_thread_core(thread, func, stack_size, name, args, flags);
+    process_mm_init(thread, stack_words);
+    create_user_thread_core(thread, func, stack_words, name, args, flags);
 
     // Must be initialized after the create_thread_core beacuse it initializes
     // the thread group as a list node

@@ -232,7 +232,6 @@ void* slob_alloc(u32 size, struct mm_zone* zone)
 
     // Restore the irq state
     __atomic_leave(atomic);
-    
     return (void *)((u32)it + sizeof(struct slob_node));
 }
 

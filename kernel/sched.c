@@ -202,7 +202,7 @@ static u32 idle_func(void* args)
 static void add_idle(struct rq* rq)
 {
     struct thread* idle_thread =
-        create_kernel_thread(idle_func, 500, "idle", NULL, SCHED_IDLE);
+        create_kthread(idle_func, 500, "idle", NULL, SCHED_IDLE);
 }
 
 // Early init routine for the scheduler 
