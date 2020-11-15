@@ -195,6 +195,9 @@ static void alloc_elf_buffers(u32 size)
     }
 }
 
+volatile u16 x = 0;
+volatile u16 y = 0;
+volatile u32 count = 0;
 static u8 handle_packet(const u8* data, u32 size, u8 cmd)
 {
     if (cmd == CMD_SIZE) {
@@ -220,6 +223,16 @@ static u8 handle_packet(const u8* data, u32 size, u8 cmd)
         while (!(UART1->SR & (1 << 9)));
         RST->CR = 0xA5000000 | 1;
         while (1);
+    } else if (cmd == 11) {
+        x = read_le16(data);
+        y = read_le16(data + 2);
+        if (x >= (800 - 17)) {
+            x = (800 - 17);
+        }
+        if (y >= (480 - 25)) {
+            y = (480 - 25);
+        }
+        //print("Mouse: x %d y %d\n", x, y);
     }
 
     return 1;

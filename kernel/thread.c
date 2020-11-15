@@ -38,12 +38,8 @@ void thread_exit(u32 status_code)
     // TODO kill the thread
     print("Quitting  PID: %d with status %d\n", t->pid, status_code);
 
-    while (1)
-    {
-        for (u32 i = 0; i < 50000; i++) {
-            asm ("nop");
-        }
-        syscall_thread_sleep(1);
+    while (1) {
+        syscall_thread_sleep(500);
     }
 
     // Delete the thread

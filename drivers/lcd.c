@@ -13,6 +13,29 @@
 #include <stddef.h>
 #include <stdalign.h>
 
+#define SCREEN_X 800
+#define SCREEN_Y 480
+#define LAYERS 3
+
+struct lcd_layer {
+    struct lcd_dma_desc* dma_desc;
+    u32* framebuffer;
+    u16 width;
+    u16 height;
+
+    // Registes
+    volatile struct lcd_ctrl* ctrl;
+    volatile struct lcd_dma* dma;
+    volatile u32* cfg;
+};
+
+// Framebuffer for all the layers. The layer0 is for background and static
+// stuff, layer 1 is for the applications and the GUI engine, layer2 is for 
+// mouse and overlays while layer3 is for special use. 
+u32 alignas(32) framebuffers[LAYERS][SCREEN_X * SCREEN_Y];
+struct lcd_dma_desc alignas(32) dma_descriptors[LAYERS];
+struct lcd_layer layers[LAYERS];
+
 static void lcd_pin_init(void)
 {
     // LCD vsync
@@ -73,11 +96,6 @@ void lcd_clock_init(void)
     while (!(PMC->SCSR & (1 << 3)));
 }
 
-void lcd_irq_init(void)
-{
-
-}
-
 static inline void wait_clock_domain_sync(void)
 {
     while (LCD->LCDSR & (1 << 4));
@@ -119,7 +137,7 @@ void lcd_on(struct lcd_info* info)
 
     // Setup guard time, clock polarity, and color mode
     wait_clock_domain_sync();
-    LCD->LCDCFG5 = (30 << 16) | (1 << 0) | (1 << 1) | (1 << 2) | (1 << 7) |
+    LCD->LCDCFG5 = (1 << 16) | (1 << 0) | (1 << 1) | (1 << 2) | (1 << 7) |
         (3 << 8);
 
     // Set PWM mode
@@ -176,43 +194,146 @@ void lcd_off(void)
     while (LCD->LCDDIS & (1 << 0));
 }
 
-void lcd_init(void)
+u32 get_color(u8 r, u8 g, u8 b, u8 a)
 {
-    lcd_pin_init();
-    lcd_clock_init();
+    u32 reg = ((r >> 2) << 20) | ((g >> 2) << 14) | ((b >> 2) << 8) | a;
+
+    return reg;
 }
 
-// Sets the display backlight intensity
+void set_color(u32* buffer, u16 x, u16 y, u16 w, u16 h, u32 color)
+{
+    u32 (*data)[800] = (u32 (*)[800])buffer;
+    for (u32 i = x; i < x + w; i++) {
+        for (u32 j = y; j < y + h; j++) {
+            data[j][i] = color;
+        }
+    }
+    dcache_clean();
+}
+
+static void lcd_layer_init(void)
+{
+    for (u32 i = 0; i < LAYERS; i++) {
+        layers[i].framebuffer = framebuffers[i];
+        layers[i].dma_desc = &dma_descriptors[i];
+        layers[i].height = SCREEN_Y;
+        layers[i].width = SCREEN_X;
+
+        mem_set(framebuffers[i], 0x00, 4 * SCREEN_Y * SCREEN_X);
+        dcache_clean_range((u32)framebuffers[i], 
+            (u32)framebuffers[i] + SCREEN_X * SCREEN_Y);
+    }
+
+    layers[0].cfg = LCD->BASECFG;
+    layers[0].dma = &LCD->base_dma;
+    layers[0].ctrl = &LCD->base_ctrl;
+
+    layers[1].cfg = LCD->OV1CFG;
+    layers[1].dma = &LCD->ov1_dma;
+    layers[1].ctrl = &LCD->ov1_ctrl;
+
+    layers[2].cfg = LCD->OV2CFG;
+    layers[2].dma = &LCD->ov2_dma;
+    layers[2].ctrl = &LCD->ov2_ctrl;
+}
+
+static void lcd_layer_enable(void)
+{
+    assert(LAYERS < 4);
+
+    for (u32 i = 0; i < LAYERS; i++) {
+        // Set up the layer
+        volatile u32* cfg = layers[i].cfg;
+
+        // Base layer
+        if (i == 0) {
+            cfg[0] = (3 << 4) | (1 << 8);  // 16 byte AHB burst
+            cfg[1] = (13 << 4);            // 24-bit RGB no lookup
+            cfg[2] = 0;                    // No X stride
+            cfg[3] = 0;                    // Default black when DMA is disabled
+            cfg[4] = (1 << 8);             // DMA enable
+            cfg[5] = 0;                    // Display position 0:0
+            cfg[6] = 0;
+        } else {
+            cfg[0] = (3 << 4) | (0b1 << 12) | (1 << 8);  // 16 byte AHB burst - ROT disable
+            cfg[1] = (13 << 4);           // 24-bit RGB no lookup
+            cfg[2] = 0;                   // Window position
+
+            // Windows size
+            cfg[3] = (layers[i].width << 0) | (layers[i].height << 16);
+
+            cfg[4] = 0;                   // No X stride
+            cfg[5] = 0;                   // No pixel stride
+            cfg[6] = 0;                   // Default black
+            cfg[7] = 0;                   // Default chroma black
+            cfg[8] = 0xFFFFFF;            // Default mask black
+            cfg[9] = (1 << 8) | (0xFF << 16) | (0 << 5) | (1 << 7) | (1 << 2) | (1 << 3)| (1 << 6);
+        }
+
+        // Set up the DMA descriptor
+        struct lcd_dma_desc* desc = layers[i].dma_desc;
+
+        desc->addr = (u32)va_to_pa(layers[i].framebuffer);
+        desc->next = (u32)va_to_pa(desc);
+        desc->ctrl = 1;
+
+        dcache_clean_range((u32)desc, (u32)desc + sizeof(struct lcd_dma_desc));
+
+        // Setup the DMA registers
+        volatile struct lcd_dma* dma = layers[i].dma;
+
+        dma->ADDR = (u32)va_to_pa(layers[i].framebuffer);
+        dma->NEXT = (u32)va_to_pa(desc);
+        dma->CTRL = 1;
+    }
+}
+
+u32* lcd_get_framebuffer(u8 layer)
+{
+    assert(layer < 4);
+    return layers[layer].framebuffer;
+}
+
+static struct lcd_info lcd_info = {
+    .height        = 480,
+    .width         = 800,
+    .framerate     = 60,
+    .v_back_porch  = 21,
+    .v_front_porch = 22,
+    .v_pulse_width = 2,
+    .h_back_porch  = 64,
+    .h_front_porch = 64,
+    .h_pulse_width = 128
+};
+
+void lcd_init(void)
+{
+    assert(LAYERS == 3);
+    lcd_pin_init();
+    lcd_clock_init();
+
+    // Initialize the layers
+    lcd_layer_init();
+
+    // Enable the layers
+    lcd_layer_enable();
+
+    lcd_on(&lcd_info);
+
+    layers[0].ctrl->CHER = 0b11;
+    layers[1].ctrl->CHER = 0b11;
+    layers[2].ctrl->CHER = 0b11;
+
+    lcd_set_brightness(0xFF);
+
+}
+
+// Sets the display backlight intesnsity
 void lcd_set_brightness(u8 brightness)
 {
     u32 reg = LCD->LCDCFG6;
     reg &= ~0xFF00;
     reg |= (brightness << 8);
     LCD->LCDCFG6 = reg;
-}
-
-struct lcd_dma_desc alignas(8) desc;
-struct lcd_dma_desc alignas(8) desc1;
-
-volatile struct rgb framebuffer[800*480];
-volatile struct rgb framebuffer1[800*480];
-volatile struct rgb window[300*200];
-
-struct lcd_dma_desc alignas(8) wdesc;
-
-void test(void)
-{
-    LCD->base_ctrl.IDR = 0xFF;
-    desc.next = (u32)va_to_pa((void *)&desc);
-    desc.addr = (u32)va_to_pa((void *)framebuffer);
-    desc.ctrl = (1 << 0);
-    dcache_clean();
-    LCD->base_dma.NEXT = (u32)va_to_pa((void *)&desc);
-    LCD->base_dma.ADDR = (u32)va_to_pa((void *)framebuffer);
-    LCD->base_dma.CTRL = (1 << 0);
-    // 16 data
-    LCD->BASECFG[0] = (1 << 8) | (3 << 4);
-    LCD->BASECFG[1] = (10 << 4);
-    LCD->BASECFG[4] = (1 << 8) | (1 << 9);
-    LCD->base_ctrl.CHER = (0b11 << 0);   
 }

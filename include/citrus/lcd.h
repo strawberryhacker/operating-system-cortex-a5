@@ -5,17 +5,6 @@
 
 #include <citrus/types.h>
 
-struct lcd_layer {
-    void* buffer;
-    u16 width;
-    u16 height;
-
-};
-
-struct rgb {
-    u8 b, r, g;
-}__attribute__((packed));
-
 struct lcd_info {
     u16 width;
     u16 height;
@@ -39,12 +28,19 @@ struct lcd_dma_desc {
     u32 padding;
 };
 
+u32 get_color(u8 r, u8 g, u8 b, u8 a);
+
+void set_color(u32* buffer, u16 x, u16 y, u16 w, u16 h, u32 color);
+
 void lcd_init(void);
 
 void lcd_set_brightness(u8 brightness);
 
 void lcd_on(struct lcd_info* info);
+
 void lcd_off(void);
+
+u32* lcd_get_framebuffer(u8 layer);
 
 void test(void);
 
