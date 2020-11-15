@@ -96,17 +96,6 @@ static inline struct thread* core_pick_next(struct rq* rq)
     return NULL;
 }
 
-void sched_save_runtime(struct rq* rq)
-{
-    struct list_node* it;
-    list_iterate(it, &rq->thread_list) {
-        struct thread* t = list_get_entry(it, struct thread, thread_node);
-
-        t->window_runtime = t->curr_runtime;
-        t->curr_runtime = 0;
-    }
-}
-
 // Core scheduler. This must be called inside either the IRQ interrupt or the
 // SVC interrupt. These interrupts have special mechanisms for doing a context 
 // switch
@@ -121,17 +110,7 @@ void core_sched(struct rq* rq, u32 reschedule)
     }
 
     rq->time.tick += runtime;
-    rq->time.tick_window += runtime;
-    rq->curr->curr_runtime += runtime;
-
-    if (rq->time.tick_window > 1000 * 1000) {
-
-        rq->time.window = rq->time.tick_window;
-        rq->time.tick_window = 0;
-        print(RED);
-        sched_save_runtime(rq);
-        print(NORMAL);
-    }
+    rq->curr->runtime += runtime;
 
     // Enqueue expired delays
     if (rq->time.tick > rq->time.tick_to_wake && rq->time.tick_to_wake)

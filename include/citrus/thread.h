@@ -43,6 +43,9 @@ struct thread {
     u32 window_runtime;
     u32 curr_runtime;
 
+    u64 runtime;
+    u64 last_runtime;
+
     char name[THREAD_MAX_NAME];
 
     /// Not the same as the ASID

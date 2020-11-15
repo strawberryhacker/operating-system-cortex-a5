@@ -48,29 +48,38 @@ extern struct rq rq;
 
 u32 task_manager(void* args)
 {
+    // Setup the task management
+    struct list_node* it;
+    list_iterate(it, &rq.thread_list) {
+        struct thread* t = list_get_entry(it, struct thread, thread_node);
+        t->last_runtime = t->runtime;
+    }
+
     while (1) {
         syscall_thread_sleep(1000);
 
         // Print the task manager header
-        u32 p = (100 * rq.idle_rq.idle->window_runtime) / rq.time.window;
+        struct thread* idle = rq.idle_rq.idle;
+        u32 idle_percent = (idle->runtime - idle->last_runtime) / 10000;
 
-        print_cpu_usage(100 - p);
+        print_cpu_usage(100 - idle_percent);
         print_mem_usage(mm_get_total(), mm_get_total_used());
+
+        // Print the thread header
         print_thread_header();
 
         // Print runtime stats for all the threads
         struct list_node* it;
         list_iterate(it, &rq.thread_list) {
-                struct thread* t = list_get_entry(it, struct thread, thread_node);
+            struct thread* t = list_get_entry(it, struct thread, thread_node);
 
-            u32 w_runtime = t->window_runtime;
-            u32 w = rq.time.window;
-            u32 percent = (100 * w_runtime) / w;
-            u32 fraction = ((100 * w_runtime) / (w / 100)) - (percent * 100);
-
+            u32 runtime = t->runtime - t->last_runtime;
+            u32 percent = runtime / 10000;
+            u32 fraction = (runtime / 100) - (percent * 100);
             u32 mem_kib = t->page_cnt * 4;
 
             print_thread_stats(t->pid, t->name, percent, fraction, mem_kib);
+            t->last_runtime = t->runtime;
         }
         print("\n");
     }

@@ -24,7 +24,7 @@
 // The scheduling class occupies the three lowest bits in the thread attributes
 #define FLAG_CLASS_MSK 0b111
 #define FLAG_CLASS_POS 0
-
+    
 volatile u8 p = 0;
 
 // Thread and process exit routine which is called when either a thread or a 
@@ -38,7 +38,13 @@ void thread_exit(u32 status_code)
     // TODO kill the thread
     print("Quitting  PID: %d with status %d\n", t->pid, status_code);
 
-    while (1);
+    while (1)
+    {
+        for (u32 i = 0; i < 50000; i++) {
+            asm ("nop");
+        }
+        syscall_thread_sleep(1);
+    }
 
     // Delete the thread
     if (t->mm) {
