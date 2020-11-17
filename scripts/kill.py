@@ -1,8 +1,9 @@
-import pyautogui
-import time
+# Copyright (C) strawberryhacker
+
 import os
 import sys
 import serial
+
 from citrus import citrus_packet
 from citrus import citrus_file
 from loading import loading_simple
@@ -10,18 +11,16 @@ from loading import loading_bar
 
 # Used for loading a custom application to the CitrusOS and execute it
 
-
-#while True:
-#    var = pyautogui.position()
-#    print(var[0], end=" ")
-#    print(var[1])
-#    time.sleep(0.01)
-
 def main():
-    
+    if len(sys.argv) != 2:
+        print("Check parameters")
+        sys.exit()
+
+    pid = int(sys.argv[1])
+
     # Just open a new COM port
     try:
-        s = serial.Serial("COM4", \
+        s = serial.Serial("/dev/ttyS4", \
             baudrate=921600, timeout=1)
 
     except serial.SerialException as e:
@@ -29,9 +28,7 @@ def main():
         sys.exit()
 
     packet = citrus_packet(s)
-    while True:
-        var = pyautogui.position()
-        packet.send_packet(bytearray([var[0] & 0xFF, (var[0] >> 8) & 0xFF, var[1] & 0xFF, (var[1] >> 8) & 0xFF]), packet.CMD_MOUSE)
-        time.sleep(0.01)
+    pid_bytes = pid.to_bytes(4, byteorder = "little")
+    packet.send_packet(pid_bytes, packet.CMD_KILL)
 
 main()

@@ -5,12 +5,12 @@
 
 #include <citrus/types.h>
 
-#define MAX_PIDS 1024
-
 void pid_init(void);
 
-u32 alloc_pid(void);
+i8 alloc_pid(u32* pid);
 
 void free_pid(u32 pid);
+
+void t(void);
 
 #endif

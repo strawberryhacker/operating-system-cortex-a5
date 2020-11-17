@@ -17,9 +17,11 @@ class citrus_packet:
     CHUNK_SIZE  = 4096
 
     # Commands
-    CMD_DATA = 0x00
-    CMD_SIZE = 0x01
+    CMD_DATA  = 0x00
+    CMD_SIZE  = 0x01
     CMD_RESET = 0x02
+    CMD_KILL  = 0x03
+    CMD_MOUSE = 0x11
 
     # Error response indicating transmission retry
     RESP_ERROR = b'\x00'

@@ -219,7 +219,6 @@ void elf_init(const u8* elf_data, u32 elf_size)
     u32 bin_pages = (u32)align_up((void *)prog_header->memsz, 4096) / 4096;
     u32 bin_order = pages_to_order(bin_pages);
     struct page* bin_page_ptr = alloc_pages(bin_order);
-    print(RED "ALlocating page => %p VA %p\n" NORMAL, bin_page_ptr, page_to_va(bin_page_ptr));
     
     mem_copy(elf_data + prog_header->offset, page_to_va(bin_page_ptr),
         prog_header->filesz);

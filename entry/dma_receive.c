@@ -18,9 +18,10 @@
 #define CRC_POLY 0x45
 #define PACKET_TAG 0xCA
 
-#define CMD_DATA 0x00
-#define CMD_SIZE 0x01
+#define CMD_DATA  0x00
+#define CMD_SIZE  0x01
 #define CMD_RESET 0x02
+#define CMD_KILL  0x03
 
 #define PACKET_ERROR 0x00 
 #define PACKET_OK    0x01
@@ -198,6 +199,7 @@ static void alloc_elf_buffers(u32 size)
 volatile u16 x = 0;
 volatile u16 y = 0;
 volatile u32 count = 0;
+
 static u8 handle_packet(const u8* data, u32 size, u8 cmd)
 {
     if (cmd == CMD_SIZE) {
@@ -232,7 +234,13 @@ static u8 handle_packet(const u8* data, u32 size, u8 cmd)
         if (y >= (480 - 25)) {
             y = (480 - 25);
         }
-        //print("Mouse: x %d y %d\n", x, y);
+    } else if (cmd == CMD_KILL) {
+        if (size != 4) {
+            print("Error with kill command\n");
+        } else {
+            u32 pid = read_le32(data);
+            print("Killing thread with PID %d\n", pid);
+        }
     }
 
     return 1;

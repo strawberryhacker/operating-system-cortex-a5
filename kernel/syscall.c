@@ -1,5 +1,6 @@
 // Copyright (C) strawberryhacker
 
+#include <citrus/syscall.h>
 #include <citrus/types.h>
 #include <citrus/print.h>
 #include <citrus/sched.h>
@@ -29,27 +30,17 @@ void supervisor_exception(u32* sp)
     u32 svc3 = sp[3];
 
     switch(svc_num) {
-        case 0 : {
+        case SYSCALL_SLEEP : {
+            sched_thread_sleep(svc0);
+            break;
+        }
+        case SYSCALL_CREATE_THREAD : {
             sp[0] = (u32)create_thread((u32 (*)(void *))svc0, svc1,
                 (const char *)svc2, (void *)svc3, sp[7]);
             break;
         }
-        case 1 : {
+        case SYSCALL_SBRK : {
             sp[0] = (u32)set_break(sp[0]);
-            break;
-        }
-        case 2: {
-            alloc_page();
-            break;
-        }
-        case 8 : {
-            sched_thread_sleep(svc0);
-            break;
-        }
-        case 9 : {
-            u32 tmp;
-            asm volatile ("mrs %0, spsr" : "=r" (tmp));
-            sp[0] = tmp;
             break;
         }
     }

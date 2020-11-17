@@ -7,16 +7,16 @@
 #include <citrus/mm.h>
 #include <citrus/cache.h>
 
-#define BARS 50
+#define BARS 20
 
 void print_thread_header(void)
 {
-    print("%3s %-16s %5s %11s\n", "PID", "NAME", "CPU%", "MEM");
+    print_task("%3s %-16s %5s %11s\n", "PID", "NAME", "CPU%", "MEM");
 }
 
 void print_thread_stats(u32 pid, const char* name, u8 percent, u8 frac, u32 mem)
 {
-    print("%3d %-16s %2d.%02d %8d KB\n", pid, name, percent, frac, mem);
+    print_task("%3d %-16s %2d.%02d %8d KB\n", pid, name, percent, frac, mem);
 }
 
 void print_cpu_usage(u8 cpu_usage)
@@ -24,11 +24,11 @@ void print_cpu_usage(u8 cpu_usage)
     u8 bars = (BARS * cpu_usage) / 100;
     u8 space = BARS - bars;
 
-    print("CPU [" GREEN);
+    print_task("CPU [" GREEN);
     for (u32 i = 0; i < bars; i++) {
-        print("|");
+        print_task("|");
     }
-    print(NORMAL "%*s %3d%%]\n", space, "", cpu_usage);
+    print_task(NORMAL "%*s %3d%%]\n", space, "", cpu_usage);
 }
 
 // Prints the memory usage in the system
@@ -37,11 +37,11 @@ void print_mem_usage(u32 total, u32 used)
     u8 bars = (used * BARS) / total;
     u8 space = BARS - bars;
 
-    print("MEM [" BLUE);
+    print_task("MEM [" BLUE);
     for (u32 i = 0; i < bars; i++) {
-        print("|");
+        print_task("|");
     }
-    print(NORMAL "%*s %3d%%]\n", space, "", used / (total / 100));
+    print_task(NORMAL "%*s %3d%%]\n", space, "", used / (total / 100));
 }
 
 extern struct rq rq;
@@ -81,7 +81,7 @@ u32 task_manager(void* args)
             print_thread_stats(t->pid, t->name, percent, fraction, mem_kib);
             t->last_runtime = t->runtime;
         }
-        print("\n");
+        print_task("\n");
     }
 }   
 

@@ -13,5 +13,6 @@
 #define ENOENT  6
 
 #define ENOMEM  10     // No more memory
+#define ENOPID  11     // No PID available
 
 #endif

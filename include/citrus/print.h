@@ -14,6 +14,9 @@
 #define YELLOW  "\033[33m"
 #define CYAN    "\033[36m"
 
+void print_task_init(void);
+
 void print(const char* data, ...);
+void print_task(const char* data, ...);
 
 #endif

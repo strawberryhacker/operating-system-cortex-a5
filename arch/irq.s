@@ -78,7 +78,6 @@ __prefetch_exception:
 .type __data_exception, %function
 __data_exception:
     sub lr, lr, #8
-    b .
     stmdb sp!, {r0 - r3, r12, lr}
 
     mov r0, lr              @ LR_abort will hold the PC after adjustment

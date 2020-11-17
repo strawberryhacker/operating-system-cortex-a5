@@ -50,7 +50,6 @@ include $(TOP)/arch/Makefile
 include $(TOP)/lib/Makefile
 include $(TOP)/drivers/Makefile
 include $(TOP)/mm/Makefile
-include $(TOP)/benchmark/Makefile
 include $(TOP)/kernel/Makefile
 include $(TOP)/fs/Makefile
 include $(TOP)/gfx/Makefile
@@ -110,8 +109,9 @@ install: all
 	@python3 $(TOP)/scripts/kernel_load.py $(COM_PORT) $(BUILDDIR)/$(TARGET_NAME).bin
 
 app:
-	@cd $(TOP)/app/example/ && $(MAKE) -s clean && $(MAKE) -s
-	@python3 $(TOP)/scripts/app_load.py $(COM_PORT) $(TOP)/app/example/build/app.elf
+	@cd /mnt/c/citrus-lib && $(MAKE) -s clean && $(MAKE) -s
+	@cd /mnt/c/citrus-app && $(MAKE) -s clean && $(MAKE) -s
+	@python3 $(TOP)/scripts/app_load.py $(COM_PORT) /mnt/c/citrus-app/build/app.elf
 
 debug: install
 	$(GDB) -f $(BUILDDIR)/$(TARGET_NAME).elf -x scripts/debug.gdb
