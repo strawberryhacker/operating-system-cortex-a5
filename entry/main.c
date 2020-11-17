@@ -89,7 +89,6 @@ void main(void)
     task_manager_init();
 
     pid_init();
-    t();
 
     //lcd_init();
     ///create_process(process, 500, "test-thread", NULL, SCHED_RT);

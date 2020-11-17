@@ -70,6 +70,8 @@ LDFLAGS += -T$(linker-script-y)
 .SECONDARY: $(BUILDOBJ)
 .PHONY: all elf install reinstall debug clean app
 all: elf lss bin
+	@python3 $(TOP)/scripts/kernel_load.py $(COM_PORT) $(BUILDDIR)/$(TARGET_NAME).bin
+
 
 # Subtargets
 elf: $(BUILDDIR)/$(TARGET_NAME).elf
@@ -103,15 +105,11 @@ $(BUILDDIR)/%.o: %.s
 	@$(ARM_ASM) $(ASMFLAGS) -c $< -o $@
 
 # ---------------------------------------------------------------------------
-# Connect to custom program loader for c-boot
-
-install: all
-	@python3 $(TOP)/scripts/kernel_load.py $(COM_PORT) $(BUILDDIR)/$(TARGET_NAME).bin
 
 app:
-	@cd /mnt/c/citrus-lib && $(MAKE) -s clean && $(MAKE) -s
-	@cd /mnt/c/citrus-app && $(MAKE) -s clean && $(MAKE) -s
-	@python3 $(TOP)/scripts/app_load.py $(COM_PORT) /mnt/c/citrus-app/build/app.elf
+	@cd /mnt/c/citrus-lib/stdlib && $(MAKE) -s clean && $(MAKE) -s
+	@cd /mnt/c/citrus-lib/example && $(MAKE) -s clean && $(MAKE) -s
+	@python3 $(TOP)/scripts/app_load.py $(COM_PORT) /mnt/c/citrus-lib/example/build/example.elf
 
 debug: install
 	$(GDB) -f $(BUILDDIR)/$(TARGET_NAME).elf -x scripts/debug.gdb

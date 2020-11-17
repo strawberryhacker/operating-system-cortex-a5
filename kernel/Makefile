@@ -12,3 +12,4 @@ obj-y += /kernel/elf.o
 obj-y += /kernel/task_manager.o
 obj-y += /kernel/pid.o
 obj-y += /kernel/atomic.o
+obj-y += /kernel/asid.o
