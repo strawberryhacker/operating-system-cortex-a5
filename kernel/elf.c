@@ -237,10 +237,10 @@ void elf_init(const u8* elf_data, u32 elf_size)
         .xn     = 0
     };
 
-    u8 status = mm_map_in_pages(t->mmap, bin_page_ptr, (1 << bin_order),
+    i32 err = mm_map_in_pages(t->mmap, bin_page_ptr, (1 << bin_order),
         prog_header->vaddr, &attr);
 
-    assert(status);
+    assert(err == 1);
 
     asm volatile("dsb" : : :"memory");
     asm volatile("dmb" : : :"memory");
