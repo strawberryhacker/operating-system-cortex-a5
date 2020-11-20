@@ -13,12 +13,14 @@
 #include <citrus/cpu_timer.h>
 #include <citrus/kmalloc.h>
 #include <citrus/regmap.h>
+#include <citrus/pid.h>
 
 // Each CPU has a private runqueue
 struct rq rq;
 
 // Array for the scheduling classes
 #define CLASS_CNT 4
+
 const struct sched_class* sched_classes[CLASS_CNT];
 
 // Returning the scheduling class based on the sched class number gotten from
@@ -33,7 +35,15 @@ const struct sched_class* get_sched_class(u32 class_num)
 void sched_enqueue_thread(struct thread* thread)
 {
     assert(thread->class);
+    thread->state = THREAD_RUNNING;
     thread->class->enqueue(thread, &rq);
+}
+
+// Dequeues a thread from its runqueue
+void sched_dequeue_thread(struct thread* thread)
+{
+    assert(thread->class);
+    thread->class->dequeue(thread, &rq);
 }
 
 // Checks the sleep queue and enqueues all thread with expired delay
@@ -173,7 +183,7 @@ struct thread* sched_get_lazy_fpu_user(void)
 // should probably wait for a signal
 //
 // TODO this should yield on a external signal
-static u32 idle_func(void* args)
+static i32 idle_func(void* args)
 {
     while (1);
     return 1;
@@ -191,6 +201,9 @@ static inline void sched_early_init(void)
 {
     // Initializes the CPU master runqueue 
     sched_init_rq(&rq);
+
+    // Initialize the PID interface
+    pid_init();
 }
 
 // Initialized the scheduler for the CPU
@@ -228,6 +241,7 @@ struct thread* get_curr_thread(void)
 // any list at this point
 void add_sleep_list(struct thread* thread, struct rq* rq)
 {
+    thread->state = THREAD_SLEEP;
     u64 curr_tick = thread->tick_to_wake;
 
     // Conditionally update the rq.tick_to_wake 
@@ -299,4 +313,9 @@ u8 sched_kill_thread(struct thread* thread)
     kfree(thread);
 
     return 1;
+}
+
+struct rq* get_rq(void)
+{
+    return &rq;
 }

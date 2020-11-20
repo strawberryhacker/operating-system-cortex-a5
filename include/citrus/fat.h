@@ -190,17 +190,17 @@ struct file_info {
 void fat_test(struct disk* disk);
 
 // REMOVE
-i8 fat_mount_partition(struct partition* part);
+i32 fat_mount_partition(struct partition* part);
 
 void file_struct_init(struct file* file);
 
 // NOTE that the following functions take in the path relative to the partition.
 // These paths therefore start with `/dir/file.txt` relative to root
-i8 fat_dir_open(struct file* dir, const char* path, u32 size);
-i8 fat_dir_read(struct file* dir, struct file_info* info);
-i8 fat_file_open(struct file* file, const char* path, u32 size);
-i8 fat_file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt);
-i8 get_next_valid_entry(struct file* dir);
+i32 fat_dir_open(struct file* dir, const char* path, u32 size);
+i32 fat_dir_read(struct file* dir, struct file_info* info);
+i32 fat_file_open(struct file* file, const char* path, u32 size);
+i32 fat_file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt);
+i32 get_next_valid_entry(struct file* dir);
 
 // REMOVE
 void file_print(struct file_info* info);

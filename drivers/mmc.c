@@ -125,7 +125,7 @@ static struct sd_card* mmc_create_sd_card(void)
 }
 
 // SD protocol thread function that will enumerate and add a new card
-extern u32 sd_init_thread(void* sd_card);
+extern i32 sd_init_thread(void* sd_card);
 
 // Handles the event of a SD insertion. This creates a new SD card object and 
 // creates a new thread which will enumerate the newly attached SD card

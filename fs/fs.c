@@ -45,7 +45,7 @@ struct file* dir_open(const char* path)
     dir->part = part;
 
     // Try to open the relative path inside the partition
-    i8 err = fat_dir_open(dir, path, string_length(path));
+    i32 err = fat_dir_open(dir, path, string_length(path));
     if (err) {
         kfree(dir);
         return NULL;
@@ -55,7 +55,7 @@ struct file* dir_open(const char* path)
 
 // This functions reads the current directory pointed to by dir, and return
 // its file info
-i8 dir_read(struct file* dir, struct file_info* info)
+i32 dir_read(struct file* dir, struct file_info* info)
 {
     assert(dir->part);
     return fat_dir_read(dir, info);
@@ -74,7 +74,7 @@ struct file* file_open(const char* path, u8 attr)
     file->part = part;
 
     // Try to open the file
-    i8 err = fat_file_open(file, path, string_length(path));
+    i32 err = fat_file_open(file, path, string_length(path));
     if (err) {
         kfree(file);
         return NULL;
@@ -85,7 +85,7 @@ struct file* file_open(const char* path, u8 attr)
 
 // This will read a number of bytes from a file pointed to by `file`. It will
 // return the acctual number of bytes written
-i8 file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt)
+i32 file_read(struct file* file, u8* data, u32 req_cnt, u32* ret_cnt)
 {
     assert(file->part);
 

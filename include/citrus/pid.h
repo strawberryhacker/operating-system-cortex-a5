@@ -5,8 +5,10 @@
 
 #include <citrus/types.h>
 
+typedef u32 pid_t;
+
 void pid_init(void);
-i8 alloc_pid(u32* pid);
-void free_pid(u32 pid);
+i32 alloc_pid(pid_t* pid);
+void free_pid(pid_t pid);
 
 #endif

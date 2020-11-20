@@ -197,7 +197,7 @@ void disk_add(struct disk* disk, enum disk_type type)
         if (part->sect_count) {
 
             // Try to mount the partition
-            i8 err = fat_mount_partition(part);
+            i32 err = fat_mount_partition(part);
             if (err == -ENOMEM)
                 panic("No memory");
 

@@ -17,12 +17,21 @@ struct sched_class;
 
 #define THREAD_MAX_NAME 32
 
+// Thread states
+enum thread_state {
+    THREAD_RUNNING,
+    THREAD_SLEEP,
+    THREAD_WAIT,
+    THREAD_STOPPED,
+    THREAD_DEAD
+};
+
 struct thread {
     // The stack pointer has to be the first element (must be first)
-    u32* sp;
+    u32* stack;
     
     // Hold the setup for the process memory space (must be second)
-    struct thread_mm* mm;
+    struct mmap* mmap;
 
     // FPU register stack
     u32 fpu_stack[32];
@@ -39,10 +48,6 @@ struct thread {
     // Tick to wake 
     u64 tick_to_wake;
 
-    // Holds the last windows runtime in us
-    u32 window_runtime;
-    u32 curr_runtime;
-
     u64 runtime;
     u64 last_runtime;
 
@@ -53,6 +58,10 @@ struct thread {
 
     /// Node to attach the thread to a running / blocked / sleep queue
     struct list_node node;
+    
+    // This valiable holds the state of the thread. This is used for revmoval
+    // of the thread from runqueues
+    enum thread_state state;
 
     /// Keep a pointer to its scheduling class
     const struct sched_class* class;
@@ -66,18 +75,23 @@ struct thread {
 
 };
 
-struct thread* create_kthread(u32 (*func)(void *), u32 stack_size, 
+struct thread* create_kthread(i32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags);
 
-struct thread* create_process(u32 (*func)(void *), u32 stack_size,
+struct thread* create_process(i32 (*func)(void *), u32 stack_size,
     const char* name, void* args, u32 flags);
 
 // Do not use except in a process syscall
-struct thread* create_thread(u32 (*func)(void *), u32 stack_size, 
+struct thread* create_thread(i32 (*func)(void *), u32 stack_size, 
     const char* name, void* args, u32 flags);
 
 void map_in_code(struct page* code_page, u32 pages, struct thread* t);
+
 void curr_thread_add_pages(struct page* page, u32 pages);
-struct thread_mm* get_curr_mm_process(void);
+
+struct mmap* get_curr_mm_process(void);
+
+// Functions for killing threads
+void kill_thread(struct thread* thread);
 
 #endif

@@ -278,7 +278,7 @@ void lv2_pt_init(struct page* page)
 
 // Initializes a thread_mm structure. This is allocated per process basis and
 // contains info about the process memory map
-void mm_process_init(struct thread_mm* mm)
+void mm_process_init(struct mmap* mm)
 {
     list_init(&mm->page_list);
     mm->pt2_ptr = NULL;
@@ -404,7 +404,7 @@ static inline u8 mm_has_ste_ptr_mapping(u32* ttbr_virt, u32 virt_addr)
 // Returns a new level 2 page table. This might require a page allocation 
 // which will store the new page within the mm->pt2_ptr. This returns the 
 // virtual address of the new level 2 page table
-static u32* mm_get_l2_pt(struct thread_mm* mm)
+static u32* mm_get_l2_pt(struct mmap* mm)
 {
     assert(mm);
 
@@ -439,7 +439,7 @@ static u32* mm_get_l2_pt(struct thread_mm* mm)
 // Maps in a number of pages into the virtual address space specified by ttbr.
 // This takes in the virtual address that the pages should be mapped to. It 
 // returns 1 if success and 0 if an alocation failure has occured
-u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt, 
+u8 mm_map_in_pages(struct mmap* mm, struct page* page, u32 page_cnt, 
     u32 virt_addr, struct pte_attr* attr)
 {
     // The virtual address must be aligned at a 4 KiB boundary
@@ -481,7 +481,7 @@ u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt,
 // heap break up.
 u32* set_break(u32 bytes)
 {
-    struct thread_mm* mm = get_curr_mm_process();
+    struct mmap* mm = get_curr_mm_process();
 
     if (mm->heap_e == 0) {
 

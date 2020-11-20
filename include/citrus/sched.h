@@ -92,14 +92,21 @@ void sched_start(void);
 /// Put the current runing thread to sleep for a number of us
 void sched_thread_sleep(u32 ms);
 
+// Currently this is a single core operating system so we only use one runqueue
+struct rq* get_rq(void);
 
 u32 sched_disable(void);
+
 void sched_enable(u32 i);
 
 const struct sched_class* get_sched_class(u32 class_num);
+
 void sched_enqueue_thread(struct thread* thread);
 
+void sched_dequeue_thread(struct thread* thread);
+
 u64 get_kernel_tick(void);
+
 struct thread* get_curr_thread(void);
 
 /// Adds a thread to the global thread list
@@ -107,6 +114,7 @@ void sched_add_thread(struct thread* thread);
 
 /// Functions fo lazy use of the FPU context
 void sched_set_lazy_fpu_user(struct thread* thread);
+
 struct thread* sched_get_lazy_fpu_user(void);
 
 u8 sched_kill_thread(struct thread* thread);

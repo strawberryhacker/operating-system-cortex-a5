@@ -132,7 +132,7 @@ struct pt2 {
 /// Every new process allocated a struct proc_mm from the kernel malloc. This 
 /// will hold the memory space used by that process. Every child thread will 
 /// keep a point to this structure
-struct thread_mm {
+struct mmap {
     // Base address of the physical address space going into TTBR0 (must be first)
     u32* ttbr_phys;
 
@@ -180,14 +180,14 @@ u32* lv2_pt_find_in_page(struct page* page);
 
 /// Adds a new allocated page to the memory manager. This will be placed in a
 /// linked list, so that we can kill a process and free the memory
-static inline void mm_process_add_page(struct page* page, struct thread_mm* mm)
+static inline void mm_process_add_page(struct page* page, struct mmap* mm)
 {
     list_add_first(&page->node, &mm->page_list);
 }
 
-void mm_process_init(struct thread_mm* mm);
+void mm_process_init(struct mmap* mm);
 
-u8 mm_map_in_pages(struct thread_mm* mm, struct page* page, u32 page_cnt, 
+u8 mm_map_in_pages(struct mmap* mm, struct page* page, u32 page_cnt, 
     u32 virt_addr, struct pte_attr* attr);
 
 u32* set_break(u32 bytes);

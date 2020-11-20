@@ -5,35 +5,23 @@
 
 #include <citrus/types.h>
 #include <citrus/print.h>
+#include <citrus/thread.h>
+#include <citrus/pid.h>
 
 #define SYSCALL_SLEEP         0
 #define SYSCALL_CREATE_THREAD 1
 #define SYSCALL_SBRK          2
+#define SYSCALL_KILL          3
 
-#define SVC_ATTR __attribute__((naked)) __attribute__((noinline))
+#define __svc_attr __attribute__((naked)) __attribute__((noinline))
 
-#define SYSCALL_NX(x)      \
-    asm volatile (         \
-        "svc #"#x"  \t\n"  \
-        "bx lr      \n\t"  \
-    );
+void __svc_attr syscall_thread_sleep(u32 ms);
 
-#define SYSCALL(x) SYSCALL_NX(x)
+i32 __svc_attr syscall_create_thread(pid_t* pid, u32 (*func)(void *),
+    u32 stack_words, const char* name, void* args, u32 flags);
 
-static void SVC_ATTR syscall_thread_sleep(u32 us)
-{
-    SYSCALL(SYSCALL_SLEEP);
-}
+u32 __svc_attr syscall_sbrk(u32 bytes);
 
-static struct thread* SVC_ATTR syscall_create_thread(u32 (*func)(void *),
-    u32 stack_size, const char* name, void* args, u32 flags)
-{
-    SYSCALL(SYSCALL_CREATE_THREAD);
-}
-
-static u32 SVC_ATTR syscall_sbrk(u32 bytes)
-{
-    SYSCALL(SYSCALL_SBRK);
-}
+void __svc_attr syscall_kill(struct thread* thread);
 
 #endif

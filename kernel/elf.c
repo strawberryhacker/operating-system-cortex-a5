@@ -226,7 +226,7 @@ void elf_init(const u8* elf_data, u32 elf_size)
 
     // Create a process
     u32 irq = __atomic_enter();
-    struct thread* t = create_process((u32 (*)(void *))elf_header->entry, 500,
+    struct thread* t = create_process((i32 (*)(void *))elf_header->entry, 500,
         "elf-app", NULL, SCHED_RT);
 
     struct pte_attr attr = {
@@ -237,7 +237,7 @@ void elf_init(const u8* elf_data, u32 elf_size)
         .xn     = 0
     };
 
-    u8 status = mm_map_in_pages(t->mm, bin_page_ptr, (1 << bin_order),
+    u8 status = mm_map_in_pages(t->mmap, bin_page_ptr, (1 << bin_order),
         prog_header->vaddr, &attr);
 
     assert(status);
@@ -248,14 +248,6 @@ void elf_init(const u8* elf_data, u32 elf_size)
     dcache_clean();
     icache_invalidate();
 
-    
-    /*
-    // Check if the mapping is right
-    set_ttbr0((u32)t->mm->ttbr_phys);
-    mm_tlb_invalidate();
-    icache_invalidate();
-    dcache_clean();
-    */
     __atomic_leave(irq);
 
 }

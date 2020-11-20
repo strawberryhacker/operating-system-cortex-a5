@@ -15,6 +15,7 @@
 #include <citrus/interrupt.h>
 #include <citrus/syscall.h>
 #include <citrus/mem.h>
+#include <citrus/pid.h>
 
 // Initial CPSR values for kernel / user threads. The mode is set, interrupts
 // are unmasked and the status bits are cleared
@@ -43,7 +44,7 @@ void thread_exit(u32 status_code)
     }
 
     // Delete the thread
-    if (t->mm) {
+    if (t->mmap) {
         if (t->process == t) {
             print("Killing a process\n");
         } else {
@@ -53,6 +54,8 @@ void thread_exit(u32 status_code)
 
             kfree(t);
         }
+    } else {
+        // We will kill a kernel thread
     }
 
     while (1) {
@@ -63,12 +66,11 @@ void thread_exit(u32 status_code)
     // CONTEXT STILL IN THE CORE
     //
     // The rq->lazy_fpu should be set to NULL when a thread is deleted.
-
 }
 
 // Sets up the stack for any process. This takes in the arguments and the
 // return function as well as the CPSR for user / kernel threads
-u32* stack_setup(u32* sp, u32 (*func)(void *), void* args, u32 cpsr)
+u32* stack_setup(u32* sp, i32 (*func)(void *), void* args, u32 cpsr)
 {
     sp--;
     *sp-- = cpsr;              // cpsr  
@@ -134,7 +136,7 @@ static void thread_set_sched_class(struct thread* thread, u32 flags)
 }
 
 // Creates a lightweight kernel thread in the kernel memory space
-struct thread* create_kthread(u32 (*func)(void *), u32 stack_words, 
+struct thread* create_kthread(i32 (*func)(void *), u32 stack_words, 
     const char* name, void* args, u32 flags)
 {
     // Allocate a new thread struct + stack in the same allocation
@@ -147,13 +149,18 @@ struct thread* create_kthread(u32 (*func)(void *), u32 stack_words,
     // Set the name of the thread
     thread_set_name(thread, name);
 
+    // Assign a new PID
+    i32 err = alloc_pid(&thread->pid);
+    if (err < 0)
+        return NULL;
+    
     // The stack goes after the thread control block and will be 8 byte aligned
     thread->stack_base = (u32 *)((u8 *)thread + sizeof(struct thread));
     thread->stack_base = align_up(thread->stack_base, 8);
 
     // Update the stack pointer address
-    thread->sp = thread->stack_base + stack_words - 1;
-    thread->sp = stack_setup(thread->sp, func, args, KERNEL_THREAD_CPSR);
+    thread->stack = thread->stack_base + stack_words - 1;
+    thread->stack = stack_setup(thread->stack, func, args, KERNEL_THREAD_CPSR);
 
     // Add the thread to the global thread list
     sched_add_thread(thread);
@@ -175,9 +182,9 @@ void kill_kernel_thread(struct thread* t)
 // Core function for creating a user thread. This assumes that a memory space 
 // is created. It will allocate a new stack region
 static inline void create_user_thread_core(struct thread* thread,
-    u32 (*func)(void *), u32 stack_words,const char* name, void* args, u32 flags)
+    i32 (*func)(void *), u32 stack_words,const char* name, void* args, u32 flags)
 {
-    assert(thread->mm != NULL);
+    assert(thread->mmap != NULL);
 
     // Set the name of the thread
     thread_set_name(thread, name);
@@ -190,7 +197,7 @@ static inline void create_user_thread_core(struct thread* thread,
     
     // Allocate and add the pages
     struct page* stack_page_ptr = alloc_pages(stack_order);
-    mm_process_add_page(stack_page_ptr, thread->mm);
+    mm_process_add_page(stack_page_ptr, thread->mmap);
 
     struct pte_attr attr = {
         .access = PTE_ACCESS_FULL_ACC,
@@ -201,11 +208,11 @@ static inline void create_user_thread_core(struct thread* thread,
     };
 
     // Allocate space in the process virtual memory space for the stack
-    thread->mm->stack_e -= stack_page_cnt * (4096 / 4);
+    thread->mmap->stack_e -= stack_page_cnt * (4096 / 4);
 
     // Map in the stack in the process virtual memory
-    u8 status = mm_map_in_pages(thread->mm, stack_page_ptr, stack_page_cnt, 
-        (u32)thread->mm->stack_e, &attr);
+    u8 status = mm_map_in_pages(thread->mmap, stack_page_ptr, stack_page_cnt, 
+        (u32)thread->mmap->stack_e, &attr);
 
     assert(status);
 
@@ -214,11 +221,11 @@ static inline void create_user_thread_core(struct thread* thread,
 
     // Setup the stack using kernel logical addressing
     u32* sp_kern_virt = page_to_va(stack_page_ptr);
-    u32* sp_usr_virt = thread->mm->stack_e;
+    u32* sp_usr_virt = thread->mmap->stack_e;
 
     u32* sp = sp_kern_virt + stack_page_cnt * 1024 - 1;
     sp = stack_setup(sp, func, args, USER_THREAD_CPSR);
-    thread->sp = sp_usr_virt + (sp - sp_kern_virt);
+    thread->stack = sp_usr_virt + (sp - sp_kern_virt);
 
     dcache_clean();
     icache_invalidate();
@@ -230,7 +237,7 @@ static inline void create_user_thread_core(struct thread* thread,
 }
 
 // Creates a user thread within the memory space of the parent process
-struct thread* create_thread(u32 (*func)(void *), u32 stack_words, 
+struct thread* create_thread(i32 (*func)(void *), u32 stack_words, 
     const char* name, void* args, u32 flags)
 {
     struct thread* thread = kzmalloc(sizeof(struct thread));
@@ -242,7 +249,7 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_words,
     struct thread* parent = get_curr_thread();
 
     // Bind the new thread to the current running process
-    thread->mm = parent->mm;
+    thread->mmap = parent->mmap;
     thread->process = parent;
     list_add_first(&thread->thread_group, &parent->thread_group);
 
@@ -256,7 +263,7 @@ struct thread* create_thread(u32 (*func)(void *), u32 stack_words,
 }
 
 // Create new heavy process
-struct thread* create_process(u32 (*func)(void *), u32 stack_words,
+struct thread* create_process(i32 (*func)(void *), u32 stack_words,
     const char* name, void* args, u32 flags)
 {
     struct thread* thread = kzmalloc(sizeof(struct thread));
@@ -282,7 +289,7 @@ struct thread* create_process(u32 (*func)(void *), u32 stack_words,
 // This functions maps in a number of code pages into the process memory space
 void map_in_code(struct page* code_page, u32 pages, struct thread* thread)
 {
-    thread->mm->data_s += pages * 4096;
+    thread->mmap->data_s += pages * 4096;
 
     struct pte_attr attr = {
         .access = PTE_ACCESS_FULL_ACC,
@@ -293,7 +300,7 @@ void map_in_code(struct page* code_page, u32 pages, struct thread* thread)
     };
 
     // Map in the memory
-    u32 status = mm_map_in_pages(thread->mm, code_page, pages, 0x00100000, &attr);
+    u32 status = mm_map_in_pages(thread->mmap, code_page, pages, 0x00100000, &attr);
     assert(status);
 
     mm_tlb_invalidate();
@@ -308,15 +315,15 @@ void curr_thread_add_pages(struct page* page, u32 pages)
     struct thread* t = get_curr_thread();
 
     t->page_cnt += pages;
-    t->mm->page_cnt += pages;
+    t->mmap->page_cnt += pages;
 
-    mm_process_add_page(page, t->mm);
+    mm_process_add_page(page, t->mmap);
 }
 
 // Returns the memory managment structure of the current (parent) process of 
 // the current running thread
-struct thread_mm* get_curr_mm_process(void)
+struct mmap* get_curr_mm_process(void)
 {
     struct thread* t = get_curr_thread();
-    return t->mm;
+    return t->mmap;
 }

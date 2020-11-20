@@ -6,6 +6,10 @@
 #include <citrus/error.h>
 #include <citrus/panic.h>
 #include <citrus/mem.h>
+#include <citrus/thread.h>
+
+// This file implements a recursive binary PID tree for fast assignment of new
+// PIDs and fast freeing of exsisting PIDs
 
 #define PID_LEVELS 2
 
@@ -28,7 +32,7 @@ void pid_init(void)
 // the value at the given address
 //
 // Returns 0 if a new valid PID is returned and -ENOPID if the allocation failed
-i8 alloc_pid(u32* pid)
+i32 alloc_pid(pid_t* pid)
 {
     u32 pow = __builtin_pow(32, PID_LEVELS - 1);
 
@@ -77,7 +81,7 @@ i8 alloc_pid(u32* pid)
 }
 
 // Frees the specified PID number
-void free_pid(u32 pid)
+void free_pid(pid_t pid)
 {
     u32 index = (__builtin_pow(32, PID_LEVELS - 1) - 1) / 31;
 

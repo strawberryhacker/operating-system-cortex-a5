@@ -46,7 +46,7 @@ void print_mem_usage(u32 total, u32 used)
 
 extern struct rq rq;
 
-u32 task_manager(void* args)
+i32 task_manager(void* args)
 {
     // Setup the task management
     struct list_node* it;

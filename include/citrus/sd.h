@@ -6,6 +6,6 @@
 #include <citrus/types.h>
 #include <citrus/mmc.h>
 
-u32 sd_init_thread(void* sd_card);
+i32 sd_init_thread(void* sd_card);
 
 #endif

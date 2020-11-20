@@ -479,7 +479,7 @@ struct disk* sd_create_disk(struct sd_card* sd)
 // This will initialize and enumerate the SD card such that the SD card can 
 // be accessed by the file system driver. After the initialization it will 
 // make a disk object and mount the disk
-u32 sd_init_thread(void* sd_card)
+i32 sd_init_thread(void* sd_card)
 {
     // This thread is given a new SD card struct in the parameter list
     struct sd_card* card = (struct sd_card *)sd_card;
