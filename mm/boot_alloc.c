@@ -3,6 +3,7 @@
 #include <citrus/boot_alloc.h>
 #include <citrus/align.h>
 #include <citrus/panic.h>
+#include <citrus/print.h>
 
 static u32 boot_alloc_en = 0;
 
@@ -27,7 +28,7 @@ void* boot_alloc(u32 size, u32 align)
     }
 
     // Align the start address
-    align_up(boot_alloc_ptr, align);
+    boot_alloc_ptr = align_up(boot_alloc_ptr, align);
 
     void* ret_ptr = boot_alloc_ptr;
     boot_alloc_ptr += size;

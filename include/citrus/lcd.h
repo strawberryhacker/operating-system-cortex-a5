@@ -5,6 +5,10 @@
 
 #include <citrus/types.h>
 
+#define SCREEN_X 800
+#define SCREEN_Y 480
+#define LAYERS 3
+
 struct lcd_info {
     u16 width;
     u16 height;
@@ -21,16 +25,28 @@ struct lcd_info {
     u8 h_pulse_width;
 };
 
-struct lcd_dma_desc {
-    u32 addr;
-    u32 ctrl;
-    u32 next;
-    u32 padding;
+// Framebuffer info
+struct fb_info {
+    void* buffer;
+    u16 height;
+    u16 width;
+    u8 bpp;
 };
 
-u32 get_color(u8 r, u8 g, u8 b, u8 a);
+struct rgb {
+    u8 b;
+    u8 g;
+    u8 r;
+};
 
-void set_color(u32* buffer, u16 x, u16 y, u16 w, u16 h, u32 color);
+struct rgba {
+    u8 a;
+    u8 b;
+    u8 g;
+    u8 r;
+};
+
+void lcd_layers_alloc(void);
 
 void lcd_init(void);
 
@@ -40,8 +56,8 @@ void lcd_on(struct lcd_info* info);
 
 void lcd_off(void);
 
-u32* lcd_get_framebuffer(u8 layer);
+void lcd_switch_framebuffer(u8 layer);
 
-void test(void);
+struct fb_info* lcd_get_new_framebuffer(u8 layer);
 
 #endif

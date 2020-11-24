@@ -12,6 +12,7 @@
 #include <citrus/thread.h>
 #include <citrus/cache.h>
 #include <citrus/panic.h>
+#include <citrus/lcd.h>
 
 // Hold the virtual end address of the kernel memory. Defined in the linker
 extern u32 _kernel_e;
@@ -144,6 +145,10 @@ void mm_init(void)
 {
     // Make sure the memory is setup correctly
     mm_early_init();
+
+    // Call the display subsystem to allocate buffers for the display. This is
+    // done here because it needs to be non-cacheable and allocate several MB
+    lcd_layers_alloc();
 
     // Retire the boot allocator before the main allocators are enabled
     boot_alloc_retire();

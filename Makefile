@@ -4,7 +4,7 @@ TOP         = $(shell pwd)
 BUILDDIR    = $(TOP)/build
 TARGET_NAME = citrus
 MAKEFLAGS   = -j6
-COM_PORT    = /dev/ttyS4
+COM_PORT    = /dev/ttyS3
 
 # ---------------------------------------------------------------------------
 # Compile flags (this should problably be defined based on the architecture)
@@ -54,6 +54,19 @@ include $(TOP)/kernel/Makefile
 include $(TOP)/fs/Makefile
 include $(TOP)/gfx/Makefile
 
+# define standard colors
+BLACK       := $(shell tput -Txterm setaf 0)
+RED         := $(shell tput -Txterm setaf 1)
+GREEN       := $(shell tput -Txterm setaf 2)
+YELLOW      := $(shell tput -Txterm setaf 3)
+LIGHTPURPLE := $(shell tput -Txterm setaf 4)
+PURPLE      := $(shell tput -Txterm setaf 5)
+BLUE        := $(shell tput -Txterm setaf 6)
+WHITE       := $(shell tput -Txterm setaf 7)
+RESET       := $(shell tput -Txterm sgr0)
+
+COMPILE_COLOR = $(BLUE)
+
 # Check that the linker script is provided
 ifneq ($(MAKECMDGOALS),clean)
 ifndef linker-script-y
@@ -70,7 +83,7 @@ LDFLAGS += -T$(linker-script-y)
 .SECONDARY: $(BUILDOBJ)
 .PHONY: all elf install reinstall debug clean app
 all: elf lss bin
-	@python3 $(TOP)/scripts/kernel_load.py $(COM_PORT) $(BUILDDIR)/$(TARGET_NAME).bin
+	@python3 -B $(TOP)/scripts/kernel_load.py $(COM_PORT) $(BUILDDIR)/$(TARGET_NAME).bin
 
 
 # Subtargets
@@ -96,12 +109,12 @@ $(BUILDDIR)/%.bin: $(BUILDDIR)/%.elf
 
 $(BUILDDIR)/%.o: %.c
 	@mkdir -p $(dir $@)
-	@echo " >" $<
+	@echo "$(COMPILE_COLOR)     Compiling ${RESET}" $<
 	@$(CC) $(CFLAGS) $(CPFLAGS) -c $< -o $@
 
 $(BUILDDIR)/%.o: %.s
 	@mkdir -p $(dir $@)
-	@echo " >" $<
+	@echo "$(COMPILE_COLOR)     Compiling ${RESET}" $<
 	@$(ARM_ASM) $(ASMFLAGS) -c $< -o $@
 
 # ---------------------------------------------------------------------------
@@ -109,7 +122,7 @@ $(BUILDDIR)/%.o: %.s
 app:
 	@cd /mnt/c/citrus-lib/stdlib && $(MAKE) -s clean && $(MAKE) -s
 	@cd /mnt/c/citrus-lib/example && $(MAKE) -s clean && $(MAKE) -s
-	@python3 $(TOP)/scripts/app_load.py $(COM_PORT) /mnt/c/citrus-lib/example/build/example.elf
+	@python3 -B $(TOP)/scripts/app_load.py $(COM_PORT) /mnt/c/citrus-lib/example/build/example.elf
 
 debug: install
 	$(GDB) -f $(BUILDDIR)/$(TARGET_NAME).elf -x scripts/debug.gdb

@@ -32,10 +32,6 @@ void early_init(void)
 {
     apic_init();
 
-    // The loader is in control of the kernel download serial line and 
-    // should be initialized first in order to access the bootloader. 
-    //loader_init();
-
     // Enable interrupt now to support reboot
     irq_enable();
     async_abort_enable();
@@ -65,13 +61,32 @@ void driver_init(void)
     mmc_init();
     dma_init();
     dma_receive_init();
+    lcd_init();
 }
 
-u32 process(void* args)
+
+void draw(struct rgb (*buffer)[800], struct rgb* rgb, u16 x, u16 y, u16 w, u16 h)
 {
-    while (1) {
-        print("Hello\n");
-        syscall_thread_sleep(500);
+    for (u32 i = y; i < y + h; i++) {
+        for (u32 j = x; j < x + w; j++) {
+            buffer[i][j] = (struct rgb){ .b = rgb->b, .g = rgb->g, .r = rgb->r };
+        }
+    }
+}
+
+void draw_rgba(struct rgba (*buffer)[800], struct rgba* rgb, u16 x, u16 y, u16 w, u16 h)
+{
+    for (u32 i = y; i < y + h; i++) {
+        for (u32 j = x; j < x + w; j++) {
+            buffer[i][j] = (struct rgba){ .b = rgb->b, .g = rgb->g, .r = rgb->r, .a = rgb->a };
+        }
+    }
+}
+
+void del(u32 cyc)
+{
+    for (u32 i = 0; i < cyc; i++) {
+        asm ("nop");
     }
 }
 
@@ -86,11 +101,6 @@ void main(void)
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
-    task_manager_init();
-
-
-    //lcd_init();
-    ///create_process(process, 500, "test-thread", NULL, SCHED_RT);
 
     sched_start();
 } 

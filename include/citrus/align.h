@@ -9,7 +9,7 @@ static inline void* align_up(void* ptr, u32 align_bytes)
 {
     u32 _ptr = (u32)ptr;
     if (_ptr & (align_bytes - 1)) {
-        _ptr += align_bytes;
+        _ptr += align_bytes - 1;
         _ptr &= ~(align_bytes - 1);
     }
     return (void *)_ptr;
