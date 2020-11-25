@@ -209,5 +209,6 @@ void disk_add(struct disk* disk, enum disk_type type)
             string_copy("No label", part->label);
         }
     }
+    list_partitions();
 }
 

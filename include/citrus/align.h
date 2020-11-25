@@ -5,7 +5,7 @@
 
 #include <citrus/types.h>
 
-static inline void* align_up(void* ptr, u32 align_bytes)
+static inline void* align_up_ptr(void* ptr, u32 align_bytes)
 {
     u32 _ptr = (u32)ptr;
     if (_ptr & (align_bytes - 1)) {
@@ -15,14 +15,14 @@ static inline void* align_up(void* ptr, u32 align_bytes)
     return (void *)_ptr;
 }
 
-static inline void* align_down(void* ptr, u32 align_bytes)
+static inline void* align_down_ptr(void* ptr, u32 align_bytes)
 {
     u32 _ptr = (u32)ptr;
     _ptr &= ~(align_bytes - 1);
     return (void *)_ptr;
 }
 
-static inline u32 align_up_val(u32 val, u32 align_bytes)
+static inline u32 align_up(u32 val, u32 align_bytes)
 {
     if (val & (align_bytes - 1)) {
         val += align_bytes;
@@ -31,7 +31,7 @@ static inline u32 align_up_val(u32 val, u32 align_bytes)
     return val;
 }
 
-static inline u32 align_down_val(u32 val, u32 align_bytes)
+static inline u32 align_down(u32 val, u32 align_bytes)
 {
     val &= ~(align_bytes - 1);
     return val;

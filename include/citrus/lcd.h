@@ -4,6 +4,7 @@
 #define LCD_H
 
 #include <citrus/types.h>
+#include <gfx/position.h>
 
 #define SCREEN_X 800
 #define SCREEN_Y 480
@@ -59,5 +60,7 @@ void lcd_off(void);
 void lcd_switch_framebuffer(u8 layer);
 
 struct fb_info* lcd_get_new_framebuffer(u8 layer);
+
+void lcd_get_size(struct size* size, u8 layer);
 
 #endif

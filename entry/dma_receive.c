@@ -12,6 +12,7 @@
 #include <citrus/page_alloc.h>
 #include <citrus/mem.h>
 #include <citrus/regmap.h>
+
 #include <stdalign.h>
 
 #define DMA_BUFFER_SIZE (4096 + 32 * 10)
@@ -147,7 +148,7 @@ static u8 process_packet(const u8* data, u32 size)
         return 0;
     }
 
-    u32 header_data_size = mem_read_le32(&header->data_size);
+    u32 header_data_size = read_le32(&header->data_size);
     if (header_data_size + header->header_size != size) {
         print("%d + %d = %d\n", header_data_size, header->header_size, size);
         print("Packet size error\n");
@@ -207,7 +208,7 @@ static u8 handle_packet(const u8* data, u32 size, u8 cmd)
             panic("Size packet is not 32-bytes");
             return 0;
         }
-        u32 s = mem_read_le32(data);
+        u32 s = read_le32(data);
         alloc_elf_buffers(s);
 
     } else if (cmd == CMD_DATA) {

@@ -216,7 +216,7 @@ void elf_init(const u8* elf_data, u32 elf_size)
         (struct elf_prog_header *)(elf_data + elf_header->phoff);
 
     // Allocate and copy the loadable data
-    u32 bin_pages = (u32)align_up((void *)prog_header->memsz, 4096) / 4096;
+    u32 bin_pages = (u32)align_up_ptr((void *)prog_header->memsz, 4096) / 4096;
     u32 bin_order = pages_to_order(bin_pages);
     struct page* bin_page_ptr = alloc_pages(bin_order);
     

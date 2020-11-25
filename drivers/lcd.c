@@ -12,6 +12,7 @@
 #include <citrus/align.h>
 #include <citrus/regmap.h>
 #include <citrus/boot_alloc.h>
+
 #include <stddef.h>
 #include <stdalign.h>
 
@@ -85,7 +86,7 @@ void lcd_layers_alloc(void)
     u32 size = ((u32)lcd_layers[2].buffer[1] + pixels * sizeof(struct rgba)) - 
         (u32)lcd_layers[0].buffer[0];
 
-    u32 pages = align_up_val(size, 0xFFFFF) >> 20;
+    u32 pages = align_up(size, 0xFFFFF) >> 20;
 
     // Mark the 1M pages as non-cacheable
     
@@ -404,7 +405,8 @@ void lcd_init(void)
     lcd_layers[2].ctrl->CHER = 0b11;
 
     lcd_on(&lcd_info);
-    lcd_set_brightness(0xFF);
+    lcd_set_brightness(0x50);
+    while (1);
 }
 
 // Sets the display backlight intesnsity
@@ -414,4 +416,10 @@ void lcd_set_brightness(u8 brightness)
     reg &= ~0xFF00;
     reg |= (brightness << 8);
     LCD->LCDCFG6 = reg;
+}
+
+void lcd_get_size(struct size* size, u8 layer)
+{
+    size->y = lcd_layers[layer].info.height;
+    size->x = lcd_layers[layer].info.width;
 }

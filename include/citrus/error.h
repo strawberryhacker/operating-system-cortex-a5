@@ -15,4 +15,8 @@
 #define ENOMEM  10     // No more memory
 #define ENOPID  11     // No PID available
 
+#define EBFONT  12     // Bad font
+#define ECRC      13       // Bad font
+#define ENSUPPORT 14
+
 #endif

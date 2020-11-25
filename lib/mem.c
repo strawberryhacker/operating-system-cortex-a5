@@ -69,19 +69,6 @@ u32 mem_cmp(const void* src1, const void* src2, u32 size)
     return 1;
 }
 
-u32 mem_read_le32(const void* data)
-{
-    const u8* ptr = (u8 *)data;
-
-    u32 number = 0;
-    number |= (*ptr++ << 0);
-    number |= (*ptr++ << 8);
-    number |= (*ptr++ << 16);
-    number |= (*ptr++ << 24);
-    
-    return number;
-}
-
 u16 read_le16(const void* ptr)
 {
     const u8* src = (const u8 *)ptr;
@@ -120,6 +107,48 @@ u64 read_le64(const void* ptr)
     val |= (u64)src[5] << 40;
     val |= (u64)src[6] << 48;
     val |= (u64)src[7] << 56;
+
+    return val;
+}
+
+u16 read_be16(const void* ptr)
+{
+    const u8* src = (const u8 *)ptr;
+    u16 val = 0;
+    
+    val |= src[0] << 8;
+    val |= src[1] << 0;
+
+    return val;
+}
+
+
+u32 read_be32(const void* ptr)
+{
+    const u8* src = (const u8 *)ptr;
+    u32 val = 0;
+
+    val |= src[0] << 24;
+    val |= src[1] << 16;
+    val |= src[2] << 8;
+    val |= src[3] << 0;
+
+    return val;
+}
+
+u64 read_be64(const void* ptr)
+{
+    const u8* src = (const u8 *)ptr;
+    u64 val = 0;
+
+    val |= (u64)src[0] << 56;
+    val |= (u64)src[1] << 48;
+    val |= (u64)src[2] << 40;
+    val |= (u64)src[3] << 32;
+    val |= (u64)src[4] << 24;
+    val |= (u64)src[5] << 16;
+    val |= (u64)src[6] << 8;
+    val |= (u64)src[7] << 0;
 
     return val;
 }

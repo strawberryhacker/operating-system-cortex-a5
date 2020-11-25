@@ -141,7 +141,7 @@ struct thread* create_kthread(i32 (*func)(void *), u32 stack_words,
 {
     // Allocate a new thread struct + stack in the same allocation
     u32 alloc_size = sizeof(struct thread) + stack_words * 4;
-    alloc_size = align_up_val(alloc_size, 8);
+    alloc_size = align_up(alloc_size, 8);
     struct thread* thread = kzmalloc(alloc_size);
 
     init_thread_struct(thread);    
@@ -156,7 +156,7 @@ struct thread* create_kthread(i32 (*func)(void *), u32 stack_words,
     
     // The stack goes after the thread control block and will be 8 byte aligned
     thread->stack_base = (u32 *)((u8 *)thread + sizeof(struct thread));
-    thread->stack_base = align_up(thread->stack_base, 8);
+    thread->stack_base = align_up_ptr(thread->stack_base, 8);
 
     // Update the stack pointer address
     thread->stack = thread->stack_base + stack_words - 1;
@@ -191,7 +191,7 @@ static inline void create_user_thread_core(struct thread* thread,
 
     // Map in the stack region. This will allocate a number of pages and map
     // them into the stack region in the process memory map
-    u32 stack_page_cnt = (u32)align_up((void *)stack_words, 4096) / 4096;
+    u32 stack_page_cnt = (u32)align_up_ptr((void *)stack_words, 4096) / 4096;
     u32 stack_order = pages_to_order(stack_page_cnt);
     stack_page_cnt = (1 << stack_order);
     

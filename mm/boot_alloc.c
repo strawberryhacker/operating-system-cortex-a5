@@ -28,7 +28,7 @@ void* boot_alloc(u32 size, u32 align)
     }
 
     // Align the start address
-    boot_alloc_ptr = align_up(boot_alloc_ptr, align);
+    boot_alloc_ptr = align_up_ptr(boot_alloc_ptr, align);
 
     void* ret_ptr = boot_alloc_ptr;
     boot_alloc_ptr += size;

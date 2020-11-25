@@ -11,6 +11,15 @@ void assert_handler(const char* file, u32 line, u32 statement)
     }
 }
 
+void warning_handler(const char* file, u32 line, const char* reason)
+{
+    print("\nWarning! at line %d in file ", line);
+    print(file);
+    print(": ");
+    print(reason);
+    print("\n");
+}
+
 void panic_handler(const char* file, u32 line, const char* reason)
 {
     // Unrecoverable fault

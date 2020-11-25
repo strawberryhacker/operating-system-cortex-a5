@@ -24,6 +24,11 @@
 #include <citrus/error.h>
 #include <citrus/regmap.h>
 #include <citrus/pid.h>
+
+#include <gfx/win_core.h>
+#include <gfx/win.h>
+#include <gfx/ttf.h>
+
 #include <stdarg.h>
 #include <stdalign.h>
 
@@ -65,30 +70,6 @@ void driver_init(void)
 }
 
 
-void draw(struct rgb (*buffer)[800], struct rgb* rgb, u16 x, u16 y, u16 w, u16 h)
-{
-    for (u32 i = y; i < y + h; i++) {
-        for (u32 j = x; j < x + w; j++) {
-            buffer[i][j] = (struct rgb){ .b = rgb->b, .g = rgb->g, .r = rgb->r };
-        }
-    }
-}
-
-void draw_rgba(struct rgba (*buffer)[800], struct rgba* rgb, u16 x, u16 y, u16 w, u16 h)
-{
-    for (u32 i = y; i < y + h; i++) {
-        for (u32 j = x; j < x + w; j++) {
-            buffer[i][j] = (struct rgba){ .b = rgb->b, .g = rgb->g, .r = rgb->r, .a = rgb->a };
-        }
-    }
-}
-
-void del(u32 cyc)
-{
-    for (u32 i = 0; i < cyc; i++) {
-        asm ("nop");
-    }
-}
 
 /// Called by entry.s after low level initialization finishes
 void main(void)
@@ -101,6 +82,19 @@ void main(void)
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
+
+    struct fb_info* info = lcd_get_new_framebuffer(2);
+    struct rgba (*buffer)[800] = info->buffer;
+
+    for (u32 i = 0; i < 50; i++) {
+        for (u32 j = 0; j < 50; j++) {
+            buffer[i][i] = (struct rgba){.a = 0xFF, 0, 50, 0};
+        }
+    }
+
+    lcd_switch_framebuffer(2);
+
+    create_kthread(ttf_thread, 500, "ttf-thread", NULL, SCHED_RT);
 
     sched_start();
 } 

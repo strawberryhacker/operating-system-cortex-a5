@@ -53,7 +53,7 @@ static void mm_setup_page_array(void)
 
     // Delete the memory
     u32 addr = boot_alloc_get_end_vaddr();
-    u32* ptr = align_up((void *)addr, 4);
+    u32* ptr = align_up_ptr((void *)addr, 4);
 }
 
 // Starts up the custom allocators; binary buddy alloc for pages and the SLOB
@@ -202,7 +202,7 @@ void free_pages(struct page* page)
 // allocator
 u32 bytes_to_order(u32 bytes)
 {
-    u32 pages = (u32)align_up((void *)bytes, 4096) / 4096;
+    u32 pages = (u32)align_up_ptr((void *)bytes, 4096) / 4096;
 
     return __builtin_ctz(round_up_power_two(pages));
 }
@@ -494,7 +494,7 @@ u32* set_break(u32 bytes)
         mm->heap_s = mm->data_e;
 
         // Align the addresses with a page
-        align_up(mm->heap_s, 4096);
+        align_up_ptr(mm->heap_s, 4096);
         mm->heap_e = mm->heap_s;
     }
 
@@ -502,7 +502,7 @@ u32* set_break(u32 bytes)
         return mm->heap_e;
     }
 
-    u32 pages = align_up_val(bytes, 4096) / 4096;
+    u32 pages = align_up(bytes, 4096) / 4096;
     u32 order = pages_to_order(pages);
 
     struct page* page_ptr = alloc_pages(order);
