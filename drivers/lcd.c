@@ -406,7 +406,6 @@ void lcd_init(void)
 
     lcd_on(&lcd_info);
     lcd_set_brightness(0x50);
-    while (1);
 }
 
 // Sets the display backlight intesnsity

@@ -83,18 +83,5 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
 
-    struct fb_info* info = lcd_get_new_framebuffer(2);
-    struct rgba (*buffer)[800] = info->buffer;
-
-    for (u32 i = 0; i < 50; i++) {
-        for (u32 j = 0; j < 50; j++) {
-            buffer[i][i] = (struct rgba){.a = 0xFF, 0, 50, 0};
-        }
-    }
-
-    lcd_switch_framebuffer(2);
-
-    create_kthread(ttf_thread, 500, "ttf-thread", NULL, SCHED_RT);
-
     sched_start();
 } 
