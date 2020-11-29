@@ -1,4 +1,5 @@
 
+
 #include <citrus/fs.h>
 #include <citrus/thread.h>
 #include <citrus/syscall.h>
@@ -76,6 +77,7 @@ struct ttf_info {
 
     // ASCII table lookup with indexes
     u16 ascii_lookup[NUMBER_ASCII_CHARS];
+    u16 loca[NUMBER_ASCII_CHARS];
 
     struct ttf_head head;
     struct ttf_maxp maxp;
@@ -245,6 +247,80 @@ static inline i32 ttf_parse_cmap(const u8* ttf, u32 size, struct ttf_info* info)
     return 0;
 }
 
+// Tries to parse the glyphs specified in the unicode table
+//
+// Returns 0 if the parsing was successful. Returns -EBFONT if there is 
+// something wrong with the file format
+static inline i32 ttf_parse_glyph(const u8* ttf, u32 size, struct ttf_info* info)
+{
+    // We will want the location whithin the glyph table. This info is retrieved 
+    // from the loca table
+    struct ttf_table_info pos;
+
+    // Find the position of the loca table
+    i32 err = ttf_search_table(ttf, size, TTF_TAG_LOCA, &pos);
+    if (err)
+        return err;
+
+    const u8* ptr = ttf + pos.off;
+
+    // We need to know the table format given in the head table
+    for (u32 i = 0; i < NUMBER_ASCII_CHARS; i++) {
+        if (info->head.index_to_loc_fmt)
+            info->loca[i] = read_be32(ptr + info->ascii_lookup[i] * 4);
+        else
+            info->loca[i] = 2 * read_be16(ptr + info->ascii_lookup[i] * 2);
+    }
+
+    // Get the position of the glyf table
+    err = ttf_search_table(ttf, size, TTF_TAG_GLYF, &pos);
+    if (err)
+        return err;
+    
+    for (u32 i = 'B' - START_ASCII_CHAR; i <= 'B' - START_ASCII_CHAR; i++) {
+        ptr = ttf + pos.off + info->loca[i];
+
+        // Figure out the number of contour
+        i16 num_contours = (i16)read_be16(ptr);
+        if (num_contours < 0)
+            continue;
+        
+        // Make ptr point to the start of the glyph description
+        ptr += 10;
+
+        // This pointer will allways point to the start of the contour
+        const u8* const cont_ptr = ptr;
+        
+        // Make the pointer point to the last element of the ptr_of_contour
+        ptr += (num_contours - 1) * 2;
+        i16 num_pts = read_be16(ptr);
+
+        // Start of the instruction
+        ptr += 2;
+        u16 inst_len = read_be16(ptr);
+
+        // Skip past the instruction section
+        ptr += inst_len;
+
+        // This will allways point to the start of the flags section
+        const u8* flag_ptr = ptr;
+
+        // Due to the shitty format we have to parse the points three times
+        u32 i = 0;
+        for (i = 0; i < num_pts; i++) {
+            if (*ptr++ & 0x08)
+                i += *(++ptr);
+        }
+        assert(i == num_pts);
+
+        // Parse the X-table
+
+        print("I %d num_pts %d\n", i, num_pts);
+
+
+    }
+}
+
 // Parses the htmx table. This will contain info about the horizontal metrics.
 // This includes the advance width and the horisontal spacing.
 //
@@ -308,7 +384,7 @@ static inline i32 ttf_parse_maxp(const u8* ttf, u32 size, struct ttf_maxp* maxp)
 // global information about the font
 //
 // Returns 0 if the head table is parser sucessfully and -ENFONT if there
-// were an error
+// were an errorfi
 static inline i32 ttf_parse_head(const u8* ttf, u32 size, struct ttf_head* head)
 {
     struct ttf_table_info info;
@@ -370,19 +446,24 @@ i32 parse_ttf(const u8* ttf, u32 size)
     if (err)
         return err;
 
-    print("Jippy\n");
+    // Now we will use the unicode to id mapping to figure out the glyph points
+    err = ttf_parse_glyph(ttf, size, info);
+    if (err)
+        return err;
 
     struct fb_info* fb = lcd_get_new_framebuffer(1);
 
     struct rgba (*b)[800] = fb->buffer;
-    for (u32 i = 0; i < 50; i++) {
+    for (u32 i = 0; i < 300; i++) {
         b[60][60 + i] = (struct rgba){.a = 0xFF, .b = 0xFF, .r = 0, .g = 0};
     }
     lcd_switch_framebuffer(1);
 
+
     return 0;
 }
 
+// Testing thread for the TTF parser
 i32 ttf_thread(void* arg)
 {
     syscall_thread_sleep(200);

@@ -361,6 +361,8 @@ void lcd_switch_framebuffer(u8 layer)
 
     curr_layer->dma->HEAD = curr_layer->buffer_dma_pa[curr_layer->active_index];
     curr_layer->ctrl->CHER = (1 << 2);
+
+    while (!(curr_layer->ctrl->ISR & (1 << 4)));
 }
 
 struct fb_info* lcd_get_new_framebuffer(u8 layer)
@@ -405,7 +407,7 @@ void lcd_init(void)
     lcd_layers[2].ctrl->CHER = 0b11;
 
     lcd_on(&lcd_info);
-    lcd_set_brightness(0x50);
+    lcd_set_brightness(0xFF);
 }
 
 // Sets the display backlight intesnsity

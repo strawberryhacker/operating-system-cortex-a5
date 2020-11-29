@@ -28,6 +28,7 @@
 #include <gfx/win_core.h>
 #include <gfx/win.h>
 #include <gfx/ttf.h>
+#include <gfx/font.h>
 
 #include <stdarg.h>
 #include <stdalign.h>
@@ -50,6 +51,8 @@ void early_init(void)
 
     print_logo();
 }
+
+
 
 /// Initializes the kernel 
 void kernel_init(void)
@@ -82,6 +85,8 @@ void main(void)
     // ==================================================
     // Add the kernel threads / startup routines below 
     // ==================================================
+
+    font_test();
 
     sched_start();
 } 
