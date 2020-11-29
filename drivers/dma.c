@@ -191,3 +191,24 @@ u32 dma_get_microblock_size(struct dma_channel* ch)
 {
     return ch->hw->channel[ch->ch].CUBC;
 }
+
+// Returns the channel configuration register usied in linked list master transfer
+u32 dma_get_cfg_reg(struct dma_ch_cfg_info* info)
+{
+    u32 reg = ((info->perid & 0x7F) << 24) | (info->burst << 1) | 
+        (info->non_secure << 5) | (info->trigger << 6) | 
+        (info->memset_enable << 7) | (info->chunk << 8) | (info->data << 11) | 
+        (info->src_interface << 13) | (info->dest_interface << 14) | 
+        (info->src_am << 16) | (info->dest_am << 18);
+
+    if (info->type != DMA_TYPE_MEM_MEM) {
+        reg |= (1 << 0);
+
+        // D-sync
+        if (info->type == DMA_TYPE_MEM_PER) {
+            reg |= (1 << 4);
+        }
+    }
+
+    return reg;
+}

@@ -89,7 +89,7 @@ void lcd_layers_alloc(void)
     u32 pages = align_up(size, 0xFFFFF) >> 20;
 
     // Mark the 1M pages as non-cacheable. ASID matching is not nessecary 
-    // bacause this is the kernel space
+    // bacause they're in kernel space
     struct ste_attr attr = {
         .access = STE_ACCESS_FULL_ACC,
         .mem = STE_MEM_NON_CACHE,
@@ -98,7 +98,6 @@ void lcd_layers_alloc(void)
         .xn = 0
     };
 
-    // Modify the kernel page table attributes
     u32* va = lcd_layers[0].buffer[0];
     for (u32 i = 0; i < pages; i++) {
         mm_change_kernel_pt_attr(va, &attr);
@@ -434,8 +433,8 @@ void lcd_set_brightness(u8 brightness)
     LCD->LCDCFG6 = reg;
 }
 
-void lcd_get_size(struct size* size, u8 layer)
+void lcd_get_size(u16* x, u16* y, u8 layer)
 {
-    size->y = lcd_layers[layer].info.height;
-    size->x = lcd_layers[layer].info.width;
+    *y = lcd_layers[layer].info.height;
+    *x = lcd_layers[layer].info.width;
 }

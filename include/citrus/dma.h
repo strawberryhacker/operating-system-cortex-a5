@@ -53,35 +53,39 @@ enum dma_desc_type {
     DMA_DESC3
 };
 
+// Descriptor structures. These are linked with the first member and the next
+// descriptor type is set with the ublock_ctrl member
 struct dma_desc0 {
-    struct dma_desc0* next;
-    u32 ctrl;
+    void* next;
+    u32 ublock_ctrl;
     u32 tx_addr;
 };
 
 struct dma_desc1 {
-    struct dma_desc1* next;
-    u32 ctrl;
+    void* next;
+    u32 ublock_ctrl;
     u32 src_addr;
     u32 dest_addr;
 };
 
 struct dma_desc2 {
-    struct dma_desc2* next;
-    u32 ctrl;
+    void* next;
+    u32 ublock_ctrl;
     u32 src_addr;
     u32 dest_addr;
-    u32 cfg;
+    u32 cfg_reg;
 };
 
 struct dma_desc3 {
-    struct dma_desc3* next;
-    u32 ctrl;
+    void* next;
+    u32 ublock_ctrl;
     u32 src_addr;
     u32 dest_addr;
-    u32 cfg;
-    u32 block_ctrl;
-    u32 stride;
+    u32 cfg_reg;
+
+    // 12-bits describing the number of blocks in the transfer
+    u32 block_ctrl_reg;
+    u32 data_stride;
     u32 src_stride;
     u32 dest_stride;
 };
@@ -122,6 +126,9 @@ struct dma_req {
     u8 id;
 };
 
+// PERID when no peripheral is used
+#define NO_PERID 127
+
 /// Defines the DMA interrupts
 #define DMA_EOB               (1 << 0)
 #define DMA_EOL               (1 << 1)
@@ -137,6 +144,7 @@ struct dma_req {
 void dma_init(void);
 
 struct dma_channel* alloc_dma_channel(void);
+
 void free_dma_channel(struct dma_channel* ch);
 
 u8 dma_submit_request(struct dma_req* req, struct dma_channel* ch);
@@ -144,6 +152,46 @@ u8 dma_submit_request(struct dma_req* req, struct dma_channel* ch);
 void dma_flush_channel(struct dma_channel* ch);
 
 void dma_stop(struct dma_channel* ch);
+
 u32 dma_get_microblock_size(struct dma_channel* ch);
+
+// Returns the micro-block control member used in linked list master transfer
+static inline u32 dma_get_ublock_ctrl(enum dma_desc_type next_type, 
+    u32 ublock_len, u32 next_desc_en, u32 src_update, u32 dest_update)
+{
+    return (next_type << 27) | (next_desc_en << 26) | (src_update << 25) |
+        (dest_update << 24) | (ublock_len & 0xFFFFFF);
+}
+
+// Channel configuration information
+struct dma_ch_cfg_info {
+    u8 perid;
+
+    // Channel configuration
+    enum dma_type type;
+    enum dma_burst burst;
+    enum dma_chunk chunk;
+    enum dma_data data;
+    enum dma_trigger trigger;
+    enum dma_am dest_am;
+    enum dma_am src_am;
+
+    u8 non_secure     : 1;
+    u8 memset_enable  : 1;
+    u8 src_interface  : 1;
+    u8 dest_interface : 1;
+};
+
+u32 dma_get_cfg_reg(struct dma_ch_cfg_info* info);
+
+struct dma_master {
+    void* first_addr;
+    enum dma_desc_type first_type;
+    u8 src_update;
+    u8 dest_update;
+};
+
+void dma_start_master_transfer(void* first_desc, enum dma_desc_type type,
+    u8 src_update, u8 dest_update, struct dma_channel* ch);
 
 #endif

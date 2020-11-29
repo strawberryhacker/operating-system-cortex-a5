@@ -116,6 +116,9 @@ static inline u8 list_is_empty(struct list_node* list)
 #define list_iterate(node, list) \
     for (node = (list)->next; node != (list); node = node->next)
 
+#define list_iterate_reverse(node, list) \
+    for (node = (list)->prev; node != (list); node = node->prev)
+
 static inline u32 list_get_size(struct list_node* list)
 {
     u32 size = 0;
@@ -125,6 +128,16 @@ static inline u32 list_get_size(struct list_node* list)
         size++;
     }
     return size;
+}
+
+// Merges list src into list dest
+static inline void list_merge(struct list_node* src, struct list_node* dest)
+{
+    src->prev->next = dest->next;
+    dest->next->prev = src->prev;
+
+    dest->next = src->next;
+    dest->next->prev = dest;
 }
 
 #endif

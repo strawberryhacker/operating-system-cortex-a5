@@ -24,9 +24,9 @@
 #include <citrus/error.h>
 #include <citrus/regmap.h>
 #include <citrus/pid.h>
+#include <citrus/mem.h>
 
-#include <gfx/win_core.h>
-#include <gfx/win.h>
+#include <gfx/window.h>
 #include <gfx/ttf.h>
 #include <gfx/font.h>
 
@@ -73,7 +73,6 @@ void driver_init(void)
 }
 
 
-
 /// Called by entry.s after low level initialization finishes
 void main(void)
 {
@@ -86,19 +85,7 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
 
-    struct fb_info* info = lcd_get_new_framebuffer(0);
-
-    u8* ptr = info->buffer;
-
-    lcd_switch_framebuffer(0);
-    dcache_clean_invalidate();
-    ptr = info->buffer;
-    for (u32 i = 0; i < 900000; i++) {
-        *ptr++ = 0xFF;
-        for (u32 i = 0; i < 3000; i++) {
-            asm ("nop");
-        }
-    }
+    window_init();
 
     sched_start();
 } 
