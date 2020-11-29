@@ -319,6 +319,8 @@ static inline i32 ttf_parse_glyph(const u8* ttf, u32 size, struct ttf_info* info
 
 
     }
+
+    return 0;
 }
 
 // Parses the htmx table. This will contain info about the horizontal metrics.

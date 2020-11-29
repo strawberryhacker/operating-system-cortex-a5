@@ -1,4 +1,4 @@
-/// Copyright (C) strawberryhacker 
+/// Copyright (C) strawberryhacker
 
 #ifndef MM_H
 #define MM_H
@@ -36,7 +36,7 @@ struct page {
     struct list_node node;
 };
 
-/// Returns the kernel virtual base address for the page array continaing a 
+/// Returns the kernel virtual base address for the page array continaing a
 /// struct page for every physical page
 struct page* mm_get_page_array(void);
 
@@ -123,14 +123,14 @@ static inline void mm_tlb_invalidate(void)
 
 /// Bitmap for the secondary level page table. Each page can store 3 secondary
 /// level page tables and this bit maps indicated which page tables whithin the
-/// page that are free. The first bit corresponds to l2 page table number 0 at 
+/// page that are free. The first bit corresponds to l2 page table number 0 at
 /// offset page_addr + 1024
 struct pt2 {
     u32 bitmap;
 };
 
-/// Every new process allocated a struct proc_mm from the kernel malloc. This 
-/// will hold the memory space used by that process. Every child thread will 
+/// Every new process allocated a struct proc_mm from the kernel malloc. This
+/// will hold the memory space used by that process. Every child thread will
 /// keep a point to this structure
 struct mmap {
     // Base address of the physical address space going into TTBR0 (must be first)
@@ -168,7 +168,7 @@ struct pte_attr {
 /// Contains the attributes for a level 1 section table entry
 struct ste_attr {
     enum ste_mem mem;
-    enum pte_access access;
+    enum ste_access access;
     u8 xn     : 1;
     u8 nG     : 1;
     u8 domain : 4;
@@ -187,7 +187,7 @@ static inline void mm_process_add_page(struct page* page, struct mmap* mm)
 
 void mm_process_init(struct mmap* mm);
 
-u8 mm_map_in_pages(struct mmap* mm, struct page* page, u32 page_cnt, 
+u8 mm_map_in_pages(struct mmap* mm, struct page* page, u32 page_cnt,
     u32 virt_addr, struct pte_attr* attr);
 
 u32* set_break(u32 bytes);
@@ -195,5 +195,8 @@ u32* set_break(u32 bytes);
 /// Functions for gettting the total amount of allocated memory
 u32 mm_get_total_used(void);
 u32 mm_get_total(void);
+
+// Functions for changing the attributes of a 1M page in the kernel page-table
+void mm_change_kernel_pt_attr(u32* virt_addr, struct ste_attr* attr);
 
 #endif

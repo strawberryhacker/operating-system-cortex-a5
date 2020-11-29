@@ -328,7 +328,6 @@ static inline u32 mm_get_ste_sect(u32 phys_addr, const struct ste_attr* attr)
 {
     u32 ste = attr->access | attr->mem | STE_SECTION_MASK |
         STE_SECTION_DOMAIN(attr->domain);
-
     // Execute never
     if (attr->xn) {
         ste |= STE_SECTION_XN;
@@ -527,4 +526,29 @@ u32* set_break(u32 bytes)
     mm->heap_e += 4096 * (1 << order);
 
     return mm->heap_e;
+}
+
+extern u32 _early_kernel_lv1_pt_s;
+
+// Returns the start address of the kernel page table
+static inline u32* mm_get_kernel_pt(void)
+{
+    return (u32 *)&_early_kernel_lv1_pt_s;
+}
+
+// Changes the default attributes of the kernel page table. This only operates
+// on first level page tables. This might be used to mark some regions as 
+// non-cacheable
+void mm_change_kernel_pt_attr(u32* virt_addr, struct ste_attr* attr)
+{
+    assert(((u32)virt_addr & 0xFFFFF) == 0);
+
+    // Grab the formatted entry
+    u32 entry = mm_get_ste_sect((u32)va_to_pa(virt_addr), attr);
+    u32* kernel_pt = mm_get_kernel_pt();
+
+    // Update the entry
+    kernel_pt[(u32)virt_addr >> 20] = entry;
+    asm volatile ("dmb");
+    mm_tlb_invalidate();
 }

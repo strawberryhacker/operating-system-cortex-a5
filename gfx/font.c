@@ -425,7 +425,7 @@ void draw_char(char c, const struct simple_font* font, struct rgba (*fb)[800], u
                 bits = font->bitmap[bit_off++];
             }
             if (bits & 0x80) {
-                fb[y + i + g->y_off][x + j + g->x_off] = (struct rgba){0xFF, 0xFF, 0, 0};
+                fb[y + i + g->y_off][x + j + g->x_off] = (struct rgba){0xFF, 0xFF, 0xFF, 0xFF};
             }
             bits <<= 1;
         }
@@ -468,10 +468,6 @@ void font_test(void)
                 print_screen("Hello World This is a small test to see if this display work", i*2, i + 5 + x * 15, &mono9_font, buffer1);
             }
             lcd_switch_framebuffer(1);
-            for (u32 x = 0; x < 480 * 800*2; x++) {
-                asm ("nop");
-            }
-            print("o");
         }
         for (u32 i = 200; i != 0; i -= 1) {
             struct fb_info* info = lcd_get_new_framebuffer(2);
@@ -484,10 +480,6 @@ void font_test(void)
                 print_screen("Hello Worggld This is a small test to see if this display work", i + 50, i + 50 + x * 15, &mono9_font, buffer);
             }
             lcd_switch_framebuffer(2);
-            for (u32 x = 0; x < 480 * 800*2; x++) {
-                asm ("nop");
-            }
-            print("o");
         }
     }
 }

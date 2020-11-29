@@ -25,12 +25,12 @@ enum ste_mem {
 };
 
 enum ste_access {
-    STE_ACCESS_NO_ACC       = ((0 << 15) | (0b00 < 10)),
-    STE_ACCESS_PRIV_ACC     = ((0 << 15) | (0b01 < 10)),
-    STE_ACCESS_NO_USR_WRITE = ((0 << 15) | (0b10 < 10)),
-    STE_ACCESS_FULL_ACC     = ((0 << 15) | (0b11 < 10)),
-    STE_ACCESS_PRIV_READ    = ((1 << 15) | (0b01 < 10)),
-    STE_ACCESS_READ         = ((1 << 15) | (0b10 < 10))
+    STE_ACCESS_NO_ACC       = ((0 << 15) | (0b00 << 10)),
+    STE_ACCESS_PRIV_ACC     = ((0 << 15) | (0b01 << 10)),
+    STE_ACCESS_NO_USR_WRITE = ((0 << 15) | (0b10 << 10)),
+    STE_ACCESS_FULL_ACC     = ((0 << 15) | (0b11 << 10)),
+    STE_ACCESS_PRIV_READ    = ((1 << 15) | (0b01 << 10)),
+    STE_ACCESS_READ         = ((1 << 15) | (0b10 << 10))
 };
 
 // Page table entry
