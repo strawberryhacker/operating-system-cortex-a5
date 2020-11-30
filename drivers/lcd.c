@@ -36,7 +36,7 @@ struct lcd_layer {
     u8 active_index : 1;
 
     // Will allways contain the right information of the current framebuffer
-    struct fb_info info;
+    struct screenbuffer info;
     
     // Register information
     struct lcd_ctrl* ctrl;
@@ -71,8 +71,8 @@ void lcd_layers_alloc(void)
     // allocated
     struct lcd_layer* layer = &lcd_layers[0];
     for (u32 i = 0; i < LAYERS; i++) {
-        layer->info.height = SCREEN_Y;
-        layer->info.width = SCREEN_X;
+        layer->info.h = SCREEN_Y;
+        layer->info.w = SCREEN_X;
         
         if (i == 0)
             layer->info.bpp = 3; // Layer 1 uses no alpha channel
@@ -179,9 +179,9 @@ void lcd_on(struct lcd_info* info)
     
     // Calculate the pixel clock
     u32 pixel_clock = info->framerate * (info->h_back_porch +
-        info->h_front_porch + info->h_pulse_width + info->width) * 
+        info->h_front_porch + info->h_pulse_width + info->w) * 
         (info->v_back_porch + info->v_front_porch + info->v_pulse_width + 
-        info->height);
+        info->h);
 
     u8 div = (166000000 * 2) / pixel_clock - 1;
 
@@ -203,8 +203,8 @@ void lcd_on(struct lcd_info* info)
         (((info->h_back_porch - 1) & 0x3FF) << 16);
 
     wait_clock_domain_sync();
-    LCD->LCDCFG4 = (((info->width - 1) & 0x3FF) << 0) |
-        (((info->height - 1) & 0x3FF) << 16);
+    LCD->LCDCFG4 = (((info->w - 1) & 0x3FF) << 0) |
+        (((info->h - 1) & 0x3FF) << 16);
 
     // Setup guard time, clock polarity, and color mode
     wait_clock_domain_sync();
@@ -286,8 +286,8 @@ static void lcd_layer_init(void)
             layer->buffer_dma[j] = dma;
 
             // Just clear the buffers
-            mem_set(layer->buffer[j], 0x00, layer->info.bpp * layer->info.height *
-                layer->info.width);
+            mem_set(layer->buffer[j], 0x00, layer->info.bpp * layer->info.h *
+                layer->info.w);
 
             dma++;
         }
@@ -328,7 +328,7 @@ static void lcd_layer_enable(void)
             layer->cfg[0] = (3 << 4) | (1 << 12) | (1 << 8);
             layer->cfg[1] = (13 << 4);           // 32-bit ABGR8888 no lookup
             layer->cfg[2] = 0;                   // Window position
-            layer->cfg[3] = (layer->info.width << 0) | (layer->info.height << 16);
+            layer->cfg[3] = (layer->info.w << 0) | (layer->info.h << 16);
             layer->cfg[4] = 0;                   // No X stride
             layer->cfg[5] = 0;                   // No pixel stride
             layer->cfg[6] = 0;                   // Default black
@@ -365,7 +365,7 @@ static void lcd_layer_enable(void)
     }
 }
 
-void lcd_switch_framebuffer(u8 layer)
+void lcd_switch_screenbuffer(u8 layer)
 {
     assert(layer < LAYERS);
     struct lcd_layer* curr_layer = &lcd_layers[layer];
@@ -376,11 +376,12 @@ void lcd_switch_framebuffer(u8 layer)
     curr_layer->dma->HEAD = curr_layer->buffer_dma_pa[curr_layer->active_index];
     curr_layer->ctrl->CHER = (1 << 2);
 
-    // When this layer is fetched the old layer can be clared and reused
+    // When this layer is fetched the old layer can be clared and reused. This
+    // will stall the system. Replace with interrupt and worker threads
     while (!(curr_layer->ctrl->ISR & (1 << 4)));
 }
 
-struct fb_info* lcd_get_new_framebuffer(u8 layer)
+struct screenbuffer* lcd_get_new_screenbuffer(u8 layer)
 {
     assert(layer < LAYERS);
     struct lcd_layer* curr_layer = &lcd_layers[layer];
@@ -394,8 +395,8 @@ struct fb_info* lcd_get_new_framebuffer(u8 layer)
 }
 
 static struct lcd_info lcd_info = {
-    .height        = 480,
-    .width         = 800,
+    .h             = 480,
+    .w             = 800,
     .framerate     = 60,
     .v_back_porch  = 21,
     .v_front_porch = 22,
@@ -436,6 +437,6 @@ void lcd_set_brightness(u8 brightness)
 
 void lcd_get_size(u16* x, u16* y, u8 layer)
 {
-    *y = lcd_layers[layer].info.height;
-    *x = lcd_layers[layer].info.width;
+    *y = lcd_layers[layer].info.h;
+    *x = lcd_layers[layer].info.w;
 }

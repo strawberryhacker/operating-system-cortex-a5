@@ -45,12 +45,17 @@ enum dma_am {
     DMA_AM_FULL_STRIDE,
 };
 
+enum dma_dir {
+    DMA_DIR_PER_TO_MEM,
+    DMA_DIR_MEM_TO_PER
+};
+
 /// Controls the descriptor structure
 enum dma_desc_type {
-    DMA_DESC0,
-    DMA_DESC1,
-    DMA_DESC2,
-    DMA_DESC3
+    DMA_DESC_TYPE_0,
+    DMA_DESC_TYPE_1,
+    DMA_DESC_TYPE_2,
+    DMA_DESC_TYPE_3
 };
 
 // Descriptor structures. These are linked with the first member and the next
@@ -73,7 +78,7 @@ struct dma_desc2 {
     u32 ublock_ctrl;
     u32 src_addr;
     u32 dest_addr;
-    u32 cfg_reg;
+    u32 config;
 };
 
 struct dma_desc3 {
@@ -81,8 +86,8 @@ struct dma_desc3 {
     u32 ublock_ctrl;
     u32 src_addr;
     u32 dest_addr;
-    u32 cfg_reg;
-    u32 block_ctrl_reg;
+    u32 config;
+    u32 block_ctrl;
     i32 data_stride;
     i32 src_stride;
     i32 dest_stride;
@@ -191,5 +196,75 @@ struct dma_master {
 
 void dma_start_master_transfer(void* first_desc, enum dma_desc_type type,
     u8 src_update, u8 dest_update, struct dma_channel* ch);
+
+//------------------------------------------------------------------------------
+
+struct dma_mem_mem_info {
+    enum dma_burst burst;
+    enum dma_data data;
+
+    enum dma_am src_am;
+    enum dma_am dest_am;
+
+    u8 secure : 1;
+    u8 memset: 1;
+    u8 src_iface : 1;
+    u8 dest_iface : 1;
+};
+
+struct dma_per_mem_info {
+    enum dma_burst burst;
+    enum dma_chunk chunk;
+    enum dma_data data;
+    enum dma_dir dir;
+
+    enum dma_am src_am;
+    enum dma_am dest_am;
+
+    u8 secure : 1;
+    u8 src_iface : 1;
+    u8 dest_iface : 1;
+    u8 soft_req : 1;
+
+    u8 pid;
+};
+
+static inline u32 dma_get_config_mem_mem(struct dma_mem_mem_info* info)
+{
+    u32 reg = 0;
+    reg |= info->burst << 1;
+    reg |= info->data << 11;
+    reg |= info->src_am << 16;
+    reg |= info->dest_am << 18;
+    reg |= (info->secure ^ 1) << 5;
+    reg |= info->memset << 7;
+    reg |= info->src_iface << 13;
+    reg |= info->dest_iface << 14;
+    reg |= 0b1111111 << 24;
+    return reg;
+}
+
+static inline u32 dma_get_config_per_mem(struct dma_per_mem_info* info)
+{
+    u32 reg = 0;
+    reg |= 1 << 1;
+    reg |= info->burst << 1;
+    reg |= info->chunk << 8;
+    reg |= info->data << 11;
+    reg |= info->src_am << 16;
+    reg |= info->dest_am << 18;
+    reg |= (info->secure ^ 1) << 5;
+    reg |= info->src_iface << 13;
+    reg |= info->dest_iface << 14;
+    reg |= info->soft_req << 6;
+    reg |= info->dir << 4;
+    reg |= info->pid << 24;
+    return reg;
+}
+
+static inline u32 dma_get_data_stride(u16 src_stride, u16 dest_stride)
+{
+    return (u32)((dest_stride << 16) | (src_stride << 0));
+}
 
 #endif

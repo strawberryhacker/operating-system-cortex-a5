@@ -10,8 +10,8 @@
 #define LAYERS 3
 
 struct lcd_info {
-    u16 width;
-    u16 height;
+    u16 w;
+    u16 h;
     u8 framerate;
 
     // Porch in number of lines
@@ -26,10 +26,10 @@ struct lcd_info {
 };
 
 // Framebuffer info
-struct fb_info {
+struct screenbuffer {
     void* buffer;
-    u16 height;
-    u16 width;
+    u16 h;
+    u16 w;
     u8 bpp;
 };
 
@@ -56,9 +56,9 @@ void lcd_on(struct lcd_info* info);
 
 void lcd_off(void);
 
-void lcd_switch_framebuffer(u8 layer);
+void lcd_switch_screenbuffer(u8 layer);
 
-struct fb_info* lcd_get_new_framebuffer(u8 layer);
+struct screenbuffer* lcd_get_new_screenbuffer(u8 layer);
 
 void lcd_get_size(u16* x, u16* y, u8 layer);
 

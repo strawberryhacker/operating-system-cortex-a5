@@ -44,7 +44,7 @@ static void dma_common_interrupt(struct dma_reg* dma)
 
     print("Status => %08b\n", dma->channel[ch].CIS);
 
-    lcd_switch_framebuffer(2);
+    lcd_switch_screenbuffer(2);
 
     while (1);
 }

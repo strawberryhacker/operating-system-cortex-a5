@@ -9,6 +9,11 @@
 
 #define WINDOW_MAX_NAME 64
 
+struct framebuffer {
+    void* data;
+    u16 w, h;
+};
+
 // Structure for a display window. This will contain just the necessary part
 // to get the windows to be displayed and updated.
 struct window {
@@ -28,11 +33,7 @@ struct window {
     char name[WINDOW_MAX_NAME];
 
     // Framebuffer data which will source the DMA transfers
-    struct {
-        void* data;
-        u16 w;
-        u16 h;
-    } framebuffer;
+    struct framebuffer fb;
 
     // Prive data for the GUI / widget / tiling window manager system
     void* private;

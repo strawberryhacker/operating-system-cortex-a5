@@ -450,7 +450,7 @@ void font_test(void)
 
     while (1) {
         for (u32 i = 0; i < 200; i += 1) {
-            struct fb_info* info = lcd_get_new_framebuffer(2);
+            struct screenbuffer* info = lcd_get_new_screenbuffer(2);
             struct rgba (*buffer)[800] = info->buffer;
 
             u32* ptr = (u32 *)buffer;
@@ -460,17 +460,17 @@ void font_test(void)
             for (u32 x = 0; x < 15; x++) {
                 print_screen("Hello World This is a small test to see if this display work", i + 50, i + 50 + x * 15, &mono9_font, buffer);
             }
-            lcd_switch_framebuffer(2);
+            lcd_switch_screenbuffer(2);
 
-            struct fb_info* info1 = lcd_get_new_framebuffer(1);
+            struct screenbuffer* info1 = lcd_get_new_screenbuffer(1);
             struct rgba (*buffer1)[800] = info->buffer;
             for (u32 x = 0; x < 15; x++) {
                 print_screen("Hello World This is a small test to see if this display work", i*2, i + 5 + x * 15, &mono9_font, buffer1);
             }
-            lcd_switch_framebuffer(1);
+            lcd_switch_screenbuffer(1);
         }
         for (u32 i = 200; i != 0; i -= 1) {
-            struct fb_info* info = lcd_get_new_framebuffer(2);
+            struct screenbuffer* info = lcd_get_new_screenbuffer(2);
             struct rgba (*buffer)[800] = info->buffer;
             u32* ptr = (u32 *)buffer;
             for (u32 x = 0; x < 480 * 800; x++) {
@@ -479,7 +479,7 @@ void font_test(void)
             for (u32 x = 0; x < 15; x++) {
                 print_screen("Hello Worggld This is a small test to see if this display work", i + 50, i + 50 + x * 15, &mono9_font, buffer);
             }
-            lcd_switch_framebuffer(2);
+            lcd_switch_screenbuffer(2);
         }
     }
 }

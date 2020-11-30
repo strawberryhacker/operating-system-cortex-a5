@@ -453,13 +453,13 @@ i32 parse_ttf(const u8* ttf, u32 size)
     if (err)
         return err;
 
-    struct fb_info* fb = lcd_get_new_framebuffer(1);
+    struct screenbuffer* fb = lcd_get_new_screenbuffer(1);
 
     struct rgba (*b)[800] = fb->buffer;
     for (u32 i = 0; i < 300; i++) {
         b[60][60 + i] = (struct rgba){.a = 0xFF, .b = 0xFF, .r = 0, .g = 0};
     }
-    lcd_switch_framebuffer(1);
+    lcd_switch_screenbuffer(1);
 
 
     return 0;

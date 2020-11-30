@@ -7,8 +7,9 @@
 #include <citrus/mm.h>
 #include <citrus/cache.h>
 #include <citrus/lcd.h>
-#include <stddef.h>
 #include <citrus/mem.h>
+#include <stddef.h>
+#include <stdalign.h>
 
 // The windows are stored in Z-order in a linked list. Due to the limited memory
 // resources on this system, the windows are processed to avoid overlapping. 
@@ -42,7 +43,10 @@ struct screen {
     // List of all the windows in the system
     struct list_node window_list;
 
-    void* buffer;
+    // Screenbuffer used to write pixels to the screen. NOTE: this is double 
+    // buffered via the LCD driver and has to be update and switched after
+    // each new frame
+    struct screenbuffer* screenbuffer;
 };
 
 // Private functions
@@ -52,11 +56,13 @@ static inline void add_window_region(struct window* w, struct list_node* regions
 static void update_regions(struct screen* s);
 static void add_window(struct window* w, struct screen* s);
 static void print_regions(struct screen* s);
-static void screen_init(struct screen* screen);
+static void screen_init(struct screen* s);
 static void build_dma_transfer(struct screen* s);
 static inline struct dma_desc3* alloc_dma_desc(void);
 static inline struct dma_desc3* dma_desc_get_first(void);
 static inline void dma_desc_alloc_reset(void);
+static void get_new_screenbuffer(struct screen* s);
+void paint_handler(struct screen* screen);
 
 // Both the DMA descriptor view and the window update regions are calculated 
 // from scratch each time. We allocate pools for them both
@@ -67,7 +73,7 @@ static struct update_region region_pool[UPDATE_REGION_POOL_SIZE];
 // Allocate a pool of view 3 DMA descriptors. This is because we need both 
 // microblock source and destination striding which differs from each window
 static u32 dma_desc_index = 0;
-static struct dma_desc3 dma_desc_pool[UPDATE_REGION_POOL_SIZE];
+static struct dma_desc3 alignas(32) dma_desc_pool[UPDATE_REGION_POOL_SIZE];
 
 struct screen screen;
 
@@ -265,64 +271,72 @@ static void print_regions(struct screen* s)
 }
 
 // Initialized a screen structure
-static void screen_init(struct screen* screen)
+static void screen_init(struct screen* s)
 {
-    list_init(&screen->update_list);
-    list_init(&screen->window_list);
+    list_init(&s->update_list);
+    list_init(&s->window_list);
 }
+
+// All DMA transfer descriptors has the same configuration
+static struct dma_mem_mem_info config = {
+    .burst = DMA_BURST_16,
+    .data = DMA_DATA_U32,
+    .dest_am = DMA_AM_STRIDE,
+    .src_am = DMA_AM_STRIDE,
+    .dest_iface = 0,
+    .src_iface = 0,
+    .secure = 1,
+    .memset = 0
+};
 
 // Builds the DMA master transfer from a linked list of update rectangles. This
 // functions assumes that all regions are whithin the screen region. This can
 // be checked when resizing windows
 static void build_dma_transfer(struct screen* s)
 {
-    // All DMA transfer descriptors has the same configuration
-    struct dma_ch_cfg_info info = {
-        .burst = DMA_BURST_16,
-        .data = DMA_DATA_U32,
-        .dest_am = DMA_AM_STRIDE,
-        .dest_interface = 0,
-        .non_secure = 0,
-        .memset_enable = 0,
-        .perid = NO_PERID,
-        .src_am = DMA_AM_STRIDE,
-        .src_interface = 0,
-        .trigger = DMA_TRIGGER_HW,
-        .type = DMA_TYPE_MEM_MEM
-    };
+    // Destination screenbuffer
+    u32 (*dest)[s->screenbuffer->w] = 
+        (u32 (*)[s->screenbuffer->w])s->screenbuffer->buffer;
 
-    // Framebuffer
-    u32 (*framebuffer)[800] = (u32 (*)[800])s->buffer;
-
+    // We track the previous block so that we can link them together
     struct dma_desc3* prev = NULL;
-
     struct list_node* node;
     list_iterate(node, &s->update_list) {
+
+        // Get the new region which is converted to a DMA transfer
         struct update_region* r = 
             list_get_entry(node, struct update_region, node);
         
+        // Allocate a new DMA descriptor
         struct dma_desc3* dma = alloc_dma_desc();
 
-        u32 (*screenbuffer)[800] = (u32 (*)[800])r->parent->framebuffer.data;
-        print("window > %s\n", r->parent->name);
+        // Source framebuffer
+        struct window* w = r->parent;
+        u32 (*src)[w->fb.w] = (u32 (*)[w->fb.w])w->fb.data;
+
         // Link it with the previous on
         if (prev)
             prev->next = va_to_pa(dma);
 
         // Number of micro blocks are the height of the rectangle
-        dma->block_ctrl_reg = r->h;
-        dma->cfg_reg = dma_get_cfg_reg(&info);
-        dma->data_stride = 0,
-        dma->dest_addr = (u32)va_to_pa((void *)&framebuffer[r->y][r->x]);
-        dma->dest_stride = ((i32)800 - r->w) * 4;
-        dma->src_addr = (u32)va_to_pa((void *)&screenbuffer[0][0]);
-        dma->src_stride = ((i32)800 - r->w) * 4;
+        dma->block_ctrl  = r->h;
+        dma->config      = dma_get_config_mem_mem(&config);
+        dma->data_stride = dma_get_data_stride(0, 0);
+
+        // Fetch the data addresses. The window can be at any location (x, y) 
+        // but the window buffer is allways at location (0, 0)
+        dma->dest_addr   = (u32)va_to_pa((void *)&dest[r->y][r->x]);
+        dma->src_addr    = (u32)va_to_pa((void *)&src[r->y - w->y][r->x - w->x]);
+
+        // Compute the source and destination striding
+        dma->dest_stride = (s->screenbuffer->w - r->w) * 4;
+        dma->src_stride  = (w->fb.w - r->w) * 4;
 
         // Last?        
         if (node->next == &s->update_list) {
-            dma->ublock_ctrl = dma_get_ublock_ctrl(DMA_DESC3, r->w, 0, 1, 1);
+            dma->ublock_ctrl = dma_get_ublock_ctrl(DMA_DESC_TYPE_3, r->w, 0, 1, 1);
         } else {
-            dma->ublock_ctrl = dma_get_ublock_ctrl(DMA_DESC3, r->w, 1, 1, 1);
+            dma->ublock_ctrl = dma_get_ublock_ctrl(DMA_DESC_TYPE_3, r->w, 1, 1, 1);
         }
 
         prev = dma;
@@ -332,26 +346,13 @@ static void build_dma_transfer(struct screen* s)
     prev->next = NULL;
 
     // Clean the D-cache for the DMA descriptors
-    dcache_clean();
+    dcache_clean_range((u32)dma_desc_get_first(), (u32)(prev + 1));
+}
 
-    struct dma_desc3* it = dma_desc_get_first();
-    while (1) {
-        
-        print("Block ctrl => %d\n", it->block_ctrl_reg);
-        print("Cfg reg => %b\n", it->cfg_reg);
-        print("Data stride => %i\n", it->data_stride);
-        print("Dest addr => %p\n", it->dest_addr);
-        print("Dest stride => %i\n", it->dest_stride);
-        print("Src addr => %p\n", it->src_addr);
-        print("Src stride => %i\n", it->src_stride);
-        print("Ublock ctrl => %d\n", it->ublock_ctrl & 0xFFFFFF);
-        print("Ublock ctrl => %b\n", (it->ublock_ctrl & 0xFF000000) >> 24);
-        print("----------------------------------------\n");
-        if (it->next)
-            it = pa_to_va(it->next);
-        else
-            break;
-    }
+// Updates the screen object with a new screen buffer
+static void get_new_screenbuffer(struct screen* s)
+{
+    s->screenbuffer = lcd_get_new_screenbuffer(2);
 }
 
 u32 buffer_a[480*800];
@@ -368,10 +369,14 @@ void window_init(void)
     struct window c = { .x = 100, .y = 100, .w = 200, .h = 200 };
     struct window d = { .x = 120, .y = 120, .w = 20, .h = 20 };
 
-    a.framebuffer.data = buffer_a;
-    b.framebuffer.data = buffer_b;
-    c.framebuffer.data = buffer_c;
-    d.framebuffer.data = buffer_d;
+    a.fb.data = buffer_a;
+    a.fb.w = 800;
+    b.fb.data = buffer_b;
+    b.fb.w = 800;
+    c.fb.data = buffer_c;
+    c.fb.w = 800;
+    d.fb.data = buffer_d;
+    d.fb.w = 800;
 
     a.name[0] = 'A';
     a.name[1] = 0;
@@ -386,10 +391,10 @@ void window_init(void)
     d.name[1] = 0;
 
 
-    mem_set(a.framebuffer.data, 0x80, 800*480*4);
-    mem_set(b.framebuffer.data, 0xFF, 800*480*4);
-    mem_set(c.framebuffer.data, 0xAA, 800*480*4);
-    mem_set(d.framebuffer.data, 0xCC, 800*480*4);
+    mem_set(a.fb.data, 0x80, 800*480*4);
+    mem_set(b.fb.data, 0xFF, 800*480*4);
+    mem_set(c.fb.data, 0xAA, 800*480*4);
+    mem_set(d.fb.data, 0xCC, 800*480*4);
 
     add_window(&b, &screen);
     add_window(&a, &screen);
@@ -398,11 +403,10 @@ void window_init(void)
 
     update_regions(&screen);
 
-    struct fb_info* fb = lcd_get_new_framebuffer(2);
-    screen.buffer = fb->buffer;
-
     print("Printing regions\n");
     print_regions(&screen);
+
+    get_new_screenbuffer(&screen);
 
     build_dma_transfer(&screen);
     print("OK\n");
@@ -412,7 +416,7 @@ void window_init(void)
         panic("Cannot allocate a DMA channel");
 
     print("Window channel number #%d\n", ch->ch);
-    dma_start_master_transfer(va_to_pa(dma_desc_get_first() + 1), DMA_DESC3, 1, 1, ch);
+    dma_start_master_transfer(va_to_pa(dma_desc_get_first() + 1), DMA_DESC_TYPE_3, 1, 1, ch);
 
     
 }
