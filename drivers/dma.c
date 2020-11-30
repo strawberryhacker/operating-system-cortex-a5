@@ -11,6 +11,7 @@
 #include <citrus/syscall.h>
 #include <citrus/atomic.h>
 #include <citrus/regmap.h>
+#include <citrus/lcd.h>
 
 #define UART1_DMA_CH 37
 #define DMA_CHANNELS 16
@@ -42,6 +43,8 @@ static void dma_common_interrupt(struct dma_reg* dma)
     print("Channel %d\n", ch);
 
     print("Status => %08b\n", dma->channel[ch].CIS);
+
+    lcd_switch_framebuffer(2);
 
     while (1);
 }
@@ -211,4 +214,20 @@ u32 dma_get_cfg_reg(struct dma_ch_cfg_info* info)
     }
 
     return reg;
+}
+
+void dma_start_master_transfer(void* first_desc, enum dma_desc_type type,
+    u8 src_update, u8 dest_update, struct dma_channel* ch)
+{
+    print("Starting master transfer\n");
+
+    ch->hw->channel[ch->ch].CNDA = (u32)first_desc;
+    print("NEXT => %p\n", ch->hw->channel[ch->ch].CNDA);
+    ch->hw->channel[ch->ch].CNDC = (type << 3) | (src_update << 1) | (dest_update << 2) | 1;
+
+    // Enable end of list interrupt
+    ch->hw->channel[ch->ch].CIE = DMA_EOL | DMA_READ_BUS_ERROR | DMA_REQ_OVERLOW_ERROR | DMA_WRITE_BUS_ERROR;
+    (void)ch->hw->channel[ch->ch].CIS;
+    ch->hw->GIE = (1 << ch->ch);
+    ch->hw->GE = (1 << ch->ch);
 }

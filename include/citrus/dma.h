@@ -82,12 +82,10 @@ struct dma_desc3 {
     u32 src_addr;
     u32 dest_addr;
     u32 cfg_reg;
-
-    // 12-bits describing the number of blocks in the transfer
     u32 block_ctrl_reg;
-    u32 data_stride;
-    u32 src_stride;
-    u32 dest_stride;
+    i32 data_stride;
+    i32 src_stride;
+    i32 dest_stride;
 };
 
 /// DMA channel

@@ -376,6 +376,7 @@ void lcd_switch_framebuffer(u8 layer)
     curr_layer->dma->HEAD = curr_layer->buffer_dma_pa[curr_layer->active_index];
     curr_layer->ctrl->CHER = (1 << 2);
 
+    // When this layer is fetched the old layer can be clared and reused
     while (!(curr_layer->ctrl->ISR & (1 << 4)));
 }
 
