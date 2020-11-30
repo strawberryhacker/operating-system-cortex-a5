@@ -4,6 +4,7 @@
 #define FONT_H
 
 #include <citrus/types.h>
+#include <citrus/lcd.h>
 
 struct glyph {
     u16 off;
@@ -23,5 +24,7 @@ struct simple_font {
 };
 
 void font_test(void);
+
+void print_screen(const char* text, u16 x, u16 y, const struct simple_font* font, struct rgba (*fb)[800]);
 
 #endif

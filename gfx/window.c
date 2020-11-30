@@ -1,6 +1,9 @@
 // Copyright (C) strawberryhacker
 
 #include <gfx/window.h>
+#include <gfx/color.h>
+#include <gfx/font.h>
+
 #include <citrus/print.h>
 #include <citrus/panic.h>
 #include <citrus/dma.h>
@@ -360,6 +363,24 @@ u32 buffer_b[480*800];
 u32 buffer_c[480*800];
 u32 buffer_d[480*800];
 
+void fill(void* buff, color_t c, u16 x, u16 y, u16 w, u16 h)
+{
+    u32 (*b)[800] = buff;
+    for (u32 i = 0; i < h; i++) {
+        for (u32 j = 0; j < w; j++) {
+            b[y + i][x + j] = c;
+        }
+    }
+}
+
+extern const struct simple_font mono9_font;
+
+void done_callback(struct dma_master_req* req)
+{
+    print("JEYE\n");
+    lcd_switch_screenbuffer(2);
+}
+
 void window_init(void)
 {
     screen_init(&screen);
@@ -396,6 +417,13 @@ void window_init(void)
     mem_set(c.fb.data, 0xAA, 800*480*4);
     mem_set(d.fb.data, 0xCC, 800*480*4);
 
+    fill(a.fb.data, get_rgba(50, 0, 0, 0xFF), 0, 0, 40, 40);
+    fill(b.fb.data, get_rgba(50, 0, 0, 0xFF), 0, 0, 200, 40);
+    fill(c.fb.data, get_rgba(50, 0, 0, 0xFF), 0, 0, 40, 40);
+    fill(d.fb.data, get_rgba(50, 0, 0, 0xFF), 0, 0, 40, 40);
+
+    dcache_clean();
+
     add_window(&b, &screen);
     add_window(&a, &screen);
     add_window(&c, &screen);
@@ -414,9 +442,23 @@ void window_init(void)
     struct dma_channel* ch = alloc_dma_channel();
     if (!ch)
         panic("Cannot allocate a DMA channel");
+    
+    u8 dma = 0;
+    i32 err = get_dma_channel(&dma);
+    if (err)
+        panic("ok\n");
 
     print("Window channel number #%d\n", ch->ch);
-    dma_start_master_transfer(va_to_pa(dma_desc_get_first() + 1), DMA_DESC_TYPE_3, 1, 1, ch);
+    //dma_start_master_transfer(va_to_pa(dma_desc_get_first() + 1), DMA_DESC_TYPE_3, 1, 1, ch);
 
-    
+    struct dma_master_req req = {
+        .desc = va_to_pa(dma_desc_get_first()),
+        .type = DMA_DESC_TYPE_3,
+        .desc_fetch = 1,
+        .dest_update = 1,
+        .src_update = 1,
+        .done = done_callback
+    };
+
+    dma_submit_master_req(&req, dma);
 }

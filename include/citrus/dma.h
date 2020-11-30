@@ -99,6 +99,9 @@ struct dma_channel {
     u8 ch;
     u8 free;
     u8 lock;
+
+    void (*done)(void*);
+    void* arg;
 };
 
 /// Transfer descriptor
@@ -197,7 +200,12 @@ struct dma_master {
 void dma_start_master_transfer(void* first_desc, enum dma_desc_type type,
     u8 src_update, u8 dest_update, struct dma_channel* ch);
 
+// NEW
+i32 get_dma_channel(u8* channel);
+
 //------------------------------------------------------------------------------
+
+// API for DMA master transfer
 
 struct dma_mem_mem_info {
     enum dma_burst burst;
@@ -266,5 +274,22 @@ static inline u32 dma_get_data_stride(u16 src_stride, u16 dest_stride)
 {
     return (u32)((dest_stride << 16) | (src_stride << 0));
 }
+
+// Main DMA request block in case of master transfer
+struct dma_master_req { 
+    void* desc;               // First descriptor
+    enum dma_desc_type type;  // First descriptor type
+
+    u8 src_update : 1;        // Update source parameter when fetched
+    u8 dest_update : 1;       // Update destination parameter when fetched
+    u8 desc_fetch : 1;        // Set to 0 if desc count is 1
+
+    void* private;            // Private data to be used in callback
+
+    // DMA complete callback
+    void (*done)(struct dma_master_req* req);
+};
+
+void dma_submit_master_req(struct dma_master_req* req, u8 channel);
 
 #endif

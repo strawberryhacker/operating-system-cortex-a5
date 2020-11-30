@@ -12,6 +12,7 @@
 #include <citrus/atomic.h>
 #include <citrus/regmap.h>
 #include <citrus/lcd.h>
+#include <citrus/error.h>
 
 #define UART1_DMA_CH 37
 #define DMA_CHANNELS 16
@@ -23,6 +24,11 @@ static struct dma_channel dma_channels[DMA_CHANNELS * 2];
 static void dma_init_hardware(struct dma_reg* dma)
 {
     
+}
+
+static struct dma_channel* num_to_channel(u8 channel_id)
+{
+    return &dma_channels[channel_id];
 }
 
 // Common DMA interrupt handler
@@ -40,11 +46,17 @@ static void dma_common_interrupt(struct dma_reg* dma)
         }
     }
 
+    struct dma_channel* new = num_to_channel(2);
+
+    // Callback
+    if (new->done)
+        new->done(new->arg);
+
     print("Channel %d\n", ch);
 
     print("Status => %08b\n", dma->channel[ch].CIS);
 
-    lcd_switch_screenbuffer(2);
+    
 
     while (1);
 }
@@ -158,6 +170,27 @@ struct dma_channel* alloc_dma_channel(void)
     return NULL;
 }
 
+i32 get_dma_channel(u8* channel)
+{
+    u32 flags = __atomic_enter();
+
+    // Get a both free and un-allocated channel
+    for (u32 i = 0; i < DMA_CHANNELS * 2; i++) {
+        struct dma_channel* ch = &dma_channels[i];
+        if (ch->free) {
+            ch->free = 0;
+            __atomic_leave(flags);
+            *channel = i;
+            return 0;
+        }
+    }
+
+    __atomic_leave(flags);
+    return -ENODMA;
+}
+
+
+
 // Frees a DMA channel
 void free_dma_channel(struct dma_channel* ch)
 {
@@ -228,6 +261,29 @@ void dma_start_master_transfer(void* first_desc, enum dma_desc_type type,
     // Enable end of list interrupt
     ch->hw->channel[ch->ch].CIE = DMA_EOL | DMA_READ_BUS_ERROR | DMA_REQ_OVERLOW_ERROR | DMA_WRITE_BUS_ERROR;
     (void)ch->hw->channel[ch->ch].CIS;
+    ch->hw->GIE = (1 << ch->ch);
+    ch->hw->GE = (1 << ch->ch);
+}
+
+void dma_submit_master_req(struct dma_master_req* req, u8 channel)
+{
+    assert(channel < DMA_CHANNELS * 2);
+    struct dma_channel* ch = num_to_channel(channel);
+
+    ch->done = (void (*)(void *))req->done;
+    ch->arg = req;
+
+    ch->hw->channel[ch->ch].CNDA = (u32)req->desc;
+    ch->hw->channel[ch->ch].CNDC = (req->type << 3) | (req->src_update << 1) | 
+        (req->dest_update << 2) | (req->desc_fetch);
+    
+    // Listen for end of list and error interrupt
+    ch->hw->channel[ch->ch].CIE = DMA_ERROR | DMA_EOL;
+    
+    // Clear flags
+    (void)ch->hw->channel[ch->ch].CIS;
+
+    // Enable global and local channel interrupts
     ch->hw->GIE = (1 << ch->ch);
     ch->hw->GE = (1 << ch->ch);
 }

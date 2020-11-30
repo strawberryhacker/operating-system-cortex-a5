@@ -19,4 +19,6 @@
 #define ECRC      13       // Bad font
 #define ENSUPPORT 14
 
+#define ENODMA 15  // No free DMA channel
+
 #endif
