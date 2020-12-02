@@ -63,7 +63,6 @@ struct thread {
     // of the thread from runqueues
     enum thread_state state;
 
-    /// Keep a pointer to its scheduling class
     const struct sched_class* class;
 
     // Pointer to the process and list all threads within a process 
@@ -72,7 +71,6 @@ struct thread {
 
     /// Reference the thread in the global thread list
     struct list_node thread_node;
-
 };
 
 struct thread* create_kthread(i32 (*func)(void *), u32 stack_size, 

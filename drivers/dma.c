@@ -46,7 +46,7 @@ static void dma_common_interrupt(struct dma_reg* dma)
         }
     }
 
-    struct dma_channel* new = num_to_channel(2);
+    struct dma_channel* new = num_to_channel(ch);
 
     // Callback
     if (new->done)
@@ -249,6 +249,7 @@ u32 dma_get_cfg_reg(struct dma_ch_cfg_info* info)
     return reg;
 }
 
+// deprecated
 void dma_start_master_transfer(void* first_desc, enum dma_desc_type type,
     u8 src_update, u8 dest_update, struct dma_channel* ch)
 {
@@ -265,6 +266,7 @@ void dma_start_master_transfer(void* first_desc, enum dma_desc_type type,
     ch->hw->GE = (1 << ch->ch);
 }
 
+// Submits a new DMA master request to the system
 void dma_submit_master_req(struct dma_master_req* req, u8 channel)
 {
     assert(channel < DMA_CHANNELS * 2);

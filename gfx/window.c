@@ -415,12 +415,12 @@ void window_init(void)
     mem_set(a.fb.data, 0x80, 800*480*4);
     mem_set(b.fb.data, 0xFF, 800*480*4);
     mem_set(c.fb.data, 0xAA, 800*480*4);
-    mem_set(d.fb.data, 0xCC, 800*480*4);
+    mem_set(d.fb.data, 0xFF, 800*480*4);
 
     fill(a.fb.data, get_rgba(50, 0, 0, 0xFF), 0, 0, 40, 40);
     fill(b.fb.data, get_rgba(50, 0, 0, 0xFF), 0, 0, 200, 40);
     fill(c.fb.data, get_rgba(50, 0, 0, 0xFF), 0, 0, 40, 40);
-    fill(d.fb.data, get_rgba(50, 0, 0, 0xFF), 0, 0, 40, 40);
+    fill(d.fb.data, get_rgba(50, 0, 0xFF, 0xFF), 0, 0, 40, 40);
 
     dcache_clean();
 
@@ -438,18 +438,12 @@ void window_init(void)
 
     build_dma_transfer(&screen);
     print("OK\n");
-
-    struct dma_channel* ch = alloc_dma_channel();
-    if (!ch)
-        panic("Cannot allocate a DMA channel");
     
+    // Request and DMA channel and perform the transfer
     u8 dma = 0;
     i32 err = get_dma_channel(&dma);
     if (err)
         panic("ok\n");
-
-    print("Window channel number #%d\n", ch->ch);
-    //dma_start_master_transfer(va_to_pa(dma_desc_get_first() + 1), DMA_DESC_TYPE_3, 1, 1, ch);
 
     struct dma_master_req req = {
         .desc = va_to_pa(dma_desc_get_first()),
