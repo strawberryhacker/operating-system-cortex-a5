@@ -1,0 +1,58 @@
+
+TinyFont format
+
+All fields in the TinyFont format are stored little-endian. All fields are aligned with the size of that field. This means you can cast all headers and info sections directly to C structures
+
+TinyFont header
++-------------------------+---------+  
+| magic number 0xCACACACA | 4 bytes |
++-------------------------+---------+  
+| header size             | 1 bytes |
++-------------------------+---------+
+| size-header size        | 1 bytes |
++-------------------------+---------+
+| start ASCII character   | 1 bytes |
++-------------------------+---------+
+| number of characters    | 1 bytes |
++-------------------------+---------+
+| number of font sizes    | 1 bytes |
++-------------------------+---------+
+| padding                 | 3 bytes |
++-------------------------+---------+
+
+Font global header
++-------------------------+---------+
+| point size              | 4 bytes |
++-------------------------+---------+
+| global offset           | 4 bytes |
++-------------------------+---------+
+| size of font            | 4 bytes |
++-------------------------+---------+
+
+Font header
++-------------------------+---------+
+| header size             | 1 byte  |
++-------------------------+---------+
+| point size              | 1 byte  |
++-------------------------+---------+
+| ymin                    | 1 byte  |
++-------------------------+---------+
+| ymax                    | 1 byte  |
++-------------------------+---------+
+
+Glyph info
++-------------------------+---------+
+| offset from font start  | 4 bytes |
++-------------------------+---------+
+| bitmap width            | 1 byte  |
++-------------------------+---------+
+| bitmap height           | 1 byte  |
++-------------------------+---------+
+| x offset                | 1 byte  |
++-------------------------+---------+
+| y offset                | 1 byte  |
++-------------------------+---------+
+| x advance               | 1 byte  |
++-------------------------+---------+
+| padding                 | 3 bytes |
++-------------------------+---------+
