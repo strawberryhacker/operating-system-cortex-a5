@@ -20,5 +20,6 @@
 #define ENSUPPORT 14
 
 #define ENODMA 15  // No free DMA channel
+#define ENODEV 16
 
 #endif

@@ -763,4 +763,6 @@ struct gmac_reg {
     } ST2[24];
 };
 
+#define GMAC ((struct gmac_reg *)0xF8008000)
+
 #endif

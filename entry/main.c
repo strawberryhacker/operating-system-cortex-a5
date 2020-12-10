@@ -86,8 +86,6 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
 
-    print("Hello this is a little test\n");
-
     gmac_init();
 
     sched_start();
