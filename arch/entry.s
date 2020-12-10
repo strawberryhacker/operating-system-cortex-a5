@@ -184,7 +184,7 @@ kernel_entry:
     orr r1, #(15 << 5)         @ Setting domain 15 for vectors
     ldr r2, =_early_kernel_lv1_pt_s
     paddr r2, r0
-    mov r3, #0xFFF
+    movw r3, #0xFFF
     str r1, [r2, r3, LSL #2]
 
     @ Map in the vector phys addr in the kernel LV2 page table

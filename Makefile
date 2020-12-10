@@ -4,7 +4,7 @@ TOP         = $(shell pwd)
 BUILDDIR    = $(TOP)/build
 TARGET_NAME = citrus
 MAKEFLAGS   = -j6
-COM_PORT    = /dev/ttyS3
+COM_PORT    = /dev/ttyUSB0
 
 # ---------------------------------------------------------------------------
 # Compile flags (this should problably be defined based on the architecture)

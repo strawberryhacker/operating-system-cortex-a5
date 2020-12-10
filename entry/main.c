@@ -25,6 +25,7 @@
 #include <citrus/regmap.h>
 #include <citrus/pid.h>
 #include <citrus/mem.h>
+#include <citrus/gmac.h>
 
 #include <gfx/window.h>
 #include <gfx/ttf.h>
@@ -85,7 +86,9 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
 
-    window_init();
+    print("Hello this is a little test\n");
+
+    gmac_init();
 
     sched_start();
 } 
