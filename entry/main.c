@@ -73,41 +73,6 @@ void driver_init(void)
     lcd_init();
 }
 
-static i32 net_thread(void* arg)
-{
-    print("Starting network thread\n");
- 
-    // Try to get the address of the PHY with address 0x0022
-    u16 addr = 0;
-    i32 err = phy_discover(0x0022, &addr);
-    if (err)
-        return err;
-    
-    print("Addr > %d\n", addr);
-
-    // Wait for the link status from the PHY
-    u32 reg;
-    do {
-        reg = phy_read(addr, 1);
-        syscall_thread_sleep(50);
-    } while (!(reg & (1 << 2)));
-
-    print("Link is up\n");
-
-    // Find the mode if the PHY
-    phy_enable_100baseT(addr);
-
-    enum phy_speed speed;
-    enum phy_duplex dup;
-    phy_get_cfg(addr, &speed, &dup);
- 
-    while (1) {
-
-    }
-
-    return 0;
-}
-
 /// Called by entry.s after low level initialization finishes
 void main(void)
 {
@@ -122,7 +87,6 @@ void main(void)
 
     gmac_init();
 
-    create_kthread(net_thread, 500, "net", NULL, SCHED_RT);
 
     sched_start();
 } 

@@ -740,7 +740,7 @@ struct gmac_reg {
     _rw u32 RBQBAPQ[2];
     __r u32 RESERVED9[6];
     _rw u32 RBSRPQ[2];
-    __r u32 RESERVED10[6];
+    __r u32 RESERVED10[5];
     _rw u32 CBSCR;
     _rw u32 CBSISQA;
     _rw u32 CBSISQB;
@@ -748,13 +748,13 @@ struct gmac_reg {
     _rw u32 ST1RPQ[4];
     __r u32 RESERVED11[12];
     _rw u32 ST2RPQ[8];
-    __r u32 RESERVED12[39];
+    __r u32 RESERVED12[40];
     __w u32 IERPQ[2];
     __r u32 RESERVED13[6];
     __w u32 IDRPQ[2];
     __r u32 RESERVED14[6];
     _rw u32 IMRPQ[2];
-    __r u32 RESERVED15[39];
+    __r u32 RESERVED15[38];
     _rw u32 ST2ER[4];
     __r u32 RESERVED16[4];
     struct {

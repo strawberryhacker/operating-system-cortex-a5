@@ -8,8 +8,12 @@
 #include <citrus/cache.h>
 #include <citrus/mm.h>
 #include <citrus/mem.h>
+#include <citrus/cache_alloc.h>
 #include <stddef.h>
 #include <stdalign.h>
+
+#define NA_SIZE 128
+#define NA_CNT 6
 
 #define RX_SIZE 128
 #define TX_SIZE 1500
@@ -17,18 +21,30 @@
 #define RX_DESC_CNT 32
 #define TX_DESC_CNT 2
 
-static u8 alignas(32) na_tx_buf[2][4];
-static u8 alignas(32) na_rx_buf[2][4];
-static u8 alignas(32) tx_buf[TX_DESC_CNT][TX_SIZE];
-static u8 alignas(32) rx_buf[RX_DESC_CNT][RX_SIZE];
+static u8 (*na_tx_buf)[NA_SIZE];
+static u8 (*na_rx_buf)[NA_SIZE];
+static u8 (*tx_buf)[TX_SIZE];
+static u8 (*rx_buf)[RX_SIZE];
 
-static struct gmac_desc alignas(8) na_tx_desc[2];
-static struct gmac_desc alignas(8) na_rx_desc[2];
-static struct gmac_desc alignas(8) tx_desc[TX_DESC_CNT];
-static struct gmac_desc alignas(8) rx_desc[RX_DESC_CNT];
+static struct gmac_desc* na_tx_desc;
+static struct gmac_desc* na_rx_desc;
+static struct gmac_desc* tx_desc;
+static struct gmac_desc* rx_desc;
 
 static volatile u32 rx_index;
 static volatile u32 tx_index;
+
+static void gmac_alloc_buffers(void)
+{
+    na_rx_buf  = cache_alloc(NA_SIZE * NA_CNT, 32);
+    na_tx_buf  = cache_alloc(NA_SIZE * NA_CNT, 32);
+    tx_buf     = cache_alloc(TX_SIZE * TX_DESC_CNT, 32);
+    rx_buf     = cache_alloc(RX_SIZE * RX_DESC_CNT, 32);
+    na_rx_desc = cache_alloc(NA_CNT * 8, 8);
+    na_tx_desc = cache_alloc(NA_CNT * 8, 8);
+    tx_desc    = cache_alloc(TX_DESC_CNT * 8, 8);
+    rx_desc    = cache_alloc(RX_DESC_CNT * 8, 8);
+}
 
 // Busy waiting for the PHY management logic to become idle
 static void wait_phy_idle(void)
@@ -113,14 +129,6 @@ void phy_enable_100baseT(u8 addr)
     } while (!(reg & (1 << 2)));
 }
 
-void phy_get_cfg(u8 addr, enum phy_speed* speed, enum phy_duplex* dup)
-{
-    // Get the operating mode
-    u16 reg = phy_read(addr, 0x1E);
-
-    print("Status => %03b\n", reg & 0b111);
-}
-
 static void gmac_port_init(void)
 {
     gpio_set_func(&(struct gpio){ .hw = GPIOD, .pin = 9  }, GPIO_FUNC_D);
@@ -145,23 +153,27 @@ static void gmac_irq(void)
 {
     print("GMAC interrupt\n");
 
-    print("status register => %032b\n", GMAC->ISR);
+    u32 isr = GMAC->ISR;
+    print("status register => %032b\n", isr);
+    print("Tx status       => %032b\n", GMAC->TSR);
+    if (isr & (1 << 7)) {
+        print("Yess\n");
+        while (1);
+    }
 
-    dcache_invalidate_range((u32)rx_desc, (u32)(rx_desc + RX_DESC_CNT + 1));
+    return;
 
     for (u32 i = 0; i < RX_DESC_CNT; i++) {
         print("Status %d > ", i);
-        if (rx_desc[i].status & GMAC_RX_SOF_POS)
+        if (rx_desc[i].status & GMAC_RX_SOF_MASK)
             print("SOF ");
-        if (rx_desc[i].status & GMAC_RX_EOF_POS)
+        if (rx_desc[i].status & GMAC_RX_EOF_MASK)
             print("EOF");
         print("\n");
     }
 
     print("Len first buffer => %d\n", rx_desc[0].status & GMAC_RX_FRAME_LEN_MASK);
     mem_dump(rx_buf[0], rx_desc[0].status & GMAC_RX_FRAME_LEN_MASK, 10, 1);
-
-    while (1);
 }
 
 static void gmac_init_queues(void)
@@ -172,34 +184,57 @@ static void gmac_init_queues(void)
     // Main transmit buffer
     for (u32 i = 0; i < TX_DESC_CNT; i++) {
         tx_desc[i].addr = (u32)va_to_pa(tx_buf[i]);
-        tx_desc[i].status = GMAC_TX_USED_POS;   // We own the buffer
+        tx_desc[i].status = GMAC_TX_USED_MASK;   // We own the buffer
     }
-    tx_desc[TX_DESC_CNT - 1].status |= GMAC_TX_WRAP_POS;
+    tx_desc[TX_DESC_CNT - 1].status |= GMAC_TX_WRAP_MASK;
 
     // Main receive buffer
     for (u32 i = 0; i < RX_DESC_CNT; i++) {
         rx_desc[i].addr = (u32)va_to_pa(rx_buf[i]);
         rx_desc[i].status = 0;                  // The GMAC own the buffer
     }
-    rx_desc[RX_DESC_CNT - 1].status |= GMAC_RX_WRAP_POS;
+    rx_desc[RX_DESC_CNT - 1].status |= GMAC_RX_WRAP_MASK;
 
     // Not used buffer for the queues. These has to be set up regardless
     for (u32 i = 0; i < 2; i++) {
         na_rx_desc[i].addr = (u32)va_to_pa(na_rx_buf[i]);
         na_tx_desc[i].addr = (u32)va_to_pa(na_tx_buf[i]);
-        na_rx_desc[i].status = GMAC_RX_WRAP_POS;
-        na_tx_desc[i].status = GMAC_TX_USED_POS | GMAC_TX_WRAP_POS;
+        na_rx_desc[i].status = GMAC_RX_WRAP_MASK;
+        na_tx_desc[i].status = GMAC_TX_USED_MASK | GMAC_TX_WRAP_MASK;
     }
-
-    dcache_clean();
 
     // Write the base address into the registers
     GMAC->TBQB = (u32)va_to_pa(tx_desc);
     GMAC->RBQB = (u32)va_to_pa(rx_desc);
-    for (u32 i = 0; i < 2; i++) {
+
+    for (u32 i = 0; i < 3; i++) {
         GMAC->TBQBAPQ[i] = (u32)va_to_pa(na_tx_desc + i);
         GMAC->RBQBAPQ[i] = (u32)va_to_pa(na_rx_desc + i);
     }
+}
+
+static void phy_setup(void)
+{
+    print("Starting network thread\n");
+ 
+    // Try to get the address of the PHY with address 0x0022
+    u16 addr = 0;
+    i32 err = phy_discover(0x0022, &addr);
+    if (err)
+        return;
+    
+    print("Addr > %d\n", addr);
+
+    // Wait for the link status from the PHY
+    u32 reg;
+    do {
+        reg = phy_read(addr, 1);
+    } while (!(reg & (1 << 2)));
+
+    print("Link is up\n");
+
+    // Find the mode if the PHY
+    phy_enable_100baseT(addr);
 }
 
 void gmac_init(void)
@@ -212,6 +247,9 @@ void gmac_init(void)
     // Enable the GMAC interrupts
     apic_add_handler(5, gmac_irq);
     apic_enable(5);
+
+    // Allocate non-cacheable buffers
+    gmac_alloc_buffers();
 
     // All GMAC initializeation must be done with transmit and receive circuits
     // disables
@@ -242,13 +280,53 @@ void gmac_init(void)
     GMAC->UR = 1;
 
     // Setup the DMA registers. The receive buffer size if 128 bytes
-    GMAC->DCFGR |= (3 << 8) | (0x02 << 16);
+    GMAC->DCFGR = (3 << 8) | (0x02 << 16) | (1 << 0);
 
     gmac_init_queues();
 
     // Enable some interrupts
-    GMAC->IER = (1 << 1) | (1 << 10);
+    GMAC->IER = 0xFFFFFFFF << 1;
 
-    // Enable the MDC port and the transmitter and the reciever
+    // Enable the MDC port, the transmitter and the reciever
     GMAC->NCR = 0b111 << 2;
+
+    //phy_setup();
+
+    const char msg[] = "\xff\xff\xff\xff\xff\xff\x00\xe0\x4c\x36\x14\x96\x08\x00\x45\x10" \
+"\x01\x48\x00\x00\x00\x00\x80\x11\x39\x96\x00\x00\x00\x00\xff\xff" \
+"\xff\xff\x00\x44\x00\x43\x01\x34\x4a\x42\x01\x01\x06\x00\xAA\xAA" \
+"\xAA\xAA\x00\x19\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\xe0\x4c\x36\x14\x96\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x63\x82\x53\x63\x35\x01\x01\x0c\x04\x68" \
+"\x6f\x6d\x65\x37\x10\x01\x1c\x02\x03\x0f\x06\x77\x0c\x2c\x2f\x1a" \
+"\x79\x2a\xf9\x21\xfc\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+"\x00\x00\x00\x00\x00\x00";
+
+    u32 msg_size = sizeof(msg) - 1;
+    print("Size of => %d\n", msg_size);
+
+    for (u32 i = 0; i < msg_size; i++) {
+        tx_buf[0][i] = 0xAA;
+    }
+
+    tx_desc[0].status |= GMAC_TX_LAST_MASK | msg_size;
+    tx_desc[0].status &= ~GMAC_TX_USED_MASK;
+
+    asm volatile ("dsb");
+
+    print("DONE\n");
+    GMAC->NCR |= (1 << 9);
 }

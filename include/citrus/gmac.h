@@ -18,41 +18,41 @@ struct gmac_desc {
     u32 status;
 };
 
-#define GMAC_RX_ADDR_MASK 0x3FFFFFFF
-#define GMAC_RX_WRAP_POS 1
-#define GMAC_RX_OWNER_POS 0
-#define GMAC_RX_BROADCAST_MATCH_POS 31
-#define GMAC_RX_MULTICAST_MATCH_POS 30
-#define GMAC_RX_UNICAST_MATCH_POS 29
-#define GMAC_RX_ADDR_MATCH_POS 27
-#define GMAC_RX_ADDR_MATCH_MASK 0b11
-#define GMAC_RX_ADDR_POS 25
-#define GMAC_RX_ID_MATCH_POS 24
-#define GMAC_RX_SNAP_POS 24
-#define GMAC_RX_ID_MASK 0b11
-#define GMAC_RX_ID_POS 22
-#define GMAC_RX_CRC_STATUS_MASK 0b11
-#define GMAC_RX_CRC_STATUS_POS 22
-#define GMAC_RX_VLAN_TAG_POS 21
-#define GMAC_RX_PRI_TAG_POS 20
-#define GMAC_RX_VLAN_PRI_MASK 0b111
-#define GMAC_RX_VLAN_PRI_POS 17
-#define GMAC_RX_CFI_POS 16
-#define GMAC_RX_EOF_POS 15
-#define GMAC_RX_SOF_POS 14
-#define GMAC_RX_JUMBO_FRAME_LEN_MASK 0b11111111111111
-#define GMAC_RX_FRAME_LEN_MASK 0b1111111111111
-#define GMAC_RX_FCS_STATUS_POS 13
-#define GMAC_TX_USED_POS 31
-#define GMAC_TX_WRAP_POS 30
-#define GMAC_TX_ERROR_POS 29
-#define GMAC_TX_AHB_ERROR_POS 27
-#define GMAC_TX_LATE_COLLISION_POS 26
-#define GMAC_TX_CRC_ERROR_STATUS_POS 20
+#define GMAC_RX_ADDR_MASK             0x3FFFFFFF
+#define GMAC_RX_WRAP_MASK             (1 << 1)
+#define GMAC_RX_OWNER_MASK            (1 << 0)
+#define GMAC_RX_BROADCAST_MATCH_MASK  (1 << 31)
+#define GMAC_RX_MULTICAST_MATCH_MASK  (1 << 30)
+#define GMAC_RX_UNICAST_MATCH_MASK    (1 << 29)
+#define GMAC_RX_ADDR_MATCH_MASK        27
+#define GMAC_RX_ADDR_REG_MASK         0b11
+#define GMAC_RX_ADDR_REG_POS          (1 << 25)
+#define GMAC_RX_ID_MATCH_MASK         (1 << 24)
+#define GMAC_RX_SNAP_MASK             (1 << 24)
+#define GMAC_RX_ID_MASK               0b11
+#define GMAC_RX_ID_POS                22
+#define GMAC_RX_CRC_STATUS_MASK       0b11
+#define GMAC_RX_CRC_STATUS_POS        22
+#define GMAC_RX_VLAN_TAG_MASK         (1 << 21)
+#define GMAC_RX_PRI_TAG_MASK          (1 << 20)
+#define GMAC_RX_VLAN_PRI_MASK         0b111
+#define GMAC_RX_VLAN_PRI_POS          17
+#define GMAC_RX_CFI_MASK              (1 << 16)
+#define GMAC_RX_EOF_MASK              (1 << 15)
+#define GMAC_RX_SOF_MASK              (1 << 14)
+#define GMAC_RX_JUMBO_FRAME_LEN_MASK  0b11111111111111
+#define GMAC_RX_FRAME_LEN_MASK        0b1111111111111
+#define GMAC_RX_FCS_STATUS_MASK       (1 << 13)
+#define GMAC_TX_USED_MASK             (1 << 31)
+#define GMAC_TX_WRAP_MASK             (1 << 30)
+#define GMAC_TX_ERROR_MASK            (1 << 29)
+#define GMAC_TX_AHB_ERROR_MASK        (1 << 27)
+#define GMAC_TX_LATE_COLLISION_MASK   (1 << 26)
+#define GMAC_TX_CRC_ERROR_STATUS_POS  20
 #define GMAC_TX_CRC_ERROR_STATUS_MASK 0b111
-#define GMAC_TX_NO_CRC_POS 16
-#define GMAC_TX_LAST_POS 15
-#define GMAC_TX_BUFFER_LEN_MASK 0b11111111111111
+#define GMAC_TX_NO_CRC_MASK           (1 << 16)
+#define GMAC_TX_LAST_MASK             (1 << 15)
+#define GMAC_TX_BUFFER_LEN_MASK       0b11111111111111
 
 void gmac_init(void);
 
