@@ -26,7 +26,7 @@ void print(const char* data, ...)
 
 static char buffer_task[1024];
 
-void print_task_init(void)
+void print_init(void)
 {
     // Setup the pins
     gpio_set_func(&(struct gpio){ .hw = GPIOB, .pin = 3 }, GPIO_FUNC_A);

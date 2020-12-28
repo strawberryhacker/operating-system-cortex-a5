@@ -54,19 +54,6 @@ include $(TOP)/kernel/Makefile
 include $(TOP)/fs/Makefile
 include $(TOP)/gfx/Makefile
 
-# define standard colors
-BLACK       := $(shell tput -Txterm setaf 0)
-RED         := $(shell tput -Txterm setaf 1)
-GREEN       := $(shell tput -Txterm setaf 2)
-YELLOW      := $(shell tput -Txterm setaf 3)
-LIGHTPURPLE := $(shell tput -Txterm setaf 4)
-PURPLE      := $(shell tput -Txterm setaf 5)
-BLUE        := $(shell tput -Txterm setaf 6)
-WHITE       := $(shell tput -Txterm setaf 7)
-RESET       := $(shell tput -Txterm sgr0)
-
-COMPILE_COLOR = $(BLUE)
-
 # Check that the linker script is provided
 ifneq ($(MAKECMDGOALS),clean)
 ifndef linker-script-y
@@ -109,12 +96,12 @@ $(BUILDDIR)/%.bin: $(BUILDDIR)/%.elf
 
 $(BUILDDIR)/%.o: %.c
 	@mkdir -p $(dir $@)
-	@echo "$(COMPILE_COLOR)     Compiling ${RESET}" $<
+	@echo "     Compiling" $<
 	@$(CC) $(CFLAGS) $(CPFLAGS) -c $< -o $@
 
 $(BUILDDIR)/%.o: %.s
 	@mkdir -p $(dir $@)
-	@echo "$(COMPILE_COLOR)     Compiling ${RESET}" $<
+	@echo "     Compiling" $<
 	@$(ARM_ASM) $(ASMFLAGS) -c $< -o $@
 
 # ---------------------------------------------------------------------------

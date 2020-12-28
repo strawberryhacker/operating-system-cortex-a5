@@ -42,5 +42,8 @@ def main():
     file.send_file(file_path)
     stop = int(round(time.time() * 1000))
     print("Kernel download complete in", stop - start, "ms")
+    print("Please wait...", end="\r")
+    s.close()
+    print(' ' * 50, end="\r")
 
 main()

@@ -91,8 +91,12 @@ class citrus_file:
 
             # Send the data
             if self.packet.send_packet(chunk, self.packet.CMD_DATA) == None:
+                f.close()
                 sys.exit()
             
             self.loading.increment(len(chunk))
             if len(chunk) < self.packet.CHUNK_SIZE:
                 break
+        
+        f.close()
+

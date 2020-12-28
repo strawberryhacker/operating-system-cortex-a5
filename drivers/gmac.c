@@ -13,27 +13,37 @@
 #include <stdalign.h>
 
 #define NA_SIZE 128
-#define NA_CNT 6
+#define NA_CNT  6
 
-#define RX_SIZE 128
-#define TX_SIZE 1500
+#define RX_SIZE 1536
+#define TX_SIZE 1536
 
-#define RX_DESC_CNT 32
-#define TX_DESC_CNT 2
+#define RX_DESC_CNT 4
+#define TX_DESC_CNT 32
 
+// Dummy buffers for GMAC unused queues
 static u8 (*na_tx_buf)[NA_SIZE];
 static u8 (*na_rx_buf)[NA_SIZE];
+
+// Main transmit and receive buffer pool. This is dynamically allocated from the
+// non-cache allocator
 static u8 (*tx_buf)[TX_SIZE];
 static u8 (*rx_buf)[RX_SIZE];
 
-static struct gmac_desc* na_tx_desc;
-static struct gmac_desc* na_rx_desc;
-static struct gmac_desc* tx_desc;
-static struct gmac_desc* rx_desc;
+// Ring descriptors pointing to the buffers. These are accessed by the CPU as 
+// well as the GMAC DMA controller
+static struct gmac_tx_desc* na_tx_desc;
+static struct gmac_rx_desc* na_rx_desc;
+static struct gmac_tx_desc* tx_desc;
+static struct gmac_rx_desc* rx_desc;
 
 static volatile u32 rx_index;
 static volatile u32 tx_index;
 
+// Allocates non-cacheable buffers for trasmitt and receive queues, both used 
+// and not used. This also allocates the buffer descriptors from non-cacheable
+// memory. This means that cache maintance is unnecessary. It is still necessary
+// to convert to physical addresses since the allocatings produce a VA
 static void gmac_alloc_buffers(void)
 {
     na_rx_buf  = cache_alloc(NA_SIZE * NA_CNT, 32);
@@ -47,7 +57,7 @@ static void gmac_alloc_buffers(void)
 }
 
 // Busy waiting for the PHY management logic to become idle
-static void wait_phy_idle(void)
+static inline void wait_phy_idle(void)
 {
     while (!(GMAC->NSR & (1 << 2)));
 }
@@ -55,18 +65,16 @@ static void wait_phy_idle(void)
 // Reads a register from the addressed phy
 u16 phy_read(u8 addr, u8 reg)
 {
-    wait_phy_idle();
-
     u32 tmp = 0;
-    tmp |= (0b10 << 16);          // Mandatory
-    tmp |= (1 << 30);             // Clause 22 operation
-    tmp |= (0b10 << 28);          // Read operation
-    tmp |= ((addr & 0x1F) << 23);
-    tmp |= ((reg & 0x1F) << 18);
-    GMAC->MAN = tmp;
+    wait_phy_idle();
+
+    // Clause 22 and read operation
+    GMAC->MAN = (0b10 << 16) | (1 << 30) | (0b10 << 28) | 
+        ((addr & 0x1F) << 23) | ((reg & 0x1F) << 18);
 
     wait_phy_idle();
 
+    // Read the result
     return (u16)GMAC->MAN;
 }
 
@@ -75,14 +83,13 @@ void phy_write(u8 addr, u8 reg, u16 data)
 {
     wait_phy_idle();
 
-    u32 tmp = 0;
-    tmp |= (0b10 << 16);          // Mandatory
-    tmp |= (1 << 30);             // Clause 22 operation
-    tmp |= (0b01 << 28);          // Write operation
-    tmp |= ((addr & 0x1F) << 23);
-    tmp |= ((reg & 0x1F) << 18);
-    tmp |= data;
-    GMAC->MAN = tmp;
+    // Clause 22 write operation
+    GMAC->MAN = (0b10 << 16) | (1 << 30) | (0b01 << 28) | 
+        ((addr & 0x1F) << 23) | ((reg & 0x1F) << 18) | data;
+
+    // Read the register to make sure it has been written
+    if (data != phy_read(addr, reg))
+        print("ERROR\n");
 }
 
 // Given the PHY ID, this functions searches through all the 32 possible PHY
@@ -92,8 +99,7 @@ void phy_write(u8 addr, u8 reg, u16 data)
 i32 phy_discover(u16 id, u16* addr)
 {
     for (u32 i = 0; i < 32; i++) {
-        u16 tmp = phy_read(i, 2);
-        if (tmp == id) {
+        if (phy_read(i, 2) == id) {
             *addr = i;
             return 0;
         }
@@ -101,6 +107,8 @@ i32 phy_discover(u16 id, u16* addr)
     return -ENODEV;
 }
 
+// Configures the PHY to operate in 100Base-T mode and does some other 
+// configuration as well
 void phy_enable_100baseT(u8 addr)
 {
     // Read the auto-negotiate register
@@ -129,6 +137,30 @@ void phy_enable_100baseT(u8 addr)
     } while (!(reg & (1 << 2)));
 }
 
+// Configures the PHY for 100Base-T operation and waits for link up
+static void phy_setup(void)
+{
+    // Try to get the address of the PHY with address 0x0022
+    u16 addr = 0;
+    i32 err = phy_discover(0x0022, &addr);
+    if (err)
+        return;
+    
+    // Wait for the link status from the PHY
+    u32 reg;
+    do {
+        reg = phy_read(addr, 1);
+    } while (!(reg & (1 << 2)));
+
+    // Find the mode if the PHY
+
+    phy_enable_100baseT(addr);
+    
+    print("Link is up\n");
+}
+
+// Configures the pins connected to the ethernet PHY. This is using a RMII
+// interface. 
 static void gmac_port_init(void)
 {
     gpio_set_func(&(struct gpio){ .hw = GPIOD, .pin = 9  }, GPIO_FUNC_D);
@@ -143,9 +175,52 @@ static void gmac_port_init(void)
     gpio_set_func(&(struct gpio){ .hw = GPIOD, .pin = 18 }, GPIO_FUNC_D);
 }
 
+// Enables the clock of the GMAC peripheral. It seems it's only using the 
+// peripheral clock
 static void gmac_clk_init(void)
 {
     clk_pck_enable(5);
+}
+
+static void gmac_init_queues(void)
+{
+    tx_index = 0;
+    rx_index = 0;
+
+    // Main transmit buffer. We have to make sure we are owning the buffers
+    for (u32 i = 0; i < TX_DESC_CNT; i++) {
+        tx_desc[i].addr = (u32)va_to_pa(tx_buf[i]);
+        tx_desc[i].status_word = 0;
+        tx_desc[i].owner_software = 1;
+    }
+    tx_desc[TX_DESC_CNT - 1].wrap = 1;
+
+    // Main receive buffer. We have to make sure that the GMAC is owning the 
+    // buffers
+    for (u32 i = 0; i < RX_DESC_CNT; i++) {
+        rx_desc[i].addr_word = (u32)va_to_pa(rx_buf[i]);
+        rx_desc[i].status_word = 0;
+    }
+
+    // Mark the buffer as the last one in the queue
+    rx_desc[RX_DESC_CNT - 1].wrap = 1;
+
+    // Not used buffer for the queues. These has to be set up regardless
+    for (u32 i = 0; i < 3; i++) {
+        na_rx_desc[i].addr_word = (u32)va_to_pa(na_rx_buf[i]);
+        na_tx_desc[i].addr = (u32)va_to_pa(na_tx_buf[i]);
+        na_rx_desc[i].status_word = GMAC_RX_WRAP_MASK;
+        na_tx_desc[i].status_word = GMAC_TX_USED_MASK | GMAC_TX_WRAP_MASK;
+    }
+
+    // Write the physical base address into the registers
+    GMAC->TBQB = (u32)va_to_pa(tx_desc);
+    GMAC->RBQB = (u32)va_to_pa(rx_desc);
+
+    for (u32 i = 0; i < 3; i++) {
+        GMAC->TBQBAPQ[i] = (u32)va_to_pa(na_tx_desc + i);
+        GMAC->RBQBAPQ[i] = (u32)va_to_pa(na_rx_desc + i);
+    }
 }
 
 // Main IRQ for the GMAC
@@ -157,90 +232,123 @@ static void gmac_irq(void)
     print("status register => %032b\n", isr);
     print("Tx status       => %032b\n", GMAC->TSR);
     if (isr & (1 << 7)) {
-        print("Yess\n");
-        while (1);
+        //print("Yess\n");
     }
 
     return;
 
     for (u32 i = 0; i < RX_DESC_CNT; i++) {
         print("Status %d > ", i);
-        if (rx_desc[i].status & GMAC_RX_SOF_MASK)
+        if (rx_desc[i].status_word & GMAC_RX_SOF_MASK)
             print("SOF ");
-        if (rx_desc[i].status & GMAC_RX_EOF_MASK)
+        if (rx_desc[i].status_word & GMAC_RX_EOF_MASK)
             print("EOF");
         print("\n");
     }
 
-    print("Len first buffer => %d\n", rx_desc[0].status & GMAC_RX_FRAME_LEN_MASK);
-    mem_dump(rx_buf[0], rx_desc[0].status & GMAC_RX_FRAME_LEN_MASK, 10, 1);
+    print("Len first buffer => %d\n", rx_desc[0].status_word & GMAC_RX_FRAME_LEN_MASK);
+    mem_dump(rx_buf[0], rx_desc[0].status_word & GMAC_RX_FRAME_LEN_MASK, 10, 1);
 }
 
-static void gmac_init_queues(void)
+// This needs to take in the maximum size of the network buffer which is 1500
+void gmac_receive(void)
 {
-    tx_index = 0;
-    rx_index = 0;
+    static u8 ii = 0;
 
-    // Main transmit buffer
-    for (u32 i = 0; i < TX_DESC_CNT; i++) {
-        tx_desc[i].addr = (u32)va_to_pa(tx_buf[i]);
-        tx_desc[i].status = GMAC_TX_USED_MASK;   // We own the buffer
-    }
-    tx_desc[TX_DESC_CNT - 1].status |= GMAC_TX_WRAP_MASK;
+    // Check if a new packet is available in the packet buffer
+    u32 status = GMAC->RSR;
+    if (status & (1 << 1)) {
 
-    // Main receive buffer
-    for (u32 i = 0; i < RX_DESC_CNT; i++) {
-        rx_desc[i].addr = (u32)va_to_pa(rx_buf[i]);
-        rx_desc[i].status = 0;                  // The GMAC own the buffer
-    }
-    rx_desc[RX_DESC_CNT - 1].status |= GMAC_RX_WRAP_MASK;
+        // Clear the receive flags by writing one
+        GMAC->RSR = status;
 
-    // Not used buffer for the queues. These has to be set up regardless
-    for (u32 i = 0; i < 2; i++) {
-        na_rx_desc[i].addr = (u32)va_to_pa(na_rx_buf[i]);
-        na_tx_desc[i].addr = (u32)va_to_pa(na_tx_buf[i]);
-        na_rx_desc[i].status = GMAC_RX_WRAP_MASK;
-        na_tx_desc[i].status = GMAC_TX_USED_MASK | GMAC_TX_WRAP_MASK;
-    }
+        for (u32 i = 0; i < RX_DESC_CNT; i++) {
 
-    // Write the base address into the registers
-    GMAC->TBQB = (u32)va_to_pa(tx_desc);
-    GMAC->RBQB = (u32)va_to_pa(rx_desc);
+            // Get the buffer from the descriptor entry
+            u8* tmp = rx_buf[rx_index];
 
-    for (u32 i = 0; i < 3; i++) {
-        GMAC->TBQBAPQ[i] = (u32)va_to_pa(na_tx_desc + i);
-        GMAC->RBQBAPQ[i] = (u32)va_to_pa(na_rx_desc + i);
-    }
+            // Start checking on the current index
+            struct gmac_rx_desc* desc = &rx_desc[rx_index++];
+
+            // Check if the buffer index is too big
+            if (rx_index == RX_DESC_CNT)
+                rx_index = 0;
+
+            // Check if the current descriptor is owned by software or if it
+            // is owned by the GMAC DMA itself
+            if (desc->owner_software == 1) {
+
+
+                // We can control the buffer
+                print("Got a packet: [");
+                for (u32 ii = 0; ii < desc->length; ii++)
+                    print("0x%02X, ", tmp[ii]);
+                print("]\n");
+
+                // Print the length
+                print("Length: %d\n\n", desc->length);
+                // Now we have to clear the owner flag
+                desc->owner_software = 0;
+                
+
+                // If the buffer is used we are going to return that buffer so
+                // we don't check the other buffers
+                break;
+            }
+        }
+    } 
 }
 
-static void phy_setup(void)
+// Takes in a buffer with data and queues it for transmission
+void nic_send_raw(const u8* data, u32 len)
 {
-    print("Starting network thread\n");
- 
-    // Try to get the address of the PHY with address 0x0022
-    u16 addr = 0;
-    i32 err = phy_discover(0x0022, &addr);
-    if (err)
-        return;
+    print("\n");
+    // For now the NIC will wait for the packet to be sent on the network. It 
+    // will choose a free descriptor, but this will allmost allways be the 
+    // first one since we are waiting for the package to be transmitted
+    print("status; ");
+    for (u32 i = 0; i < TX_DESC_CNT; i++)
+        print("%d ", tx_desc[i].owner_software);
+    print("\n");
+
+    u8 i = tx_index;
+
+    // Find the first descriptor which the software owns
+    if (tx_desc[i].owner_software == 0)
+        while (1);
     
-    print("Addr > %d\n", addr);
+    print("Found a free buffer at index %d\n", i);
 
-    // Wait for the link status from the PHY
-    u32 reg;
-    do {
-        reg = phy_read(addr, 1);
-    } while (!(reg & (1 << 2)));
+    // Copy data from the input and into the NIC queue
+    mem_copy(data, &tx_buf[i], len);
 
-    print("Link is up\n");
+    // Mark the buffer as owned by the NIC
+    tx_desc[i].owner_software = 0;
 
-    // Find the mode if the PHY
-    phy_enable_100baseT(addr);
+    // Mark the descriptor as the last one. We never use more than one 
+    // descriptor in this setup
+    tx_desc[i].length = len;
+    tx_desc[i].last_buffer = 1;
+
+    // Enable the transmitter
+    GMAC->NCR |= (1 << 9);
+
+    print("tx is enabled\n");
+    while (GMAC->TSR == 0);
+
+    // Check the status of the current buffer
+
+    print("status after tx: %d\n", tx_desc[i].owner_software);
+
+    // Increase the tx index after the transfer
+    if (++tx_index == TX_DESC_CNT)
+        tx_index = 0;
+
+    return;
 }
 
 void gmac_init(void)
 {
-    print("Hello GMACX\n");
-
     gmac_clk_init();
     gmac_port_init();
 
@@ -280,53 +388,17 @@ void gmac_init(void)
     GMAC->UR = 1;
 
     // Setup the DMA registers. The receive buffer size if 128 bytes
-    GMAC->DCFGR = (3 << 8) | (0x02 << 16) | (1 << 0);
+    GMAC->DCFGR = (3 << 8) | (0x18 << 16) | (1 << 0);
 
     gmac_init_queues();
-
-    // Enable some interrupts
-    GMAC->IER = 0xFFFFFFFF << 1;
 
     // Enable the MDC port, the transmitter and the reciever
     GMAC->NCR = 0b111 << 2;
 
+    // Configure the PHY. THis must be done after power-on but can be removed
+    // after (to speed things up)
     //phy_setup();
 
-    const char msg[] = "\xff\xff\xff\xff\xff\xff\x00\xe0\x4c\x36\x14\x96\x08\x00\x45\x10" \
-"\x01\x48\x00\x00\x00\x00\x80\x11\x39\x96\x00\x00\x00\x00\xff\xff" \
-"\xff\xff\x00\x44\x00\x43\x01\x34\x4a\x42\x01\x01\x06\x00\xAA\xAA" \
-"\xAA\xAA\x00\x19\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\xe0\x4c\x36\x14\x96\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x63\x82\x53\x63\x35\x01\x01\x0c\x04\x68" \
-"\x6f\x6d\x65\x37\x10\x01\x1c\x02\x03\x0f\x06\x77\x0c\x2c\x2f\x1a" \
-"\x79\x2a\xf9\x21\xfc\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-"\x00\x00\x00\x00\x00\x00";
-
-    u32 msg_size = sizeof(msg) - 1;
-    print("Size of => %d\n", msg_size);
-
-    for (u32 i = 0; i < msg_size; i++) {
-        tx_buf[0][i] = 0xAA;
-    }
-
-    tx_desc[0].status |= GMAC_TX_LAST_MASK | msg_size;
-    tx_desc[0].status &= ~GMAC_TX_USED_MASK;
-
-    asm volatile ("dsb");
-
-    print("DONE\n");
+    // Check if the wrap bit is being set
     GMAC->NCR |= (1 << 9);
 }

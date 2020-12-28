@@ -18,6 +18,71 @@ struct gmac_desc {
     u32 status;
 };
 
+// Receive descriptor for each receive buffer
+struct gmac_rx_desc {
+    union {
+        u32 addr_word;
+        struct {
+            // This bit is set to 1 after a receive transfer indicating that the
+            // buffer has been used and now belongs to the software. The 
+            // software then has to clear this bit before using it again.
+            u32 owner_software     : 1;
+            u32 wrap               : 1;
+            u32 addr               : 30;
+        };
+    };
+    union {
+        u32 status_word;
+        struct {
+            u32 length             : 13;
+            u32 fcs_status         : 1;
+            u32 sof                : 1;
+            u32 eof                : 1;
+            u32 cfi_bit            : 1;
+            u32 vlan_pri           : 3;
+            u32 priority_tag       : 1;
+            u32 vlan_tag           : 1;
+            u32 type_id_reg        : 2;
+            u32 type_id_match_snap : 1;
+            u32 addr_match_reg     : 2;
+            u32 addr_match         : 1;
+            u32 reserved0          : 1;
+            u32 unicast_hash       : 1;
+            u32 multicast_hash     : 1;
+            u32 broadcast_detected : 1;            
+        };
+    };
+};
+
+// Transmit descriptor for each transmit buffer
+struct gmac_tx_desc {
+
+    // This is the byte address of the buffer
+    u32 addr;
+    union {
+        u32 status_word;
+        struct  {
+            u32 length         : 14;
+            u32 reserved0      : 1;
+            u32 last_buffer    : 1;
+            u32 no_crc         : 1;
+            u32 reserved1      : 3;
+            u32 crc_gen_err    : 3;
+            u32 reserved2      : 3;
+            u32 late_collision : 1;
+            u32 ahb_err        : 1;
+            u32 reserved3      : 1;
+            u32 retry_exceeded : 1;
+            u32 wrap           : 1;
+
+            // This bit is set to 1 after a receive transfer indicating that the
+            // buffer has been used and now belongs to the software. The 
+            // software then has to clear this bit before using it again.
+            u32 owner_software : 1;
+        };
+    };
+};
+
 #define GMAC_RX_ADDR_MASK             0x3FFFFFFF
 #define GMAC_RX_WRAP_MASK             (1 << 1)
 #define GMAC_RX_OWNER_MASK            (1 << 0)
@@ -61,5 +126,8 @@ u16 phy_read(u8 addr, u8 reg);
 void phy_write(u8 addr, u8 reg, u16 data);
 void phy_enable_100baseT(u8 addr);
 void phy_get_cfg(u8 addr, enum phy_speed* speed, enum phy_duplex* dup);
+
+void nic_send_raw(const u8* data, u32 len);
+void gmac_receive(void);
 
 #endif

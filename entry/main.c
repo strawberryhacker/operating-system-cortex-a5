@@ -49,8 +49,6 @@ void early_init(void)
 
     // Enable access to FPU co-processors
     fpu_init();
-
-    print_logo();
 }
 
 
@@ -66,11 +64,27 @@ void kernel_init(void)
 /// This will handle driver initialization
 void driver_init(void)
 {
-    print_task_init();
-    mmc_init();
+    print_init();
     dma_init();
     dma_receive_init();
-    lcd_init();
+}
+
+// Test code for the network stack
+i32 rec(void* arg)
+{
+    while (1) {
+        gmac_receive();
+    }
+}
+
+i32 send(void* arg)
+{
+    u8 data[120];
+    mem_set(data, 0xaa, 120);
+    while (1) {
+        syscall_thread_sleep(1000);
+        nic_send_raw(data, 120);
+    }
 }
 
 /// Called by entry.s after low level initialization finishes
@@ -85,8 +99,11 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
 
+    print("\n");
     gmac_init();
 
+    create_kthread(rec, 800, "nic rec", NULL, SCHED_RT);
+    create_kthread(send, 800, "nic send", NULL, SCHED_RT);
 
     sched_start();
 } 
