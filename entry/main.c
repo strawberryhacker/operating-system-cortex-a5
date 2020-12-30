@@ -27,13 +27,13 @@
 #include <citrus/mem.h>
 #include <citrus/gmac.h>
 
+#include <net/ip.h>
+#include <net/arp.h>
+#include <net/netbuf.h>
+#include <net/net_rec.h>
+
 #include <gfx/window.h>
 #include <gfx/ttf.h>
-#include <gfx/font.h>
-
-#include <stdarg.h>
-#include <stdalign.h>
-
 /// Early initialization for the kernel
 void early_init(void)
 {
@@ -69,21 +69,35 @@ void driver_init(void)
     dma_receive_init();
 }
 
-// Test code for the network stack
-i32 rec(void* arg)
-{
-    while (1) {
-        gmac_receive();
-    }
-}
+static u8 buffer[1500];
+
+struct netbuf buf;
+
 
 i32 send(void* arg)
 {
     u8 data[120];
     mem_set(data, 0xaa, 120);
+
+    buf.buf = buffer;
+    buf.buf_len = 1500;
+    buf.header = buffer + 50;
+    mem_set(buffer + 50, 0xCC, 50);
+    buf.frame_len = 50;
+
+    ipaddr_t src;
+    ipaddr_t dest;
+
+    str_to_ipaddr("192.168.0.55", &src);
+    str_to_ipaddr("192.168.0.177", &dest);
+
+    
+    
     while (1) {
+        print("Sending\n");
+        mac_out(&buf, src, dest, 0x0800);
         syscall_thread_sleep(1000);
-        nic_send_raw(data, 120);
+        gmac_send_raw(data, 120);
     }
 }
 
@@ -102,8 +116,11 @@ void main(void)
     print("\n");
     gmac_init();
 
-    create_kthread(rec, 800, "nic rec", NULL, SCHED_RT);
+    // Sending random requests
     create_kthread(send, 800, "nic send", NULL, SCHED_RT);
+
+    arp_init();
+    net_rec_init();
 
     sched_start();
 } 

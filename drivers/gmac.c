@@ -11,6 +11,7 @@
 #include <citrus/cache_alloc.h>
 #include <stddef.h>
 #include <stdalign.h>
+#include <citrus/panic.h>
 
 #define NA_SIZE 128
 #define NA_CNT  6
@@ -86,6 +87,8 @@ void phy_write(u8 addr, u8 reg, u16 data)
     // Clause 22 write operation
     GMAC->MAN = (0b10 << 16) | (1 << 30) | (0b01 << 28) | 
         ((addr & 0x1F) << 23) | ((reg & 0x1F) << 18) | data;
+
+    wait_phy_idle();
 
     // Read the register to make sure it has been written
     if (data != phy_read(addr, reg))
@@ -251,7 +254,7 @@ static void gmac_irq(void)
 }
 
 // This needs to take in the maximum size of the network buffer which is 1500
-void gmac_receive(void)
+i32 gmac_rec_raw(const u8* buf, u32* len)
 {
     static u8 ii = 0;
 
@@ -278,73 +281,66 @@ void gmac_receive(void)
             // is owned by the GMAC DMA itself
             if (desc->owner_software == 1) {
 
+                // Copy the buffer
+                mem_copy(tmp, (void *)buf, desc->length);
+                *len = desc->length;
 
-                // We can control the buffer
-                print("Got a packet: [");
-                for (u32 ii = 0; ii < desc->length; ii++)
-                    print("0x%02X, ", tmp[ii]);
-                print("]\n");
-
-                // Print the length
-                print("Length: %d\n\n", desc->length);
-                // Now we have to clear the owner flag
                 desc->owner_software = 0;
-                
 
                 // If the buffer is used we are going to return that buffer so
                 // we don't check the other buffers
-                break;
+                return 0;
             }
         }
-    } 
+    }
+    return -ERETRY;
 }
 
 // Takes in a buffer with data and queues it for transmission
-void nic_send_raw(const u8* data, u32 len)
+void gmac_send_raw(const u8* buf, u32 len)
 {
-    print("\n");
-    // For now the NIC will wait for the packet to be sent on the network. It 
-    // will choose a free descriptor, but this will allmost allways be the 
-    // first one since we are waiting for the package to be transmitted
-    print("status; ");
-    for (u32 i = 0; i < TX_DESC_CNT; i++)
-        print("%d ", tx_desc[i].owner_software);
-    print("\n");
-
-    u8 i = tx_index;
+    struct gmac_tx_desc* desc = &tx_desc[tx_index];
 
     // Find the first descriptor which the software owns
-    if (tx_desc[i].owner_software == 0)
-        while (1);
+    if (desc->owner_software == 0)
+        panic("TX error");
     
-    print("Found a free buffer at index %d\n", i);
+    print("Found a free buffer at index %d\n", tx_index);
 
     // Copy data from the input and into the NIC queue
-    mem_copy(data, &tx_buf[i], len);
-
-    // Mark the buffer as owned by the NIC
-    tx_desc[i].owner_software = 0;
+    mem_copy(buf, &tx_buf[tx_index], len);
 
     // Mark the descriptor as the last one. We never use more than one 
     // descriptor in this setup
-    tx_desc[i].length = len;
-    tx_desc[i].last_buffer = 1;
+    desc->length = len;
+    desc->last_buffer = 1;
+
+    // Mark the buffer as owned by the NIC
+    desc->owner_software = 0;
 
     // Enable the transmitter
     GMAC->NCR |= (1 << 9);
 
-    print("tx is enabled\n");
-    while (GMAC->TSR == 0);
+    while (!(GMAC->TSR & (1 << 5)));
+
+    // TX complete flag is now set
+    if (GMAC->TSR & ((1 << 4) | (1 << 8) | 0b110)) {
+        panic("TX error status");
+    }
+
+    // Check the CRC flags
+    if (desc->crc_gen_err) {
+        print("CRC ERROR => %03b\n", desc->crc_gen_err);
+    }
 
     // Check the status of the current buffer
-
-    print("status after tx: %d\n", tx_desc[i].owner_software);
+    print("status after tx: %d\n", tx_desc[tx_index].owner_software);
 
     // Increase the tx index after the transfer
     if (++tx_index == TX_DESC_CNT)
         tx_index = 0;
-
-    return;
+    
+    print("Done\n");
 }
 
 void gmac_init(void)
@@ -378,17 +374,14 @@ void gmac_init(void)
     GMAC->TSR = (1 << 8) | 0x3F;
     GMAC->RSR = 0xF;
 
-    // Divide the 63 MHz clock by 32 to yield the aprox. 2 MHz MDC clock
-    GMAC->NCFGR = (2 << 18);
-
-    // For now just set the 100Base operation and full-duplex mode
-    GMAC->NCFGR |= 0b11 | (1 << 4);
+    // Divide the 63 MHz cgmac_get_mac_addrll frames with bad CRC
+    GMAC->NCFGR |= 0b11 | (1 << 4) | (1 << 17) | (1 << 24);
 
     // Choose RMII operation
     GMAC->UR = 1;
 
     // Setup the DMA registers. The receive buffer size if 128 bytes
-    GMAC->DCFGR = (3 << 8) | (0x18 << 16) | (1 << 0);
+    GMAC->DCFGR = (3 << 8) | (0x18 << 16) | (1 << 0) | (1 << 11);
 
     gmac_init_queues();
 
@@ -399,6 +392,13 @@ void gmac_init(void)
     // after (to speed things up)
     //phy_setup();
 
-    // Check if the wrap bit is being set
+
     GMAC->NCR |= (1 << 9);
+}
+
+const u8 mac_addr[6] = { 0x3c, 0x97, 0x0e, 0x2f, 0x43, 0x6c };
+
+const u8* gmac_get_mac_addr(void)
+{
+    return mac_addr;
 }

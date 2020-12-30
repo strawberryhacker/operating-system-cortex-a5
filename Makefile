@@ -53,6 +53,7 @@ include $(TOP)/mm/Makefile
 include $(TOP)/kernel/Makefile
 include $(TOP)/fs/Makefile
 include $(TOP)/gfx/Makefile
+include $(TOP)/net/Makefile
 
 # Check that the linker script is provided
 ifneq ($(MAKECMDGOALS),clean)

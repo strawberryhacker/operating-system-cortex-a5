@@ -21,5 +21,7 @@
 
 #define ENODMA 15  // No free DMA channel
 #define ENODEV 16
+#define ERETRY 17
+#define EBADIP 18 // Bad IP address
 
 #endif
