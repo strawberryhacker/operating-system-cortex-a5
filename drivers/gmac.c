@@ -12,6 +12,9 @@
 #include <stddef.h>
 #include <stdalign.h>
 #include <citrus/panic.h>
+#include <citrus/cache.h>
+#include <net/netbuf.h>
+#include <citrus/print.h>
 
 #define NA_SIZE 128
 #define NA_CNT  6
@@ -22,6 +25,7 @@
 #define RX_DESC_CNT 4
 #define TX_DESC_CNT 32
 
+
 // Dummy buffers for GMAC unused queues
 static u8 (*na_tx_buf)[NA_SIZE];
 static u8 (*na_rx_buf)[NA_SIZE];
@@ -30,6 +34,9 @@ static u8 (*na_rx_buf)[NA_SIZE];
 // non-cache allocator
 static u8 (*tx_buf)[TX_SIZE];
 static u8 (*rx_buf)[RX_SIZE];
+
+static struct netbuf* tx_netbuf[TX_SIZE];
+static struct netbuf* rx_netbuf[RX_SIZE];
 
 // Ring descriptors pointing to the buffers. These are accessed by the CPU as 
 // well as the GMAC DMA controller
@@ -49,12 +56,29 @@ static void gmac_alloc_buffers(void)
 {
     na_rx_buf  = cache_alloc(NA_SIZE * NA_CNT, 32);
     na_tx_buf  = cache_alloc(NA_SIZE * NA_CNT, 32);
-    tx_buf     = cache_alloc(TX_SIZE * TX_DESC_CNT, 32);
-    rx_buf     = cache_alloc(RX_SIZE * RX_DESC_CNT, 32);
     na_rx_desc = cache_alloc(NA_CNT * 8, 8);
     na_tx_desc = cache_alloc(NA_CNT * 8, 8);
+
     tx_desc    = cache_alloc(TX_DESC_CNT * 8, 8);
     rx_desc    = cache_alloc(RX_DESC_CNT * 8, 8);
+
+    tx_buf     = cache_alloc(TX_SIZE * TX_DESC_CNT, 32);
+    rx_buf     = cache_alloc(RX_SIZE * RX_DESC_CNT, 32);
+    
+    // Allocate the buffers for the receive queue
+    for (u32 i = 0; i < RX_DESC_CNT; i++) {
+        struct netbuf* buf = alloc_netbuf();
+
+        if (buf == NULL)
+            panic("Cant allocate netbuffers");
+        
+        rx_netbuf[i] = buf;
+    }
+
+    // Initialzie the rx netbuffer queue
+    for (u32 i = 0; i < TX_DESC_CNT; i++) {
+        tx_netbuf[i] = NULL;
+    }
 }
 
 // Busy waiting for the PHY management logic to become idle
@@ -192,7 +216,7 @@ static void gmac_init_queues(void)
 
     // Main transmit buffer. We have to make sure we are owning the buffers
     for (u32 i = 0; i < TX_DESC_CNT; i++) {
-        tx_desc[i].addr = (u32)va_to_pa(tx_buf[i]);
+        tx_desc[i].addr = 0;
         tx_desc[i].status_word = 0;
         tx_desc[i].owner_software = 1;
     }
@@ -201,7 +225,7 @@ static void gmac_init_queues(void)
     // Main receive buffer. We have to make sure that the GMAC is owning the 
     // buffers
     for (u32 i = 0; i < RX_DESC_CNT; i++) {
-        rx_desc[i].addr_word = (u32)va_to_pa(rx_buf[i]);
+        rx_desc[i].addr_word = (u32)va_to_pa(rx_netbuf[i]->buf);
         rx_desc[i].status_word = 0;
     }
 
@@ -226,78 +250,54 @@ static void gmac_init_queues(void)
     }
 }
 
-// Main IRQ for the GMAC
-static void gmac_irq(void)
-{
-    print("GMAC interrupt\n");
 
-    u32 isr = GMAC->ISR;
-    print("status register => %032b\n", isr);
-    print("Tx status       => %032b\n", GMAC->TSR);
-    if (isr & (1 << 7)) {
-        //print("Yess\n");
-    }
-
-    return;
-
-    for (u32 i = 0; i < RX_DESC_CNT; i++) {
-        print("Status %d > ", i);
-        if (rx_desc[i].status_word & GMAC_RX_SOF_MASK)
-            print("SOF ");
-        if (rx_desc[i].status_word & GMAC_RX_EOF_MASK)
-            print("EOF");
-        print("\n");
-    }
-
-    print("Len first buffer => %d\n", rx_desc[0].status_word & GMAC_RX_FRAME_LEN_MASK);
-    mem_dump(rx_buf[0], rx_desc[0].status_word & GMAC_RX_FRAME_LEN_MASK, 10, 1);
-}
 
 // This needs to take in the maximum size of the network buffer which is 1500
-i32 gmac_rec_raw(const u8* buf, u32* len)
+i32 gmac_rec_raw(struct netbuf** buf)
 {
-    static u8 ii = 0;
+    static u32 ii = 0;
 
-    // Check if a new packet is available in the packet buffer
-    u32 status = GMAC->RSR;
-    if (status & (1 << 1)) {
+    struct netbuf* curr_buf = rx_netbuf[rx_index];
+    struct gmac_rx_desc* desc = &rx_desc[rx_index];
 
-        // Clear the receive flags by writing one
-        GMAC->RSR = status;
 
-        for (u32 i = 0; i < RX_DESC_CNT; i++) {
+    // Check the current desc status bif    
+    if (desc->owner_software == 1) {
 
-            // Get the buffer from the descriptor entry
-            u8* tmp = rx_buf[rx_index];
+        // Allocate a new netbuffer
+        struct netbuf* new_netbuf = alloc_netbuf();
 
-            // Start checking on the current index
-            struct gmac_rx_desc* desc = &rx_desc[rx_index++];
+        curr_buf->frame_len = desc->length;
+        curr_buf->ptr = curr_buf->buf;
 
-            // Check if the buffer index is too big
-            if (rx_index == RX_DESC_CNT)
-                rx_index = 0;
+        // Invalidate the bufferpart of the netbuf
+        dcache_invalidate_range((u32)curr_buf->buf, 
+            (u32)(curr_buf->buf + desc->length));
 
-            // Check if the current descriptor is owned by software or if it
-            // is owned by the GMAC DMA itself
-            if (desc->owner_software == 1) {
+        // Link in the new netbuf
+        desc->addr = (u32)va_to_pa(new_netbuf->buf) >> 2;
 
-                // Copy the buffer
-                mem_copy(tmp, (void *)buf, desc->length);
-                *len = desc->length;
+        // Swap the entriees inthe netbuf queue
+        rx_netbuf[rx_index] = new_netbuf;
 
-                desc->owner_software = 0;
+        // We have rad one entry, so we have to move the rx index pointer
+        if (++rx_index >= RX_DESC_CNT)
+            rx_index = 0;
+        
+        // Return the current buffer
+        *buf = curr_buf;
 
-                // If the buffer is used we are going to return that buffer so
-                // we don't check the other buffers
-                return 0;
-            }
-        }
+        // Transfer ownershiåp to the GMAC DMA
+        desc->owner_software = 0;
+
+        return 0;
     }
+
     return -ERETRY;
 }
 
 // Takes in a buffer with data and queues it for transmission
-void gmac_send_raw(const u8* buf, u32 len)
+void gmac_send_raw(struct netbuf* buf)
 {
     struct gmac_tx_desc* desc = &tx_desc[tx_index];
 
@@ -305,22 +305,35 @@ void gmac_send_raw(const u8* buf, u32 len)
     if (desc->owner_software == 0)
         panic("TX error");
     
-    print("Found a free buffer at index %d\n", tx_index);
+    // Check if the transfer descriptor is already pointing to a netbuffer
+    if (rx_netbuf[tx_index]) {
+        free_netbuf(rx_netbuf[tx_index]);
+    }
 
-    // Copy data from the input and into the NIC queue
-    mem_copy(buf, &tx_buf[tx_index], len);
+    rx_netbuf[tx_index] = buf;
+
+    // We have to map in the physical buffer
+    desc->addr = (u32)va_to_pa(buf->ptr);
+
+    // Clean the D-cache
+    //dcache_clean();
+    dcache_clean_range((u32)buf->ptr, (u32)buf->ptr + buf->frame_len);
+
+    // Double check the framelength
+    assert(buf->frame_len < NETBUF_LENGTH);
 
     // Mark the descriptor as the last one. We never use more than one 
     // descriptor in this setup
-    desc->length = len;
+    desc->length = buf->frame_len;
     desc->last_buffer = 1;
 
     // Mark the buffer as owned by the NIC
     desc->owner_software = 0;
 
-    // Enable the transmitter
+    // Enable the transmitter. Note: this might allready be enabled
     GMAC->NCR |= (1 << 9);
 
+    // Wait for the transmite to complete
     while (!(GMAC->TSR & (1 << 5)));
 
     // TX complete flag is now set
@@ -333,24 +346,18 @@ void gmac_send_raw(const u8* buf, u32 len)
         print("CRC ERROR => %03b\n", desc->crc_gen_err);
     }
 
-    // Check the status of the current buffer
-    print("status after tx: %d\n", tx_desc[tx_index].owner_software);
-
     // Increase the tx index after the transfer
     if (++tx_index == TX_DESC_CNT)
         tx_index = 0;
     
-    print("Done\n");
 }
 
 void gmac_init(void)
 {
+    netbuf_init();
+
     gmac_clk_init();
     gmac_port_init();
-
-    // Enable the GMAC interrupts
-    apic_add_handler(5, gmac_irq);
-    apic_enable(5);
 
     // Allocate non-cacheable buffers
     gmac_alloc_buffers();
@@ -390,8 +397,7 @@ void gmac_init(void)
 
     // Configure the PHY. THis must be done after power-on but can be removed
     // after (to speed things up)
-    //phy_setup();
-
+    phy_setup();
 
     GMAC->NCR |= (1 << 9);
 }

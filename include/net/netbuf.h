@@ -1,25 +1,38 @@
+// Implementation of the netbuf packet pool
+
 #ifndef NETBUF_H
 #define NETBUF_H
 
 #include <citrus/types.h>
 #include <citrus/list.h>
 
-struct netbuf {
+#define NETBUF_LENGTH 1536
+#define MAX_HEADER_SIZE 74
 
+struct netbuf {
+    // Virtual start address of the buffer
+    u8 buf[NETBUF_LENGTH];
+
+    // This is for the netbuf pool free list. And for queueing in the network
+    // stack
     struct list_node node;
 
-    // Virtual start address of the buffer
-    u8* buf;
-    u32 buf_len;
-
     // A moving pointer set by each layer to the start of that layers header
-    u8* header;
+    u8* ptr;
 
     // This is increased as the frame goes through the stack
     u32 frame_len;
-
-    // IPv4 dest address for used in the ARP queue
-    ipaddr_t ip;
 };
+
+void netbuf_init(void);
+
+struct netbuf* alloc_netbuf(void);
+
+void free_netbuf(struct netbuf* buf);
+
+static inline void init_netbuf(struct netbuf* buf)
+{
+    buf->ptr = buf->buf + MAX_HEADER_SIZE;
+}
 
 #endif

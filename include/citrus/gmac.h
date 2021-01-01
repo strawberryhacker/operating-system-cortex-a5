@@ -2,6 +2,7 @@
 #define GMAC_H
 
 #include <citrus/types.h>
+#include <net/netbuf.h>
 
 enum phy_speed {
     PHY_100BASE,
@@ -127,8 +128,8 @@ void phy_write(u8 addr, u8 reg, u16 data);
 void phy_enable_100baseT(u8 addr);
 void phy_get_cfg(u8 addr, enum phy_speed* speed, enum phy_duplex* dup);
 
-void gmac_send_raw(const u8* buf, u32 len);
-i32 gmac_rec_raw(const u8* buf, u32* len);
+void gmac_send_raw(struct netbuf* buf);
+i32 gmac_rec_raw(struct netbuf** buf);
 
 const u8* gmac_get_mac_addr(void);
 

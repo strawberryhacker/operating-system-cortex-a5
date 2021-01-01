@@ -28,9 +28,9 @@
 #include <citrus/gmac.h>
 
 #include <net/ip.h>
-#include <net/arp.h>
 #include <net/netbuf.h>
-#include <net/net_rec.h>
+#include <net/mac.h>
+#include <net/arp.h>
 
 #include <gfx/window.h>
 #include <gfx/ttf.h>
@@ -51,8 +51,6 @@ void early_init(void)
     fpu_init();
 }
 
-
-
 /// Initializes the kernel 
 void kernel_init(void)
 {
@@ -69,35 +67,33 @@ void driver_init(void)
     dma_receive_init();
 }
 
-static u8 buffer[1500];
-
-struct netbuf buf;
-
-
-i32 send(void* arg)
+i32 tx(void* arg)
 {
-    u8 data[120];
-    mem_set(data, 0xaa, 120);
-
-    buf.buf = buffer;
-    buf.buf_len = 1500;
-    buf.header = buffer + 50;
-    mem_set(buffer + 50, 0xCC, 50);
-    buf.frame_len = 50;
-
-    ipaddr_t src;
-    ipaddr_t dest;
-
-    str_to_ipaddr("192.168.0.55", &src);
-    str_to_ipaddr("192.168.0.177", &dest);
-
+    // Get the source and destination IP address
+    ipaddr_t dest_ip = 0;
+    i32 err = str_to_ipv4("192.168.0.177", &dest_ip);
+    if (err)
+        panic("Wrong IP");
     
-    
+    ipaddr_t src_ip = 0;
+    err = str_to_ipv4("192.168.0.50", &src_ip);
+    if (err)
+        panic("Wrong IP");
+
+
     while (1) {
-        print("Sending\n");
-        mac_out(&buf, src, dest, 0x0800);
+        struct netbuf* buf = alloc_netbuf();
+        if (buf == NULL)
+            panic("Can't allocate buffer");
+
+        // Add some random data
+        mem_set(buf->buf, 0xF3, 140);
+        buf->frame_len = 140;
+        buf->ptr = buf->buf + 14;
+
+        mac_send(buf, dest_ip, src_ip, 0x0800);
+
         syscall_thread_sleep(1000);
-        gmac_send_raw(data, 120);
     }
 }
 
@@ -113,14 +109,10 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
 
-    print("\n");
     gmac_init();
-
-    // Sending random requests
-    create_kthread(send, 800, "nic send", NULL, SCHED_RT);
-
     arp_init();
-    net_rec_init();
+
+    create_kthread(tx, 5000, "net tx", NULL, SCHED_RT);
 
     sched_start();
 } 

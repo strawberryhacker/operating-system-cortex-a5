@@ -1,10 +1,12 @@
 #include <net/ip.h>
 #include <citrus/error.h>
+#include <citrus/mem.h>
+#include <net/udp.h>
 
 // Converts an IPv4 address from a binary representation to a string 
 // representation "xxx.xxx.xxx.xxx". 
 // The input buffer has to be at least 16 bytes long
-void ipaddr_to_str(ipaddr_t addr, char* buf)
+void ipv4_to_str(ipaddr_t addr, char* buf)
 {
     u8 shift = 24;
     for (u32 i = 0; i < 4; i++) {
@@ -30,7 +32,7 @@ void ipaddr_to_str(ipaddr_t addr, char* buf)
 
 // Converts a string to an IPv4 address. The string must be on format 
 // "xxx.xxx.xxx.xxx"
-i32 str_to_ipaddr(const char* buf, ipaddr_t* addr)
+i32 str_to_ipv4(const char* buf, ipaddr_t* addr)
 {
     for (u32 i = 0; i < 4; i++) {
         u32 octet = 0;
@@ -55,4 +57,27 @@ i32 str_to_ipaddr(const char* buf, ipaddr_t* addr)
     }
 
     return 0;
+}
+
+void ip_receive(struct netbuf* buf)
+{
+    // Check the length of the payload
+    u16 size = read_be16(buf->ptr + 2);
+
+    print("SIze => %d\n", size);
+
+    u8 protocol = buf->ptr[9];
+
+    // Get the length of the header
+    u32 header_len = (buf->ptr[0] & 0xF) * 4;
+
+    print("Header length => %d\n", header_len);
+
+    // Move the pointer to the payload
+    buf->ptr += header_len;
+    buf->frame_len = size - header_len;
+
+    if (protocol == 0x11) {
+        udp_receive(buf);
+    }
 }
