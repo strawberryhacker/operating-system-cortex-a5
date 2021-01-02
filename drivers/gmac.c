@@ -22,7 +22,7 @@
 #define RX_SIZE 1536
 #define TX_SIZE 1536
 
-#define RX_DESC_CNT 4
+#define RX_DESC_CNT 32
 #define TX_DESC_CNT 32
 
 
@@ -61,9 +61,6 @@ static void gmac_alloc_buffers(void)
 
     tx_desc    = cache_alloc(TX_DESC_CNT * 8, 8);
     rx_desc    = cache_alloc(RX_DESC_CNT * 8, 8);
-
-    tx_buf     = cache_alloc(TX_SIZE * TX_DESC_CNT, 32);
-    rx_buf     = cache_alloc(RX_SIZE * RX_DESC_CNT, 32);
     
     // Allocate the buffers for the receive queue
     for (u32 i = 0; i < RX_DESC_CNT; i++) {
@@ -77,7 +74,12 @@ static void gmac_alloc_buffers(void)
 
     // Initialzie the rx netbuffer queue
     for (u32 i = 0; i < TX_DESC_CNT; i++) {
-        tx_netbuf[i] = NULL;
+        struct netbuf* buf = alloc_netbuf();
+
+        if (buf == NULL)
+            panic("Cant allocate a netbuf");
+        
+        tx_netbuf[i] = buf;
     }
 }
 
@@ -113,10 +115,6 @@ void phy_write(u8 addr, u8 reg, u16 data)
         ((addr & 0x1F) << 23) | ((reg & 0x1F) << 18) | data;
 
     wait_phy_idle();
-
-    // Read the register to make sure it has been written
-    if (data != phy_read(addr, reg))
-        print("ERROR\n");
 }
 
 // Given the PHY ID, this functions searches through all the 32 possible PHY
@@ -184,6 +182,9 @@ static void phy_setup(void)
     phy_enable_100baseT(addr);
     
     print("Link is up\n");
+
+    // Turn off loopback
+
 }
 
 // Configures the pins connected to the ethernet PHY. This is using a RMII
@@ -209,6 +210,8 @@ static void gmac_clk_init(void)
     clk_pck_enable(5);
 }
 
+// Initilaizing the descriptors for all the queues as will a the TX and RX
+// buffers. 
 static void gmac_init_queues(void)
 {
     tx_index = 0;
@@ -216,63 +219,85 @@ static void gmac_init_queues(void)
 
     // Main transmit buffer. We have to make sure we are owning the buffers
     for (u32 i = 0; i < TX_DESC_CNT; i++) {
-        tx_desc[i].addr = 0;
+        tx_desc[i].addr = (u32)va_to_pa(tx_netbuf[i]->buf);
         tx_desc[i].status_word = 0;
-        tx_desc[i].owner_software = 1;
+        tx_desc[i].owner_software = 1; // Prevent the GMAC DMA from accessing
     }
+
+    // Marking the last buffer in the list
     tx_desc[TX_DESC_CNT - 1].wrap = 1;
 
     // Main receive buffer. We have to make sure that the GMAC is owning the 
     // buffers
     for (u32 i = 0; i < RX_DESC_CNT; i++) {
         rx_desc[i].addr_word = (u32)va_to_pa(rx_netbuf[i]->buf);
+        rx_desc[i].wrap = 0;
+        rx_desc[i].owner_software = 0;
         rx_desc[i].status_word = 0;
     }
 
     // Mark the buffer as the last one in the queue
     rx_desc[RX_DESC_CNT - 1].wrap = 1;
 
-    // Not used buffer for the queues. These has to be set up regardless
     for (u32 i = 0; i < 3; i++) {
+        // Dummy queues RX init
         na_rx_desc[i].addr_word = (u32)va_to_pa(na_rx_buf[i]);
+        na_rx_desc[i].status_word = 0;
+        na_rx_desc[i].wrap = 1;
+        
+        // Dummy queues TX init
         na_tx_desc[i].addr = (u32)va_to_pa(na_tx_buf[i]);
-        na_rx_desc[i].status_word = GMAC_RX_WRAP_MASK;
-        na_tx_desc[i].status_word = GMAC_TX_USED_MASK | GMAC_TX_WRAP_MASK;
+        na_tx_desc[i].status_word = 0;
+        na_tx_desc[i].wrap = 1;
+        na_tx_desc[i].owner_software = 1;
     }
 
     // Write the physical base address into the registers
     GMAC->TBQB = (u32)va_to_pa(tx_desc);
     GMAC->RBQB = (u32)va_to_pa(rx_desc);
 
+    // Update the base address of all the queues
     for (u32 i = 0; i < 3; i++) {
         GMAC->TBQBAPQ[i] = (u32)va_to_pa(na_tx_desc + i);
         GMAC->RBQBAPQ[i] = (u32)va_to_pa(na_rx_desc + i);
     }
-}
 
+    dcache_clean();
+}
 
 
 // This needs to take in the maximum size of the network buffer which is 1500
 i32 gmac_rec_raw(struct netbuf** buf)
 {
-    static u32 ii = 0;
+    assert(buf);
 
     struct netbuf* curr_buf = rx_netbuf[rx_index];
     struct gmac_rx_desc* desc = &rx_desc[rx_index];
 
+    assert(curr_buf);
+    assert(desc);
 
-    // Check the current desc status bif    
-    if (desc->owner_software == 1) {
+    
+
+    // Check the current desc status bit. This has to owned by the software and 
+    // SOF and EOF bits has to be both set
+    if (desc->owner_software) {
+        
+        if (desc->sof == 0 || desc->eof == 0) {
+            desc->owner_software = 0;
+            return -ERETRY;
+        }
 
         // Allocate a new netbuffer
         struct netbuf* new_netbuf = alloc_netbuf();
+        assert(new_netbuf);
 
         curr_buf->frame_len = desc->length;
         curr_buf->ptr = curr_buf->buf;
 
-        // Invalidate the bufferpart of the netbuf
-        dcache_invalidate_range((u32)curr_buf->buf, 
-            (u32)(curr_buf->buf + desc->length));
+        // Invalidate the entire receive buffer
+        dcache_invalidate_range((u32)curr_buf->buf,
+            (u32)(curr_buf->buf + NETBUF_LENGTH));
 
         // Link in the new netbuf
         desc->addr = (u32)va_to_pa(new_netbuf->buf) >> 2;
@@ -280,14 +305,19 @@ i32 gmac_rec_raw(struct netbuf** buf)
         // Swap the entriees inthe netbuf queue
         rx_netbuf[rx_index] = new_netbuf;
 
-        // We have rad one entry, so we have to move the rx index pointer
+        print("Rec packet [ ");
+        for (u32 i = 0; i < curr_buf->frame_len; i++)
+            print("%02x ", curr_buf->ptr[i]);
+        print("]\n\n");
+
+        // We have read one entry, so we have to move the rx index pointer
         if (++rx_index >= RX_DESC_CNT)
             rx_index = 0;
         
         // Return the current buffer
         *buf = curr_buf;
 
-        // Transfer ownershiåp to the GMAC DMA
+        // Transfer ownership to the GMAC DMA
         desc->owner_software = 0;
 
         return 0;
@@ -299,28 +329,40 @@ i32 gmac_rec_raw(struct netbuf** buf)
 // Takes in a buffer with data and queues it for transmission
 void gmac_send_raw(struct netbuf* buf)
 {
+    assert(buf);
+
     struct gmac_tx_desc* desc = &tx_desc[tx_index];
+
+    assert(desc);
 
     // Find the first descriptor which the software owns
     if (desc->owner_software == 0)
         panic("TX error");
     
     // Check if the transfer descriptor is already pointing to a netbuffer
-    if (rx_netbuf[tx_index]) {
-        free_netbuf(rx_netbuf[tx_index]);
+    if (tx_netbuf[tx_index]) {
+        free_netbuf(tx_netbuf[tx_index]);
+    } else {
+        panic("NULL netbuf");
     }
 
-    rx_netbuf[tx_index] = buf;
+    // Store the new netbuf in the desc table
+    tx_netbuf[tx_index] = buf;
+
+    // Check the lengths and addresses
+    assert(buf->ptr >= buf->buf && buf->ptr < (buf->buf + NETBUF_LENGTH));
+    assert((buf->ptr + buf->frame_len) < (buf->buf + NETBUF_LENGTH));
 
     // We have to map in the physical buffer
     desc->addr = (u32)va_to_pa(buf->ptr);
 
-    // Clean the D-cache
-    //dcache_clean();
-    dcache_clean_range((u32)buf->ptr, (u32)buf->ptr + buf->frame_len);
+    print("Send packet [ ");
+    for (u32 i = 0; i < buf->frame_len; i++)
+        print("%02x ", buf->ptr[i]);
+    print("]\n\n");
 
-    // Double check the framelength
-    assert(buf->frame_len < NETBUF_LENGTH);
+    // Clean the D-cache
+    dcache_clean_range((u32)buf->ptr, (u32)buf->ptr + buf->frame_len);
 
     // Mark the descriptor as the last one. We never use more than one 
     // descriptor in this setup
@@ -343,24 +385,25 @@ void gmac_send_raw(struct netbuf* buf)
 
     // Check the CRC flags
     if (desc->crc_gen_err) {
-        print("CRC ERROR => %03b\n", desc->crc_gen_err);
+        // We remove this temporarily
+        //print("CRC ERROR => %03b\n", desc->crc_gen_err);
     }
 
     // Increase the tx index after the transfer
-    if (++tx_index == TX_DESC_CNT)
+    if (++tx_index >= TX_DESC_CNT)
         tx_index = 0;
-    
 }
 
 void gmac_init(void)
 {
     netbuf_init();
 
-    gmac_clk_init();
-    gmac_port_init();
-
     // Allocate non-cacheable buffers
     gmac_alloc_buffers();
+
+    // Start the GMAC initialization
+    gmac_clk_init();
+    gmac_port_init();
 
     // All GMAC initializeation must be done with transmit and receive circuits
     // disables
@@ -377,6 +420,8 @@ void gmac_init(void)
     (void)GMAC->ISRPQ[0];
     (void)GMAC->ISRPQ[1];
 
+    gmac_init_queues();
+
     // Clear all the status register bits
     GMAC->TSR = (1 << 8) | 0x3F;
     GMAC->RSR = 0xF;
@@ -390,10 +435,9 @@ void gmac_init(void)
     // Setup the DMA registers. The receive buffer size if 128 bytes
     GMAC->DCFGR = (3 << 8) | (0x18 << 16) | (1 << 0) | (1 << 11);
 
-    gmac_init_queues();
-
     // Enable the MDC port, the transmitter and the reciever
     GMAC->NCR = 0b111 << 2;
+    GMAC->NCR &= ~(1 << 1);
 
     // Configure the PHY. THis must be done after power-on but can be removed
     // after (to speed things up)

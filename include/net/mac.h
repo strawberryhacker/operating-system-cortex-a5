@@ -7,10 +7,14 @@
 #include <net/ip.h>
 #include <net/netbuf.h>
 
+void mac_init(void);
+
 void mac_receive(struct netbuf* buf);
 
 void mac_send(struct netbuf* buf, ipaddr_t dest_ip, ipaddr_t src_ip, u16 type);
 
 void mac_broadcast(struct netbuf* buf, u16 type);
+
+void mac_unqueue(ipaddr_t ip);
 
 #endif

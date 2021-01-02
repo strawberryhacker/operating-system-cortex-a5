@@ -25,7 +25,7 @@ struct arp_table {
 
 void arp_init(void);
 
-void arp_alloc_mapping(ipaddr_t ip);
+i32 arp_alloc_mapping(ipaddr_t ip);
 
 void arp_add_new_mapping(ipaddr_t ip, const u8* mac);
 

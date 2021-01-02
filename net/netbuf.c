@@ -11,10 +11,13 @@ void netbuf_init(void)
 {
     list_init(&netbuf_pool);
 
-    asm ("dmb");
-
+    assert(netbuf_pool.next == &netbuf_pool);
+    
     for (u32 i = 0; i < 1024; i++) {
         struct netbuf* buf = kmalloc(sizeof(struct netbuf));
+
+        if (buf == NULL)
+            panic("Mem error");
 
         // Add the packets to the listned list
         list_add_first(&buf->node, &netbuf_pool);

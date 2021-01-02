@@ -10,8 +10,12 @@
 #define MAX_HEADER_SIZE 74
 
 struct netbuf {
+    u8 reserved0[32];
+
     // Virtual start address of the buffer
     u8 buf[NETBUF_LENGTH];
+
+    u8 reserved1[32];
 
     // This is for the netbuf pool free list. And for queueing in the network
     // stack
@@ -22,6 +26,8 @@ struct netbuf {
 
     // This is increased as the frame goes through the stack
     u32 frame_len;
+
+    u32 ip;
 };
 
 void netbuf_init(void);

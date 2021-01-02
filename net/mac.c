@@ -5,6 +5,37 @@
 #include <citrus/panic.h>
 #include <citrus/mem.h>
 
+static struct list_node arp_queue;
+
+void mac_init(void)
+{
+    list_init(&arp_queue);
+}
+
+void mac_unqueue(ipaddr_t ip)
+{
+    struct list_node* node;
+    list_iterate(node, &arp_queue) {
+        struct netbuf* buf = list_get_entry(node, struct netbuf, node);
+
+        if (buf->ip == ip) {
+
+            u8 mac[6];
+
+            // Look up the MAC address
+            i32 err = arp_search(ip, mac);
+            if (err)
+                panic("MAC not found");
+            
+            // Fill in the MAC without touching pointers
+            for (u32 i = 0; i < 6; i++) {
+                buf->ptr[i] = 0x44; // MAC[i]
+            }
+            gmac_send_raw(buf);
+        }
+    }
+}
+
 void mac_receive(struct netbuf* buf)
 {
     // We don't need to check the source or destination mac address since this 
@@ -48,6 +79,9 @@ void mac_send(struct netbuf* buf, ipaddr_t dest_ip, ipaddr_t src_ip, u16 type)
     // Update the size of the frame
     buf->frame_len += 14;
 
+    // Save the destination IP address
+    buf->ip = dest_ip;
+
     // Get the destination MAC address from the ARP table
     u8 dest_mac[6];
     i32 err = arp_search(dest_ip, dest_mac);
@@ -56,6 +90,7 @@ void mac_send(struct netbuf* buf, ipaddr_t dest_ip, ipaddr_t src_ip, u16 type)
         buf->ptr -= 6;
         
         // Queue the packet for later transmission
+        list_add_first(&buf->node, &arp_queue);
 
         // Perform and arp request
         arp_request(dest_ip, src_ip);

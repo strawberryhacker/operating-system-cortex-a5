@@ -59,19 +59,18 @@ i32 str_to_ipv4(const char* buf, ipaddr_t* addr)
     return 0;
 }
 
+// 
 void ip_receive(struct netbuf* buf)
 {
     // Check the length of the payload
     u16 size = read_be16(buf->ptr + 2);
 
-    print("SIze => %d\n", size);
+    //print("Got an IPv4 packet with size %d\n", size);
 
     u8 protocol = buf->ptr[9];
 
     // Get the length of the header
     u32 header_len = (buf->ptr[0] & 0xF) * 4;
-
-    print("Header length => %d\n", header_len);
 
     // Move the pointer to the payload
     buf->ptr += header_len;

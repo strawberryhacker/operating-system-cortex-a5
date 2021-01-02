@@ -109,7 +109,10 @@ void main(void)
     // Add the kernel threads / startup routines below 
     // ==================================================
 
+    print("\n\nStarting networking\n");
+
     gmac_init();
+    mac_init();
     arp_init();
 
     create_kthread(tx, 5000, "net tx", NULL, SCHED_RT);

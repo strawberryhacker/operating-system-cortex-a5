@@ -19,8 +19,20 @@ void arp_init(void)
     create_kthread(arp_thread, 5000, "arp thread", NULL, SCHED_RT);
 }
 
-void arp_alloc_mapping(ipaddr_t ip)
+i32 arp_alloc_mapping(ipaddr_t ip)
 {
+    // Search for an allready existing mapping
+    struct list_node* node;
+    list_iterate(node, &arp_table.arp_list) {
+        struct arp_entry* ent = list_get_entry(node, struct arp_entry, node);
+
+        if (ent->ip == ip && ent->waiting == 0) {
+            panic("ARP error");
+        } else if (ent->ip == ip) {
+            return -ENOENT;
+        }
+    }
+
     struct arp_entry* ent = kmalloc(sizeof(struct arp_entry));
 
     ent->ip = ip;
@@ -77,7 +89,10 @@ void arp_request(ipaddr_t dest_ip, ipaddr_t src_ip)
     const u8* src_mac = gmac_get_mac_addr();
 
     // Allocate a new mapping
-    arp_alloc_mapping(dest_ip);
+    i32 err = arp_alloc_mapping(dest_ip);
+    if (err) {
+        print("ARP waiting\n");
+    }
 
     // Request and initialize a netbuf
     struct netbuf* buf = alloc_netbuf();
@@ -122,6 +137,11 @@ void arp_request(ipaddr_t dest_ip, ipaddr_t src_ip)
 
     // Set the size of the MAC paylaod
     buf->frame_len = 28;
+
+    char ip_name[16];
+    ip_name[15] = 0;
+    ipv4_to_str(dest_ip, ip_name);
+    print("ARP request to IP %s\n", ip_name);
 
     // Send a ARP
     mac_broadcast(buf, 0x0806);
@@ -169,5 +189,9 @@ void arp_receive(struct netbuf* buf)
 
     ipaddr_t ip = read_be32(ptr + 6);
 
+    print("ARP response\n");
+
     arp_add_new_mapping(ip, ptr);
+
+    mac_unqueue(ip);
 }
