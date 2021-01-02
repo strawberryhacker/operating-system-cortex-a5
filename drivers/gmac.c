@@ -441,7 +441,7 @@ void gmac_init(void)
     GMAC->NCR |= (1 << 9);
 }
 
-const u8 mac_addr[6] = { 0x3c, 0x97, 0x0e, 0x2f, 0x43, 0x6c };
+const u8 mac_addr[6] = { 0x3c, 0x97, 0x0e, 0x2f, 0x43, 0xCC };
 
 const u8* gmac_get_mac_addr(void)
 {

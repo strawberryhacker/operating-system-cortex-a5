@@ -84,21 +84,26 @@ void ip_receive(struct netbuf* buf)
     }
 }
 
+static u32 our_ip = 0;
+
+void set_ip_addr(u32 ip)
+{
+    our_ip = ip;
+}
+
 u32 get_src_ip(void)
 {
     u32 ip;
     str_to_ipv4("192.168.0.14", &ip);
-    return ip;
+    return our_ip;
 }
 
-void ip_send(struct netbuf* buf, u32 ip)
+void ip_send(struct netbuf* buf, u32 src_ip, u32 dest_ip, u8 flags)
 {
     buf->frame_len += 20;
 
-    u32 src_ip = get_src_ip();
-
     buf->ptr -= 4;
-    store_be32(ip, buf->ptr);
+    store_be32(dest_ip, buf->ptr);
 
     buf->ptr -= 4;
     store_be32(src_ip, buf->ptr);
@@ -123,5 +128,6 @@ void ip_send(struct netbuf* buf, u32 ip)
     *--buf->ptr = 0;
     *--buf->ptr = (4 << 4) | 5;
 
-    mac_send(buf, ip, src_ip, 0x0800);   
+    u8 broad = (flags & MAC_BROADCAST) ? 1 : 0;
+    mac_send(buf, dest_ip, src_ip, 0x0800, broad);   
 }

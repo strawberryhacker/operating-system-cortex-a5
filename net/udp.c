@@ -116,7 +116,7 @@ void udp_listen(u16 port)
 
 // This takes in a packet buffer. The frame_length field in the netbuf should
 // be set to the total packet size
-void udp_send(struct netbuf* buf, u32 ip, u16 port)
+void udp_send(struct netbuf* buf, u32 ip, u16 port, u8 flags)
 {
     buf->ptr -= 4;
 
@@ -133,5 +133,27 @@ void udp_send(struct netbuf* buf, u32 ip, u16 port)
 
     buf->frame_len += 8;
 
-    ip_send(buf, ip);
+    u32 src_ip = get_src_ip();
+
+    ip_send(buf, src_ip, ip, flags);
+}
+
+void udp_send_from(struct netbuf* buf, u32 dest_ip, u32 src_ip, u16 src_port, u16 dest_port, u8 flags)
+{
+    buf->ptr -= 4;
+
+    // Lenght of the UDP packet including UDP header
+    store_be16(buf->frame_len + 8, buf->ptr);
+    buf->ptr -= 2;
+
+    // Destination port
+    store_be16(dest_port, buf->ptr);
+    buf->ptr -= 2;
+
+    // Source port
+    store_be16(src_port, buf->ptr);
+
+    buf->frame_len += 8;
+
+    ip_send(buf, src_ip, dest_ip, flags);
 }

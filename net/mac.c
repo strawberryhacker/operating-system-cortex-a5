@@ -69,7 +69,8 @@ void mac_receive(void)
 }
 
 // Fill in the MAC frame and get the dest MAC address form the ARP module
-void mac_send(struct netbuf* buf, ipaddr_t dest_ip, ipaddr_t src_ip, u16 type)
+void mac_send(struct netbuf* buf, ipaddr_t dest_ip, ipaddr_t src_ip, u16 type, 
+    u8 broadcast)
 {
     // Check that the buffers are given in a reight format
     assert(buf->buf + 14 <= buf->ptr);
@@ -90,6 +91,18 @@ void mac_send(struct netbuf* buf, ipaddr_t dest_ip, ipaddr_t src_ip, u16 type)
 
     // Save the destination IP address
     buf->ip = dest_ip;
+
+    // If this is a broadcast MAC message
+    if (broadcast) {
+
+        // Fill in the broadcast mac address
+        for (u32 i = 0; i < 6; i++)
+            *--buf->ptr = 0xFF;   
+
+        gmac_send_raw(buf);
+
+        return;
+    }
 
     // Get the destination MAC address from the ARP table
     u8 dest_mac[6];

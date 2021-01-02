@@ -32,6 +32,7 @@
 #include <net/mac.h>
 #include <net/arp.h>
 #include <net/udp.h>
+#include <net/dhcp.h>
 
 #include <gfx/window.h>
 #include <gfx/ttf.h>
@@ -92,15 +93,15 @@ i32 tx(void* arg)
             panic("Cant alloc netbufg\n");
 
         u32 ip;
-        i32 err = str_to_ipv4("192.168.0.177", &ip);
+        i32 err = str_to_ipv4("192.168.5.177", &ip);
         if (err) 
             panic("Wrong IP\n");
 
         // Copy in the data
-        mem_copy("this is called a UDP packet", buf->ptr, 19);
-        buf->frame_len = 19;
+        mem_copy("this is called a UDP packet", buf->ptr, 27);
+        buf->frame_len = 27;
 
-        udp_send(buf, ip, 80);
+        udp_send(buf, ip, 80, 0);
 
         print("Send UDP\n");
     }
@@ -127,6 +128,8 @@ void main(void)
 
     create_kthread(tx, 5000, "net tx", NULL, SCHED_RT);
     create_kthread(udp_test, 5000, "udp", NULL, SCHED_RT);
+
+    dhcp_init();
 
     sched_start();
 } 
