@@ -28,6 +28,9 @@ struct netbuf {
     u32 frame_len;
 
     u32 ip;
+
+    // This is for testing
+    u32 number;
 };
 
 void netbuf_init(void);
@@ -40,5 +43,7 @@ static inline void init_netbuf(struct netbuf* buf)
 {
     buf->ptr = buf->buf + MAX_HEADER_SIZE;
 }
+
+struct list_node* get_netbuf_list(void);
 
 #endif

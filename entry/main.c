@@ -31,6 +31,7 @@
 #include <net/netbuf.h>
 #include <net/mac.h>
 #include <net/arp.h>
+#include <net/udp.h>
 
 #include <gfx/window.h>
 #include <gfx/ttf.h>
@@ -59,6 +60,7 @@ void kernel_init(void)
     disk_init();
 }
 
+
 /// This will handle driver initialization
 void driver_init(void)
 {
@@ -67,33 +69,40 @@ void driver_init(void)
     dma_receive_init();
 }
 
-i32 tx(void* arg)
+i32 udp_test(void* arg)
 {
-    // Get the source and destination IP address
-    ipaddr_t dest_ip = 0;
-    i32 err = str_to_ipv4("192.168.0.177", &dest_ip);
-    if (err)
-        panic("Wrong IP");
-    
-    ipaddr_t src_ip = 0;
-    err = str_to_ipv4("192.168.0.50", &src_ip);
-    if (err)
-        panic("Wrong IP");
-
+    udp_listen(50);
 
     while (1) {
-        struct netbuf* buf = alloc_netbuf();
-        if (buf == NULL)
-            panic("Can't allocate buffer");
+        struct netbuf* buf = udp_rec(50);
+        if (buf) {
+            print("UDP with length %d - %*s\n", buf->frame_len, buf->frame_len, buf->ptr);
+        }
+    }
+}
 
-        // Add some random data
-        mem_set(buf->buf, 0xF3, 140);
-        buf->frame_len = 140;
-        buf->ptr = buf->buf + 14;
-
-        mac_send(buf, dest_ip, src_ip, 0x0800);
-
+i32 tx(void* arg)
+{
+    while (1) {
         syscall_thread_sleep(1000);
+
+        // Allocate a netbuffer
+        struct netbuf* buf = alloc_netbuf();
+        if (buf == NULL) 
+            panic("Cant alloc netbufg\n");
+
+        u32 ip;
+        i32 err = str_to_ipv4("192.168.0.177", &ip);
+        if (err) 
+            panic("Wrong IP\n");
+
+        // Copy in the data
+        mem_copy("this is called a UDP packet", buf->ptr, 19);
+        buf->frame_len = 19;
+
+        udp_send(buf, ip, 80);
+
+        print("Send UDP\n");
     }
 }
 
@@ -114,8 +123,10 @@ void main(void)
     gmac_init();
     mac_init();
     arp_init();
+    udp_init();
 
     create_kthread(tx, 5000, "net tx", NULL, SCHED_RT);
+    create_kthread(udp_test, 5000, "udp", NULL, SCHED_RT);
 
     sched_start();
 } 

@@ -15,6 +15,7 @@
 #include <citrus/cache.h>
 #include <net/netbuf.h>
 #include <citrus/print.h>
+#include <citrus/atomic.h>
 
 #define NA_SIZE 128
 #define NA_CNT  6
@@ -23,7 +24,7 @@
 #define TX_SIZE 1536
 
 #define RX_DESC_CNT 32
-#define TX_DESC_CNT 32
+#define TX_DESC_CNT 2
 
 
 // Dummy buffers for GMAC unused queues
@@ -269,6 +270,7 @@ static void gmac_init_queues(void)
 // This needs to take in the maximum size of the network buffer which is 1500
 i32 gmac_rec_raw(struct netbuf** buf)
 {
+    u32 atomic = __atomic_enter();
     assert(buf);
 
     struct netbuf* curr_buf = rx_netbuf[rx_index];
@@ -285,6 +287,7 @@ i32 gmac_rec_raw(struct netbuf** buf)
         
         if (desc->sof == 0 || desc->eof == 0) {
             desc->owner_software = 0;
+            __atomic_leave(atomic);
             return -ERETRY;
         }
 
@@ -305,11 +308,6 @@ i32 gmac_rec_raw(struct netbuf** buf)
         // Swap the entriees inthe netbuf queue
         rx_netbuf[rx_index] = new_netbuf;
 
-        print("Rec packet [ ");
-        for (u32 i = 0; i < curr_buf->frame_len; i++)
-            print("%02x ", curr_buf->ptr[i]);
-        print("]\n\n");
-
         // We have read one entry, so we have to move the rx index pointer
         if (++rx_index >= RX_DESC_CNT)
             rx_index = 0;
@@ -320,9 +318,11 @@ i32 gmac_rec_raw(struct netbuf** buf)
         // Transfer ownership to the GMAC DMA
         desc->owner_software = 0;
 
+        __atomic_leave(atomic);
         return 0;
     }
 
+    __atomic_leave(atomic);
     return -ERETRY;
 }
 
@@ -355,11 +355,6 @@ void gmac_send_raw(struct netbuf* buf)
 
     // We have to map in the physical buffer
     desc->addr = (u32)va_to_pa(buf->ptr);
-
-    print("Send packet [ ");
-    for (u32 i = 0; i < buf->frame_len; i++)
-        print("%02x ", buf->ptr[i]);
-    print("]\n\n");
 
     // Clean the D-cache
     dcache_clean_range((u32)buf->ptr, (u32)buf->ptr + buf->frame_len);

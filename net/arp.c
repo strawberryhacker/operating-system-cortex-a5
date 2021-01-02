@@ -40,6 +40,8 @@ i32 arp_alloc_mapping(ipaddr_t ip)
 
     // Add the new mapping into the ARP table
     list_add_first(&ent->node, &arp_table.arp_list);
+
+    return 0;
 }
 
 // Maps an IPv4 address to a MAC address. The input MAC address has to be 6 bytes
@@ -149,16 +151,9 @@ void arp_request(ipaddr_t dest_ip, ipaddr_t src_ip)
 
 i32 arp_thread(void* arg)
 {
-    while (1) {
-        struct netbuf* buf;
-
-        i32 err = gmac_rec_raw(&buf);
-
-        if (err) 
-            continue;
-        
+    while (1) {        
         // We have a new packet
-        mac_receive(buf);
+        //mac_receive();
     }
     return 0;
 }
@@ -192,6 +187,5 @@ void arp_receive(struct netbuf* buf)
     print("ARP response\n");
 
     arp_add_new_mapping(ip, ptr);
-
     mac_unqueue(ip);
 }

@@ -152,3 +152,21 @@ u64 read_be64(const void* ptr)
 
     return val;
 }
+
+void store_be16(u16 val, const void* ptr)
+{
+    u8* src = (u8 *)ptr;
+    
+    src[0] = (val >> 8) & 0xFF;
+    src[1] = (val >> 0) & 0xFF;
+}
+
+void store_be32(u32 val, const void* ptr)
+{
+    u8* src = (u8 *)ptr;
+
+    src[0] = (val >> 24) & 0xFF;
+    src[1] = (val >> 16) & 0xFF;
+    src[2] = (val >> 8 ) & 0xFF;
+    src[3] = (val >> 0 ) & 0xFF;
+}

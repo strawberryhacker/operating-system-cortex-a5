@@ -2,6 +2,7 @@
 #include <citrus/error.h>
 #include <citrus/mem.h>
 #include <net/udp.h>
+#include <net/mac.h>
 
 // Converts an IPv4 address from a binary representation to a string 
 // representation "xxx.xxx.xxx.xxx". 
@@ -59,13 +60,12 @@ i32 str_to_ipv4(const char* buf, ipaddr_t* addr)
     return 0;
 }
 
-// 
 void ip_receive(struct netbuf* buf)
 {
     // Check the length of the payload
     u16 size = read_be16(buf->ptr + 2);
 
-    //print("Got an IPv4 packet with size %d\n", size);
+    print("Got an IPv4 packet with size %d\n", size);
 
     u8 protocol = buf->ptr[9];
 
@@ -76,7 +76,52 @@ void ip_receive(struct netbuf* buf)
     buf->ptr += header_len;
     buf->frame_len = size - header_len;
 
+    // Check the protocol
     if (protocol == 0x11) {
-        udp_receive(buf);
+
+        // UPD protocol
+        udp_handle(buf);
     }
+}
+
+u32 get_src_ip(void)
+{
+    u32 ip;
+    str_to_ipv4("192.168.0.14", &ip);
+    return ip;
+}
+
+void ip_send(struct netbuf* buf, u32 ip)
+{
+    buf->frame_len += 20;
+
+    u32 src_ip = get_src_ip();
+
+    buf->ptr -= 4;
+    store_be32(ip, buf->ptr);
+
+    buf->ptr -= 4;
+    store_be32(src_ip, buf->ptr);
+
+    buf->ptr -= 3;
+
+    // UDP
+    *buf->ptr-- = 0x11;
+
+    *buf->ptr = 10;
+
+    buf->ptr -= 2;
+
+    store_be16(0x4000, buf->ptr);
+
+    buf->ptr -= 2;
+    store_be16(0, buf->ptr);
+
+    buf->ptr -= 2;
+    store_be16(buf->frame_len, buf->ptr);
+
+    *--buf->ptr = 0;
+    *--buf->ptr = (4 << 4) | 5;
+
+    mac_send(buf, ip, src_ip, 0x0800);   
 }

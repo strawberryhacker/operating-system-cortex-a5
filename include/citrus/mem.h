@@ -19,4 +19,7 @@ u16 read_be16(const void* ptr);
 u32 read_be32(const void* ptr);
 u64 read_be64(const void* ptr);
 
+void store_be32(u32 val, const void* ptr);
+void store_be16(u16 val, const void* ptr);
+
 #endif

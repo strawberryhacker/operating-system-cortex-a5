@@ -15,4 +15,6 @@ void ipv4_to_str(ipaddr_t addr, char* buf);
 
 void ip_receive(struct netbuf* buf);
 
+void ip_send(struct netbuf* buf, u32 ip);
+
 #endif

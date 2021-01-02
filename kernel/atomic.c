@@ -15,7 +15,7 @@ u32 __atomic_enter(void)
     u32 flags;
     asm volatile (
         "mrs %0, cpsr      \n\t"
-        "cpsid if          \n\t"
+        "cpsid ifa          \n\t"
         "and %0, %0, #0xc0 \n\t"
     : "=r" (flags));
 

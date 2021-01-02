@@ -9,7 +9,7 @@
 
 void mac_init(void);
 
-void mac_receive(struct netbuf* buf);
+void mac_receive(void);
 
 void mac_send(struct netbuf* buf, ipaddr_t dest_ip, ipaddr_t src_ip, u16 type);
 

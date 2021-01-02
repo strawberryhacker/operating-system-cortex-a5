@@ -3,7 +3,39 @@
 
 #include <citrus/types.h>
 #include <net/netbuf.h>
+#include <citrus/list.h>
 
-void udp_receive(struct netbuf* buf);
+// This is the main UDP module
+struct udp {
+
+    struct list_node ports;
+};
+
+// This is allocated for each bound port. Incoming frames from any application
+// which is targeting this port will be placed here
+struct udp_port {
+
+    // This should be linked in the UDP module
+    struct list_node node;
+    struct list_node packets;
+
+    u16 port;
+};
+
+void udp_init(void);
+
+struct netbuf* get_netbuf_from_port(u16 port);
+
+void add_netbuf_to_port(struct netbuf* buf, u16 port);
+
+void udp_handle(struct netbuf* buf);
+
+void udp_listen(u16 port);
+
+struct netbuf* udp_rec(u16 port);
+
+void udp_send(struct netbuf* buf, u32 ip, u16 port);
+
+void pp(void);
 
 #endif

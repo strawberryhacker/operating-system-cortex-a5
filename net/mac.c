@@ -36,8 +36,17 @@ void mac_unqueue(ipaddr_t ip)
     }
 }
 
-void mac_receive(struct netbuf* buf)
+void mac_receive(void)
 {
+    struct netbuf* buf;
+
+    i32 err = gmac_rec_raw(&buf);
+
+    if (err)
+        return;
+
+    print("New packet\n");
+
     // We don't need to check the source or destination mac address since this 
     // is filtered by the GMAC hardware
 
@@ -54,8 +63,8 @@ void mac_receive(struct netbuf* buf)
     if (type == 0x0806) {
         arp_receive(buf);
 
-    } else {
-        ip_receive(buf);    
+    } else if (type == 0x0800) {
+        ip_receive(buf);
     }
 }
 
