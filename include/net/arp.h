@@ -11,7 +11,7 @@
 struct arp_entry {
     struct list_node node;
 
-    ipaddr_t ip;
+    u32 ip;
     u8 mac[6];
 
     // Set to one if the stack is waiting for an ARP response
@@ -25,13 +25,13 @@ struct arp_table {
 
 void arp_init(void);
 
-i32 arp_alloc_mapping(ipaddr_t ip);
+i32 arp_alloc_mapping(u32 ip);
 
-void arp_add_new_mapping(ipaddr_t ip, const u8* mac);
+void arp_add_new_mapping(u32 ip, const u8* mac);
 
-i32 arp_search(ipaddr_t ip, u8* mac);
+i32 arp_search(u32 ip, u8* mac);
 
-void arp_request(ipaddr_t dest_ip, ipaddr_t src_ip);
+void arp_request(u32 dest_ip, u32 src_ip);
 
 void arp_receive(struct netbuf* buf);
 

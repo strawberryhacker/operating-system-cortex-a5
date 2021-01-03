@@ -13,7 +13,7 @@ void mac_init(void)
     list_init(&arp_queue);
 }
 
-void mac_unqueue(ipaddr_t ip)
+void mac_unqueue(u32 ip)
 {
     struct list_node* node;
 
@@ -68,7 +68,7 @@ void mac_receive(void)
 }
 
 // Fill in the MAC frame and get the dest MAC address form the ARP module
-void mac_send(struct netbuf* buf, ipaddr_t dest_ip, ipaddr_t src_ip, u16 type, 
+void mac_send(struct netbuf* buf, u32 dest_ip, u32 src_ip, u16 type, 
     u8 broadcast)
 {
     // Check that the buffers are given in a reight format

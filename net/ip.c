@@ -7,7 +7,7 @@
 // Converts an IPv4 address from a binary representation to a string 
 // representation "xxx.xxx.xxx.xxx". 
 // The input buffer has to be at least 16 bytes long
-void ipv4_to_str(ipaddr_t addr, char* buf)
+void ipv4_to_str(u32 addr, char* buf)
 {
     u8 shift = 24;
     for (u32 i = 0; i < 4; i++) {
@@ -33,7 +33,7 @@ void ipv4_to_str(ipaddr_t addr, char* buf)
 
 // Converts a string to an IPv4 address. The string must be on format 
 // "xxx.xxx.xxx.xxx"
-i32 str_to_ipv4(const char* buf, ipaddr_t* addr)
+i32 str_to_ipv4(const char* buf, u32* addr)
 {
     for (u32 i = 0; i < 4; i++) {
         u32 octet = 0;
@@ -85,17 +85,42 @@ void ip_receive(struct netbuf* buf)
     }
 }
 
-// This is our IPv4 address
-static u32 our_ip = 0;
+static struct ip_struct ip_struct = { 0 };
+
+void ip_print(struct ip_struct* ip)
+{
+    char ip_str[16];
+    
+    ipv4_to_str(ip->our_ip, ip_str);
+    print("%-16s: %s\n", "Our IP addr", ip_str);
+
+    ipv4_to_str(ip->subnet_mask, ip_str);
+    print("%-16s: %s\n", "Subnet mask", ip_str);
+
+    for (u32 i = 0; i < ip->server_cnt; i++) {
+        ipv4_to_str(ip->server_ip[i], ip_str);
+        
+        if (i == 0) {
+            print("%-16s: %s\n", "Gateway", ip_str);
+        } else {
+            print("%-16s: %s\n", "", ip_str);
+        }
+    }
+}
+
+void set_ip_struct(struct ip_struct* ip)
+{
+    mem_copy(ip, &ip_struct, sizeof(struct ip_struct));
+}
 
 void set_ip_addr(u32 ip)
 {
-    our_ip = ip;
+    ip_struct.our_ip = ip;
 }
 
 u32 get_src_ip(void)
 {
-    return our_ip;
+    return ip_struct.our_ip;
 }
 
 void ip_send(struct netbuf* buf, u32 src_ip, u32 dest_ip, u8 flags)

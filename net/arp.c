@@ -19,7 +19,7 @@ void arp_init(void)
     create_kthread(arp_thread, 5000, "arp thread", NULL, SCHED_RT);
 }
 
-i32 arp_alloc_mapping(ipaddr_t ip)
+i32 arp_alloc_mapping(u32 ip)
 {
     // Search for an allready existing mapping
     struct list_node* node;
@@ -45,7 +45,7 @@ i32 arp_alloc_mapping(ipaddr_t ip)
 }
 
 // Maps an IPv4 address to a MAC address. The input MAC address has to be 6 bytes
-void arp_add_new_mapping(ipaddr_t ip, const u8* mac)
+void arp_add_new_mapping(u32 ip, const u8* mac)
 {
     struct list_node* node;
     list_iterate(node, &arp_table.arp_list) {
@@ -67,7 +67,7 @@ void arp_add_new_mapping(ipaddr_t ip, const u8* mac)
 }
 
 
-i32 arp_search(ipaddr_t ip, u8* mac)
+i32 arp_search(u32 ip, u8* mac)
 {
     struct list_node* node;
     list_iterate(node, &arp_table.arp_list) {
@@ -85,7 +85,7 @@ i32 arp_search(ipaddr_t ip, u8* mac)
     return -ENOENT;
 }
 
-void arp_request(ipaddr_t dest_ip, ipaddr_t src_ip)
+void arp_request(u32 dest_ip, u32 src_ip)
 {
     // Get our MAC address
     const u8* src_mac = gmac_get_mac_addr();
@@ -224,7 +224,7 @@ void arp_handle_reply(struct netbuf* buf)
     // Ignore the IPv4 field
 
     // Get the senders IP address
-    ipaddr_t ip = read_be32(&hdr->spa);
+    u32 ip = read_be32(&hdr->spa);
 
     // Add the new mapping between the IPv4 and the MAC
     arp_add_new_mapping(ip, hdr->sha);
