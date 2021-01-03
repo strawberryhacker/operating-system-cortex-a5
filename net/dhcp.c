@@ -8,7 +8,7 @@
 #include <citrus/mem.h>
 #include <citrus/gmac.h>
 
-struct dhcp_header {
+struct __attribute__((packed)) dhcp_header {
     u8 op;
     u8 htype;
     u8 hlen;

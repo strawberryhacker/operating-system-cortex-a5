@@ -83,23 +83,6 @@ void udp_handle(struct netbuf* buf)
     add_netbuf_to_port(buf, dest_port);
 }
 
-void pp(void)
-{
-    struct list_node* port_node;
-    struct list_node* packet_node;
-
-    list_iterate(port_node, &udp.ports) {
-
-        struct udp_port* port = list_get_entry(port_node, struct udp_port, node);
-        print("Got a new port %d\n", port->port);
-        list_iterate(packet_node, &port->packets) {
-
-            struct netbuf* buf = list_get_entry(packet_node, struct netbuf, node);
-            print("    New packet => %d\n", buf->number);
-        }
-    }
-}
-
 // Make a new port link
 void udp_listen(u16 port)
 {

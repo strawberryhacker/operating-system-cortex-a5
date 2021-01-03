@@ -158,7 +158,80 @@ i32 arp_thread(void* arg)
     return 0;
 }
 
-const u8 arp_resp[] = {0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x02};
+struct __attribute__((packed)) arp_header {
+    u16 htype;
+    u16 ptype;
+    u8 hlen;
+    u8 plen;
+    u16 oper;
+    u8 sha[6];
+    u32 spa;
+    u8 tha[6];
+    u32 tpa;    
+};
+
+#define ARP_REQUEST 1
+#define ARP_REPLY 2
+
+// This will handle a ARP req and send a ARP reply back
+void arp_handle_req(struct netbuf* buf)
+{
+    print("WE HAVE TO RESPONS TO THIS\n");
+
+    // Get a netbuf packet
+    struct netbuf* rep_buf = alloc_netbuf();
+
+    struct arp_header* dest_hdr = (struct arp_header *)rep_buf->ptr;
+
+    store_be16(0x0001, &dest_hdr->htype);  // Ethernet
+    store_be16(0x0800, &dest_hdr->ptype);  // IPv4
+    dest_hdr->hlen = 6;                    // MAC length
+    dest_hdr->plen = 4;                    // IPv4 length
+
+    // This is a reply
+    store_be16(ARP_REPLY, &dest_hdr->oper);
+
+    // Our MAC address
+    mac_copy(gmac_get_mac_addr(), dest_hdr->sha);
+
+    // Our IPv4 address
+    store_be32(get_src_ip(), &dest_hdr->spa);
+
+    struct arp_header* src_hdr = (struct arp_header *)buf->ptr;
+
+    // Dest MAC
+    mac_copy(src_hdr->sha, dest_hdr->tha);
+
+    u32 dest_ip = read_be32(&src_hdr->spa);
+
+    // Dest IPv4
+    store_be32(dest_ip, &dest_hdr->tpa);
+
+    // Send the raw MAC packet
+    mac_send(rep_buf, dest_ip, get_src_ip(), 0x0806, 0);
+}
+
+void arp_handle_reply(struct netbuf* buf)
+{
+    struct arp_header* hdr = (struct arp_header *)buf->ptr;
+
+    // Check that the destination MAC address is ours
+
+    const u8* our_mac = gmac_get_mac_addr();
+    for (u32 i = 0; i < 6; i++) {
+        if (hdr->tha[i] != our_mac[i])
+            return;
+    }
+
+    // Ignore the IPv4 field
+
+    // Get the senders IP address
+    ipaddr_t ip = read_be32(&hdr->spa);
+
+    // Add the new mapping between the IPv4 and the MAC
+    arp_add_new_mapping(ip, hdr->sha);
+    mac_unqueue(ip);
+}
 
 void arp_receive(struct netbuf* buf)
 {
@@ -166,26 +239,29 @@ void arp_receive(struct netbuf* buf)
 
     if (buf->frame_len < 28)
         return;
+
+    struct arp_header* hdr = (struct arp_header *)buf->ptr; 
+
+    // Check for ethernet
+    if (read_be16(&hdr->htype) != 1)
+        return;
     
-    // Check the first fields
-    for (u32 i = 0; i < 8; i++) {
-        if (*ptr++ != arp_resp[i])
-            return;
+    // Check for IPv4
+    if (read_be16(&hdr->ptype) != 0x0800)
+        return;
+    
+    // MAC address is 6 bytes
+    if (hdr->hlen != 6)
+        return;
+
+    // IPv4 address is 4 bytes
+    if (hdr->plen != 4)
+        return;
+    
+    // Check if this is an ARP replay or an ARP request
+    if (read_be16(&hdr->oper) == ARP_REPLY) {
+        arp_handle_reply(buf);
+    } else if (read_be16(&hdr->oper) == ARP_REQUEST) {
+        arp_handle_req(buf);
     }
-
-    // Check that the destination MAC address is ours
-    u8* mac = ptr + 10;
-    const u8* our_mac = gmac_get_mac_addr();
-
-    for (u32 i = 0; i < 6; i++) {
-        if (mac[i] != our_mac[i])
-            return;
-    }    
-
-    ipaddr_t ip = read_be32(ptr + 6);
-
-    print("ARP response\n");
-
-    arp_add_new_mapping(ip, ptr);
-    mac_unqueue(ip);
 }

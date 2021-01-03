@@ -28,9 +28,6 @@ struct netbuf {
     u32 frame_len;
 
     u32 ip;
-
-    // This is for testing
-    u32 number;
 };
 
 void netbuf_init(void);

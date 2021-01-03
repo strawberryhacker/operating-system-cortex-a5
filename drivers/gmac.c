@@ -389,6 +389,13 @@ void gmac_send_raw(struct netbuf* buf)
         tx_index = 0;
 }
 
+const u8 mac_addr[6] = { 0x3c, 0x97, 0x0e, 0x2f, 0x43, 0xCC };
+
+const u8* gmac_get_mac_addr(void)
+{
+    return mac_addr;
+}
+
 void gmac_init(void)
 {
     netbuf_init();
@@ -422,10 +429,15 @@ void gmac_init(void)
     GMAC->RSR = 0xF;
 
     // Divide the 63 MHz cgmac_get_mac_addrll frames with bad CRC
-    GMAC->NCFGR |= 0b11 | (1 << 4) | (1 << 17) | (1 << 24);
+    GMAC->NCFGR |= 0b11 | (1 << 17) | (1 << 4) | (1 << 24);
 
     // Choose RMII operation
     GMAC->UR = 1;
+
+    // Set the MAC address
+    GMAC->SA->TOP = (mac_addr[0] << 8) | (mac_addr[1] << 0);
+    GMAC->SA->BTM = (mac_addr[2] << 24) | (mac_addr[3] << 16) |
+        (mac_addr[4] << 8) | (mac_addr[5] << 0);
 
     // Setup the DMA registers. The receive buffer size if 128 bytes
     GMAC->DCFGR = (3 << 8) | (0x18 << 16) | (1 << 0) | (1 << 11);
@@ -439,11 +451,4 @@ void gmac_init(void)
     phy_setup();
 
     GMAC->NCR |= (1 << 9);
-}
-
-const u8 mac_addr[6] = { 0x3c, 0x97, 0x0e, 0x2f, 0x43, 0xCC };
-
-const u8* gmac_get_mac_addr(void)
-{
-    return mac_addr;
 }

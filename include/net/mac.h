@@ -18,4 +18,6 @@ void mac_broadcast(struct netbuf* buf, u16 type);
 
 void mac_unqueue(ipaddr_t ip);
 
+void mac_copy(const void* src, void* dest);
+
 #endif

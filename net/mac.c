@@ -5,6 +5,7 @@
 #include <citrus/panic.h>
 #include <citrus/mem.h>
 
+// Packets in which the MAC address cant be reolved is placed into this list
 static struct list_node arp_queue;
 
 void mac_init(void)
@@ -15,6 +16,7 @@ void mac_init(void)
 void mac_unqueue(ipaddr_t ip)
 {
     struct list_node* node;
+
     list_iterate(node, &arp_queue) {
         struct netbuf* buf = list_get_entry(node, struct netbuf, node);
 
@@ -44,11 +46,6 @@ void mac_receive(void)
 
     if (err)
         return;
-
-    print("New packet\n");
-
-    // We don't need to check the source or destination mac address since this 
-    // is filtered by the GMAC hardware
 
     // Skip the source and destination MAC
     buf->ptr += 12;
@@ -151,4 +148,14 @@ void mac_broadcast(struct netbuf* buf, u16 type)
 
     // Send the frame
     gmac_send_raw(buf);
+}
+
+void mac_copy(const void* src, void* dest)
+{
+    u8* dest_ptr = dest;
+    const u8* src_ptr = src;
+
+    for (u32 i = 0; i < 6; i++) {
+        *dest_ptr++ = *src_ptr++;
+    }
 }
