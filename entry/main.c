@@ -33,6 +33,7 @@
 #include <net/arp.h>
 #include <net/udp.h>
 #include <net/dhcp.h>
+#include <net/tftp.h>
 
 #include <gfx/window.h>
 #include <gfx/ttf.h>
@@ -85,7 +86,7 @@ i32 udp_test(void* arg)
 
 i32 tx(void* arg)
 {
-    while (1) {
+    do {
         syscall_thread_sleep(1000);
 
         // Allocate a netbuffer
@@ -104,7 +105,33 @@ i32 tx(void* arg)
 
         udp_send(buf, ip, 80, 0);
 
-        print("Send UDP\n");
+    } while (1);
+    while (1);
+}
+
+i32 tftp_test(void* arg)
+{
+    syscall_thread_sleep(2000);
+
+    struct tftp tftp;
+    tftp_create(&tftp, "192.168.5.177");
+
+    u8* file;
+    u32 filesize;
+
+    i32 err = tftp_download(&tftp, "doc/arm_basics.md", &file, &filesize);
+
+    if (err)
+        panic("Error");
+
+    while (filesize--) {
+        char c = *file++;
+        if (c != '\r')
+            print("%c", c);
+    }
+
+    while (1) {
+        syscall_thread_sleep(500);
     }
 }
 
@@ -130,6 +157,7 @@ void main(void)
 
     create_kthread(tx, 5000, "net tx", NULL, SCHED_RT);
     create_kthread(udp_test, 5000, "udp", NULL, SCHED_RT);
+    create_kthread(tftp_test, 5000, "tftp", NULL, SCHED_RT);
     dhcp_init();
 
     sched_start();

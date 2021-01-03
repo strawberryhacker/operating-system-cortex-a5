@@ -38,6 +38,6 @@ void udp_send(struct netbuf* buf, u32 ip, u16 port, u8 flags);
 
 void udp_send_from(struct netbuf* buf, u32 dest_ip, u32 src_ip, u16 src_port, u16 dest_port, u8 flags);
 
-void pp(void);
+void udp_get_free_port(u16* port);
 
 #endif

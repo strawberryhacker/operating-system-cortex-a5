@@ -154,5 +154,6 @@ void ip_send(struct netbuf* buf, u32 src_ip, u32 dest_ip, u8 flags)
     *--buf->ptr = (4 << 4) | 5;
 
     u8 broad = (flags & MAC_BROADCAST) ? 1 : 0;
+
     mac_send(buf, dest_ip, src_ip, 0x0800, broad);   
 }

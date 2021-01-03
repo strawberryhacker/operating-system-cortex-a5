@@ -8,6 +8,7 @@
 #include <citrus/error.h>
 #include <citrus/panic.h>
 #include <citrus/mem.h>
+#include <citrus/atomic.h>
 
 // Global UDP module
 static struct udp udp;
@@ -99,9 +100,28 @@ void udp_handle(struct netbuf* buf)
     add_netbuf_to_port(buf, dest_port);
 }
 
+static u16 udp_port = 1000;
+
+void udp_get_free_port(u16* port)
+{
+    u32 atomic = __atomic_enter();
+    *port = udp_port;
+    udp_port++;
+    __atomic_leave(atomic);
+}
+
 // Make a new port link
 void udp_listen(u16 port)
 {
+    struct list_node* node;
+    list_iterate(node, &udp.ports) {
+        struct udp_port* p = list_get_entry(node, struct udp_port, node);
+
+        if (p->port == port) {
+            panic("UDP port error\n");
+        } 
+    }
+
     struct udp_port* udp_port = kmalloc(sizeof(struct udp_port));
 
     // Initialize the port packet list
@@ -120,7 +140,7 @@ void udp_send(struct netbuf* buf, u32 ip, u16 port, u8 flags)
     // Skip the UDP CRC. This will be added by the hardware
     buf->ptr -= 4;
 
-    // Lenght of the UDP packet including UDP header
+    // Length of the UDP packet including UDP header
     store_be16(buf->frame_len + 8, buf->ptr);
     buf->ptr -= 2;
 
