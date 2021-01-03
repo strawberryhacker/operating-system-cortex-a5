@@ -27,6 +27,8 @@ struct netbuf {
     // This is increased as the frame goes through the stack
     u32 frame_len;
 
+    // This is used for ARP response. When a ARP response is received this 
+    // field is used for sending the queued packets
     u32 ip;
 };
 

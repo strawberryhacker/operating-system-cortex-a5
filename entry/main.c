@@ -68,6 +68,7 @@ void driver_init(void)
     print_init();
     dma_init();
     dma_receive_init();
+    print_dma_init();
 }
 
 i32 udp_test(void* arg)
@@ -115,20 +116,20 @@ void main(void)
     kernel_init();
     driver_init();
 
-    // ==================================================
-    // Add the kernel threads / startup routines below 
-    // ==================================================
-
     print("\n\nStarting networking\n");
 
+    // Custom init
     gmac_init();
     mac_init();
     arp_init();
     udp_init();
 
+    // ==================================================
+    // Add the kernel threads / startup routines below 
+    // ==================================================
+
     create_kthread(tx, 5000, "net tx", NULL, SCHED_RT);
     create_kthread(udp_test, 5000, "udp", NULL, SCHED_RT);
-
     dhcp_init();
 
     sched_start();

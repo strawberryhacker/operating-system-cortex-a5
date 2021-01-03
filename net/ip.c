@@ -60,13 +60,14 @@ i32 str_to_ipv4(const char* buf, ipaddr_t* addr)
     return 0;
 }
 
+// This will handle and IPv4 packet. This takes in a netbuf where the ptr field
+// must point to the IPv4 header
 void ip_receive(struct netbuf* buf)
 {
     // Check the length of the payload
     u16 size = read_be16(buf->ptr + 2);
 
-    print("Got an IPv4 packet with size %d\n", size);
-
+    // Get the protocol
     u8 protocol = buf->ptr[9];
 
     // Get the length of the header
@@ -84,6 +85,7 @@ void ip_receive(struct netbuf* buf)
     }
 }
 
+// This is our IPv4 address
 static u32 our_ip = 0;
 
 void set_ip_addr(u32 ip)
@@ -93,8 +95,6 @@ void set_ip_addr(u32 ip)
 
 u32 get_src_ip(void)
 {
-    u32 ip;
-    str_to_ipv4("192.168.0.14", &ip);
     return our_ip;
 }
 

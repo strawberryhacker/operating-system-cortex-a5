@@ -34,9 +34,6 @@ static struct dma_channel* num_to_channel(u8 channel_id)
 // Common DMA interrupt handler
 static void dma_common_interrupt(struct dma_reg* dma)
 {
-
-    print("DMA interrupt\n");
-    
     // Get the first interrupting DMA channel
     u8 ch;
     u32 reg = dma->GIS;
@@ -51,14 +48,6 @@ static void dma_common_interrupt(struct dma_reg* dma)
     // Callback
     if (new->done)
         new->done(new->arg);
-
-    print("Channel %d\n", ch);
-
-    print("Status => %08b\n", dma->channel[ch].CIS);
-
-    
-
-    while (1);
 }
 
 // Main DMA0 interrupt handler
@@ -143,6 +132,9 @@ static void dma_fill_microblock_transfer(struct dma_reg* dma, u8 ch,
     dma->channel[ch].CSUS = 0;
     dma->channel[ch].CDUS = 0;
 
+    // Clear the status flags
+    (void)dma->channel[ch].CIS;
+
     // Enable end of block interrupt
     dma->channel[ch].CIE = DMA_EOB | DMA_ERROR;
     dma->GIE = (1 << ch);
@@ -202,6 +194,9 @@ void free_dma_channel(struct dma_channel* ch)
 
 u8 dma_submit_request(struct dma_req* req, struct dma_channel* ch)
 {
+    // Fill in the callback
+    ch->done = (void (*)(void *))req->transfer_done;
+
     dma_fill_microblock_transfer(ch->hw, ch->ch, req);
     return 1;
 }

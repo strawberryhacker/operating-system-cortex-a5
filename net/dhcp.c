@@ -32,11 +32,22 @@ void option_end(u8** data)
     *data = *data + 1;
 }
 
-void option_msg_type(u8** data)
+enum dhcp_type {
+    DHCP_DISCOVER = 1,
+    DHCP_OFFER,
+    DHCP_REQUEST,
+    DHCP_DECLINE,
+    DHCP_ACK,
+    DHCP_NAK,
+    DHCP_RELEASE,
+    DHCP_INFORM
+};
+
+void option_msg_type(u8** data, enum dhcp_type type)
 {
-    *(*data)++ = 53;
-    *(*data)++ = 1;
-    *(*data)++ = 1;
+    *(*data)++ = 53;     // DHCP type 
+    *(*data)++ = 1;      // Lenght
+    *(*data)++ = type;   // Type
 }
 
 void dhcp_parse(struct netbuf* buf)
@@ -54,10 +65,12 @@ void dhcp_parse(struct netbuf* buf)
     print("%s\n", ip);
 }
 
-i32 dhcp_thread(void* arg)
+// This will send a DHCP discover. The application should be listening on port
+// number 68. A DHCP discover will have a broadcast destination IPv4 and a 
+// broadcast MAC. The source IPv4 has to be 0.0.0.0
+void dhcp_send_discover(u32 tid)
 {
-    syscall_thread_sleep(1000);
-
+    // Allocate a new buffer for use
     struct netbuf* buf = alloc_netbuf();
 
     struct dhcp_header* hdr = (struct dhcp_header *)buf->ptr;
@@ -67,7 +80,8 @@ i32 dhcp_thread(void* arg)
     hdr->hlen = 6;
     hdr->hops = 0;
 
-    store_be32(0xC0DEBABE, &hdr->xid);
+
+    store_be32(tid, &hdr->xid);
     store_be16(0, &hdr->secs);
     store_be16(0, &hdr->flags);
 
@@ -82,32 +96,52 @@ i32 dhcp_thread(void* arg)
     mem_set(&hdr->sname, 0x00, 64);
     mem_set(&hdr->file, 0x00, 128);
 
+    // The DHCP is really using BOOTP. The BOOTP has a vendor field. The magic
+    // cookie must be the first word in the vendor field (DHCP options)
     store_be32(0x63825363, &hdr->magic_cookie);
 
-    // Options
     u8* options = (u8 *)(hdr + 1);
-    option_msg_type(&options);
+
+    // Add the requeired options
+    option_msg_type(&options, DHCP_DISCOVER);
     option_end(&options);
 
+    // Options point after the last byte in the UDP paylaod
     buf->frame_len = options - buf->ptr;
 
     print("Sending DHCP discover\n");
-    udp_send_from(buf, 0xFFFFFFFF, 0x00000000, 68, 67, MAC_BROADCAST);
 
+    udp_send_from(buf, 0xFFFFFFFF, 0x00000000, 68, 67, MAC_BROADCAST);
+}
+
+// Main DHCP thread
+i32 dhcp_thread(void* arg)
+{
+    // This is because the first packet is messed up
+    syscall_thread_sleep(1000);
+
+    // Listen on the DHCP client port
     udp_listen(68);
+
+    u32 tid = 0xC0DEBABE;
+    dhcp_send_discover(tid);
 
     while (1) {
         
+        // Rec from the DHCP client port
         struct netbuf* buf = udp_rec(68);
 
         if (buf) {
             print("Got a DHCP response\n");
             dhcp_parse(buf);
+
+            free_netbuf(buf);
         }
     }
 }
 
+// This will start the main DHCP thread
 void dhcp_init(void)
 {
-    create_kthread(dhcp_thread, 5000, "dhcp", NULL, SCHED_RT);   
+    create_kthread(dhcp_thread, 5000, "dhcp", NULL, SCHED_RT);
 }

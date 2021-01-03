@@ -58,6 +58,8 @@ void mac_receive(void)
     buf->frame_len -= 14;
 
     if (type == 0x0806) {
+
+        // This will both handle reply and requests
         arp_receive(buf);
 
     } else if (type == 0x0800) {

@@ -176,8 +176,6 @@ struct __attribute__((packed)) arp_header {
 // This will handle a ARP req and send a ARP reply back
 void arp_handle_req(struct netbuf* buf)
 {
-    print("WE HAVE TO RESPONS TO THIS\n");
-
     // Get a netbuf packet
     struct netbuf* rep_buf = alloc_netbuf();
 
