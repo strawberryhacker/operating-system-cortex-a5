@@ -1,8 +1,3 @@
-<br/><br/>
-<p align="center">
-  <img width="460"  src="https://github.com/strawberryhacker/citrusOS/blob/master/doc/citrus.png">
-</p>
-
 ## Summary
 
 Citrus is a bare metal lightweight operation system designed for the Cortex®-A series. Every thing will be completely bare metal - no libraries - literally.
